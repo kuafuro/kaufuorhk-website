@@ -1,264 +1,257 @@
-{\rtf1\ansi\ansicpg950\cocoartf2513
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuafuor HK | Professional Services</title>
+    <style>
+        /* --- General Reset --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-\f0\fs24 \cf0 <!DOCTYPE html>\
-<html lang="en">\
-<head>\
-    <meta charset="UTF-8">\
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
-    <title>Kaufuor HK | Professional Services</title>\
-    <style>\
-        /* --- General Reset --- */\
-        * \{\
-            margin: 0;\
-            padding: 0;\
-            box-sizing: border-box;\
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\
-        \}\
-\
-        body \{\
-            line-height: 1.6;\
-            color: #333;\
-            background-color: #f9f9f9;\
-        \}\
-\
-        /* --- Header & Navigation --- */\
-        header \{\
-            background-color: #ffffff;\
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);\
-            position: fixed;\
-            width: 100%;\
-            top: 0;\
-            z-index: 1000;\
-        \}\
-\
-        nav \{\
-            max-width: 1200px;\
-            margin: 0 auto;\
-            display: flex;\
-            justify-content: space-between;\
-            align-items: center;\
-            padding: 1rem 2rem;\
-        \}\
-\
-        .logo \{\
-            font-size: 1.5rem;\
-            font-weight: bold;\
-            color: #d32f2f; /* HK Red inspired accent */\
-            text-transform: uppercase;\
-            letter-spacing: 2px;\
-        \}\
-\
-        .nav-links \{\
-            list-style: none;\
-            display: flex;\
-        \}\
-\
-        .nav-links li \{\
-            margin-left: 20px;\
-        \}\
-\
-        .nav-links a \{\
-            text-decoration: none;\
-            color: #333;\
-            font-weight: 500;\
-            transition: color 0.3s;\
-        \}\
-\
-        .nav-links a:hover \{\
-            color: #d32f2f;\
-        \}\
-\
-        /* --- Hero Section --- */\
-        .hero \{\
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80'); /* Generic HK skyline or city background */\
-            background-size: cover;\
-            background-position: center;\
-            height: 100vh;\
-            display: flex;\
-            justify-content: center;\
-            align-items: center;\
-            text-align: center;\
-            color: white;\
-            padding: 0 20px;\
-        \}\
-\
-        .hero h1 \{\
-            font-size: 3rem;\
-            margin-bottom: 20px;\
-        \}\
-\
-        .hero p \{\
-            font-size: 1.2rem;\
-            margin-bottom: 30px;\
-        \}\
-\
-        .btn \{\
-            display: inline-block;\
-            background-color: #d32f2f;\
-            color: white;\
-            padding: 10px 30px;\
-            text-decoration: none;\
-            border-radius: 5px;\
-            font-weight: bold;\
-            transition: background 0.3s;\
-        \}\
-\
-        .btn:hover \{\
-            background-color: #b71c1c;\
-        \}\
-\
-        /* --- Services/About Section --- */\
-        .container \{\
-            max-width: 1200px;\
-            margin: 0 auto;\
-            padding: 60px 20px;\
-        \}\
-\
-        .section-title \{\
-            text-align: center;\
-            margin-bottom: 40px;\
-            font-size: 2rem;\
-            color: #222;\
-        \}\
-\
-        .services-grid \{\
-            display: grid;\
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));\
-            gap: 20px;\
-        \}\
-\
-        .card \{\
-            background: white;\
-            padding: 30px;\
-            border-radius: 8px;\
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);\
-            text-align: center;\
-        \}\
-\
-        .card h3 \{\
-            margin-bottom: 15px;\
-            color: #d32f2f;\
-        \}\
-\
-        /* --- Contact Section --- */\
-        .contact-section \{\
-            background-color: #e0e0e0;\
-            padding: 60px 20px;\
-            text-align: center;\
-        \}\
-\
-        form \{\
-            max-width: 600px;\
-            margin: 0 auto;\
-            text-align: left;\
-        \}\
-\
-        input, textarea \{\
-            width: 100%;\
-            padding: 10px;\
-            margin: 10px 0;\
-            border: 1px solid #ccc;\
-            border-radius: 4px;\
-        \}\
-\
-        /* --- Footer --- */\
-        footer \{\
-            background-color: #222;\
-            color: white;\
-            text-align: center;\
-            padding: 20px;\
-        \}\
-\
-        /* --- Mobile Responsiveness --- */\
-        @media (max-width: 768px) \{\
-            .nav-links \{\
-                display: none; /* Hidden on mobile for simplicity in this demo */\
-            \}\
-            .hero h1 \{\
-                font-size: 2rem;\
-            \}\
-        \}\
-    </style>\
-</head>\
-<body>\
-\
-    <!-- Navigation -->\
-    <header>\
-        <nav>\
-            <div class="logo">Kaufuor HK</div>\
-            <ul class="nav-links">\
-                <li><a href="#home">Home</a></li>\
-                <li><a href="#about">About</a></li>\
-                <li><a href="#services">Services</a></li>\
-                <li><a href="#contact">Contact</a></li>\
-            </ul>\
-        </nav>\
-    </header>\
-\
-    <!-- Hero Section -->\
-    <section id="home" class="hero">\
-        <div class="hero-content">\
-            <h1>Welcome to Kaufuor HK</h1>\
-            <p>Your trusted partner in Hong Kong for excellence and innovation.</p>\
-            <a href="#contact" class="btn">Get in Touch</a>\
-        </div>\
-    </section>\
-\
-    <!-- About / Services Section -->\
-    <section id="services" class="container">\
-        <h2 class="section-title">What We Do</h2>\
-        <div class="services-grid">\
-            <div class="card">\
-                <h3>Consulting</h3>\
-                <p>Providing expert advice tailored to the unique Hong Kong market environment to help your business grow.</p>\
-            </div>\
-            <div class="card">\
-                <h3>Development</h3>\
-                <p>Building robust solutions with a focus on quality, efficiency, and long-term sustainability.</p>\
-            </div>\
-            <div class="card">\
-                <h3>Local Expertise</h3>\
-                <p>Deep understanding of the local culture and business landscape to bridge gaps and create opportunities.</p>\
-            </div>\
-        </div>\
-    </section>\
-\
-    <!-- About Section -->\
-    <section id="about" class="container" style="background-color: #fff;">\
-        <h2 class="section-title">About Us</h2>\
-        <p style="text-align: center; max-width: 800px; margin: 0 auto;">\
-            Kaufuor HK is dedicated to delivering high-quality services to our clients. \
-            Whether you are looking for business solutions, creative direction, or local partnerships, \
-            we are here to assist you.\
-        </p>\
-    </section>\
-\
-    <!-- Contact Section -->\
-    <section id="contact" class="contact-section">\
-        <h2 class="section-title">Contact Us</h2>\
-        <form>\
-            <label for="name">Name</label>\
-            <input type="text" id="name" placeholder="Your Name">\
-            \
-            <label for="email">Email</label>\
-            <input type="email" id="email" placeholder="Your Email">\
-            \
-            <label for="message">Message</label>\
-            <textarea id="message" rows="5" placeholder="How can we help you?"></textarea>\
-            \
-            <button type="submit" class="btn" style="border:none; cursor:pointer;">Send Message</button>\
-        </form>\
-    </section>\
-\
-    <!-- Footer -->\
-    <footer>\
-        <p>&copy; 2023 Kaufuorhk.com. All Rights Reserved.</p>\
-    </footer>\
-\
-</body>\
-</html>}
+        body {
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #d32f2f; /* HK Red inspired accent */
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+        }
+
+        .nav-links li {
+            margin-left: 20px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #d32f2f;
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 0 20px;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: #d32f2f;
+            color: white;
+            padding: 10px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #b71c1c;
+        }
+
+        /* --- Services/About Section --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2rem;
+            color: #222;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #d32f2f;
+        }
+
+        /* --- Contact Section --- */
+        .contact-section {
+            background-color: #e0e0e0;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* --- Footer --- */
+        footer {
+            background-color: #222;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* --- Mobile Responsiveness --- */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none; 
+            }
+            .hero h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <header>
+        <nav>
+            <div class="logo">Kuafuor HK</div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Welcome to Kuafuor HK</h1>
+            <p>Your trusted partner in Hong Kong for excellence and innovation.</p>
+            <a href="#contact" class="btn">Get in Touch</a>
+        </div>
+    </section>
+
+    <!-- About / Services Section -->
+    <section id="services" class="container">
+        <h2 class="section-title">What We Do</h2>
+        <div class="services-grid">
+            <div class="card">
+                <h3>Consulting</h3>
+                <p>Providing expert advice tailored to the unique Hong Kong market environment.</p>
+            </div>
+            <div class="card">
+                <h3>Development</h3>
+                <p>Building robust solutions with a focus on quality, efficiency, and sustainability.</p>
+            </div>
+            <div class="card">
+                <h3>Local Expertise</h3>
+                <p>Deep understanding of the local culture and business landscape.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="container" style="background-color: #fff;">
+        <h2 class="section-title">About Us</h2>
+        <p style="text-align: center; max-width: 800px; margin: 0 auto;">
+            Kuafuor HK is dedicated to delivering high-quality services to our clients. 
+            Whether you are looking for business solutions or local partnerships, 
+            we are here to assist you.
+        </p>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <h2 class="section-title">Contact Us</h2>
+        <form>
+            <label for="name">Name</label>
+            <input type="text" id="name" placeholder="Your Name">
+            
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Your Email">
+            
+            <label for="message">Message</label>
+            <textarea id="message" rows="5" placeholder="How can we help you?"></textarea>
+            
+            <button type="submit" class="btn" style="border:none; cursor:pointer;">Send Message</button>
+        </form>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 Kuafuorhk.com. All Rights Reserved.</p>
+    </footer>
+
+</body>
+</html>
