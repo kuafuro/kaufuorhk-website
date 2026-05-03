@@ -1,0 +1,3964 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whale-Rader — C-Suite Agent Visualizer</title>
+<style>
+@font-face{
+  font-family:PixelAgents;
+  src:url('./static/pixel-agents/FSPixelSansUnicode-Regular.ttf') format('truetype');
+  font-display:swap;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1a1d27;--surface:#23252c;--surface2:#2a2d38;
+  --border:#3a3d4a;--text:#e2e8f0;--text2:#94a3b8;
+  --accent:#60a5fa;--green:#34d399;--yellow:#facc15;--red:#f87171;
+  --purple:#a78bfa;--pink:#ec4899;--orange:#f97316;
+  --bubble-user:#2d5a1e;--bubble-assistant:#1a3a5c;
+  --pa-ink:#11131d;--pa-wall:#263143;--pa-wall2:#111827;--pa-tile:32px;
+}
+html{font-size:14px}
+body{
+  font-family:Inter,Arial,'Lucida Sans','Geneva','Verdana',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;
+}
+
+/* ── Title Bar ─────────────────────────────── */
+.title-bar{
+  text-align:center;padding:1.2rem 1rem .8rem;
+  background:linear-gradient(180deg,#23252c 0%,#1a1d27 100%);
+}
+.title-bar h1{
+  font-size:1.8rem;font-weight:700;
+  color:#0ae642;
+  text-shadow:0 0 20px rgba(10,230,66,.3),0 0 40px rgba(10,230,66,.1);
+  letter-spacing:0;
+}
+.title-bar .subtitle{font-size:.85rem;color:var(--text2);margin-top:.3rem}
+.title-bar .status-line{
+  display:flex;justify-content:center;gap:2rem;margin-top:.6rem;font-size:.8rem;color:var(--text2);
+}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.3rem;vertical-align:middle}
+.dot-on{background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* ── Main Two-Panel Layout (ChatDev style) ── */
+.main-flex{display:flex;gap:0;height:calc(100vh - 120px);min-height:520px}
+
+/* ── Left Panel: Company Scene ───────────── */
+.left-panel{
+  width:420px;min-width:380px;flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.company-scene{
+  flex:1;min-height:300px;position:relative;
+  background:
+    radial-gradient(circle at 28% 22%,rgba(96,165,250,.14),transparent 28%),
+    radial-gradient(circle at 78% 22%,rgba(248,113,113,.13),transparent 26%),
+    linear-gradient(135deg,#1b2130 0%,#171b25 55%,#1f2424 100%);
+  overflow:hidden;
+}
+
+/* Isometric office floor grid */
+.company-scene::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(148,163,184,.16) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.12) 1px,transparent 1px);
+  background-size:28px 28px;
+  pointer-events:none;
+}
+
+.company-scene::after{
+  content:'';position:absolute;left:34px;right:34px;bottom:16px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(148,163,184,.35),transparent);
+  pointer-events:none;
+}
+
+/* Company title on scene */
+.company-title{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  font-size:.8rem;font-weight:700;color:var(--text);opacity:.7;
+  text-align:center;z-index:5;white-space:nowrap;
+  text-shadow:0 2px 8px rgba(0,0,0,.5);
+}
+
+/* ── Team Office Areas ────────────────────── */
+.office-zone{
+  position:absolute;
+  border:1px solid rgba(148,163,184,.18);
+  border-radius:8px;
+  background:rgba(24,28,36,.68);
+  backdrop-filter:blur(2px);
+  overflow:hidden;
+}
+.office-zone::before{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.06),transparent 42%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 13px);
+  pointer-events:none;
+}
+.office-zone.active{
+  border-color:rgba(52,211,153,.42);
+  box-shadow:0 0 24px rgba(52,211,153,.08) inset;
+}
+.zone-label{
+  position:absolute;top:6px;left:8px;
+  font-size:.6rem;font-weight:600;
+  color:var(--text2);text-transform:uppercase;
+  letter-spacing:0;opacity:.86;z-index:2;
+}
+.zone-executive{left:14px;top:42px;width:124px;height:104px;border-color:rgba(250,204,21,.26)}
+.zone-finance{left:150px;top:42px;width:126px;height:104px;border-color:rgba(52,211,153,.26)}
+.zone-signals{left:288px;top:42px;width:118px;height:104px;border-color:rgba(96,165,250,.28)}
+.zone-investment{left:14px;top:166px;width:174px;height:126px;border-color:rgba(129,140,248,.28)}
+.zone-platform{left:202px;top:166px;width:126px;height:126px;border-color:rgba(244,114,182,.26)}
+.zone-incident{left:342px;top:166px;width:64px;height:126px;border-color:rgba(248,113,113,.34)}
+.area-prop{
+  position:absolute;z-index:1;
+  border:1px solid rgba(148,163,184,.2);
+  background:rgba(42,45,56,.72);
+  box-shadow:0 10px 18px rgba(0,0,0,.22);
+}
+.desk{
+  position:absolute;width:28px;height:18px;
+  background:rgba(58,61,74,.6);border-radius:3px;
+  border:1px solid rgba(96,165,250,.12);
+}
+.desk::after{
+  content:'💻';position:absolute;top:-8px;left:4px;font-size:.7rem;
+}
+.team-desk{
+  position:absolute;left:18px;right:18px;top:46px;height:24px;
+  border-radius:5px;border:1px solid rgba(148,163,184,.25);
+  background:rgba(42,45,56,.76);box-shadow:0 8px 16px rgba(0,0,0,.2);
+}
+.team-desk::before{
+  content:'';position:absolute;left:9px;right:9px;top:8px;height:4px;
+  border-radius:6px;background:linear-gradient(90deg,#60a5fa,#34d399,#facc15);
+  opacity:.65;
+}
+.team-desk::after{
+  content:'';position:absolute;right:10px;top:-12px;width:16px;height:13px;
+  border:1px solid rgba(96,165,250,.35);border-radius:3px;
+  background:#1f2937;box-shadow:0 0 10px rgba(96,165,250,.22);
+}
+.team-desk.wide{left:28px;right:28px;top:56px}
+.team-desk.small{left:12px;right:12px;top:50px}
+.office-desk-large{
+  left:64px;top:70px;width:118px;height:42px;border-radius:5px;
+  border-color:rgba(96,165,250,.26);
+}
+.office-desk-large::before{
+  content:'';position:absolute;left:14px;right:14px;top:12px;height:5px;
+  background:linear-gradient(90deg,#60a5fa,#34d399,#facc15);
+  border-radius:8px;opacity:.75;
+}
+.office-desk-large::after{
+  content:'';position:absolute;right:18px;top:-16px;width:22px;height:18px;
+  background:#1f2937;border:1px solid rgba(96,165,250,.38);border-radius:3px;
+  box-shadow:0 0 12px rgba(96,165,250,.28);
+}
+.sofa{
+  left:58px;top:48px;width:126px;height:30px;border-radius:8px 8px 5px 5px;
+  background:linear-gradient(180deg,rgba(52,211,153,.28),rgba(20,83,45,.45));
+  border-color:rgba(52,211,153,.32);
+}
+.sofa::before,.sofa::after{
+  content:'';position:absolute;bottom:-12px;width:24px;height:16px;border-radius:5px;
+  background:rgba(16,185,129,.24);border:1px solid rgba(52,211,153,.22);
+}
+.sofa::before{left:12px}.sofa::after{right:12px}
+.coffee-table{
+  left:90px;top:78px;width:60px;height:16px;border-radius:50%;
+  background:rgba(250,204,21,.14);border-color:rgba(250,204,21,.25);
+}
+.warning-terminal{
+  left:34px;top:48px;width:60px;height:54px;border-radius:6px;
+  border-color:rgba(248,113,113,.34);
+  background:#211c24;
+}
+.warning-terminal::before{
+  content:'!';position:absolute;left:20px;top:4px;
+  font-size:2rem;font-weight:800;color:var(--red);
+  text-shadow:0 0 12px rgba(248,113,113,.55);
+  animation:errorPulse 1s steps(2) infinite;
+}
+.warning-terminal::after{
+  content:'';position:absolute;left:12px;right:12px;bottom:10px;height:4px;
+  background:rgba(248,113,113,.5);box-shadow:0 8px 0 rgba(248,113,113,.25);
+}
+.sync-orb{
+  left:40px;top:38px;width:44px;height:44px;border-radius:50%;
+  border-color:rgba(34,211,238,.38);
+  background:conic-gradient(from 0deg,rgba(34,211,238,.2),rgba(96,165,250,.7),rgba(34,211,238,.2));
+  animation:syncSpin 1.8s linear infinite;
+}
+.sync-orb::after{
+  content:'';position:absolute;inset:10px;border-radius:50%;background:#1a1d27;
+}
+@keyframes syncSpin{to{transform:rotate(360deg)}}
+@keyframes errorPulse{50%{opacity:.45;transform:translateX(2px)}}
+
+/* ── Sprite Agent ─────────────────────────── */
+.agent{
+  position:absolute;z-index:10;
+  transition:left 1.6s cubic-bezier(.2,.8,.2,1), top 1.6s cubic-bezier(.2,.8,.2,1);
+  text-align:center;
+  cursor:default;
+}
+.agent-sprite{
+  width:34px;height:54px;
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center bottom;
+  image-rendering:pixelated;
+  margin:0 auto;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
+}
+
+/* Walking: cycle 3 frames */
+.agent.walking .agent-sprite{
+  animation:spriteWalk .4s steps(1) infinite;
+}
+
+/* Idle: gentle bob */
+.agent.idle .agent-sprite{
+  animation:spriteBob 2s ease-in-out infinite;
+}
+
+/* Working: glow effect */
+.agent.working .agent-sprite{
+  filter:drop-shadow(0 0 8px rgba(10,230,66,.5)) drop-shadow(0 2px 4px rgba(0,0,0,.5));
+  animation:spriteWork 1s ease-in-out infinite;
+}
+.agent.state-researching .agent-sprite{
+  filter:drop-shadow(0 0 8px rgba(96,165,250,.62)) drop-shadow(0 2px 4px rgba(0,0,0,.5));
+}
+.agent.state-executing .agent-sprite{
+  filter:drop-shadow(0 0 9px rgba(250,204,21,.6)) drop-shadow(0 2px 4px rgba(0,0,0,.5));
+}
+.agent.state-syncing .agent-sprite{
+  filter:drop-shadow(0 0 10px rgba(34,211,238,.65)) drop-shadow(0 2px 4px rgba(0,0,0,.5));
+  animation:spriteSync 1.2s ease-in-out infinite;
+}
+.agent.state-error .agent-sprite{
+  filter:drop-shadow(0 0 10px rgba(248,113,113,.7)) drop-shadow(0 2px 4px rgba(0,0,0,.5));
+  animation:spriteError .35s steps(2) infinite;
+}
+@keyframes spriteBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes spriteWork{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes spriteSync{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.04)}}
+@keyframes spriteError{0%,100%{transform:translateX(-2px)}50%{transform:translateX(2px)}}
+
+/* Agent name tag */
+.agent-tag{
+  font-size:.5rem;font-weight:700;
+  color:var(--text);margin-top:2px;
+  text-shadow:0 1px 4px rgba(0,0,0,.7);
+  white-space:nowrap;max-width:58px;overflow:hidden;text-overflow:ellipsis;
+}
+.agent.state-idle .agent-tag{opacity:.64}
+.agent-role-tag{
+  display:none;
+}
+.agent-action{
+  position:absolute;left:50%;bottom:100%;transform:translateX(-50%);
+  padding:2px 6px;border-radius:7px;border:1px solid rgba(148,163,184,.28);
+  background:rgba(17,24,39,.86);color:var(--text2);
+  font-size:.54rem;font-weight:700;white-space:nowrap;
+  opacity:0;transition:opacity .18s,transform .18s;
+  pointer-events:none;z-index:18;
+}
+.agent:not(.tool-idle) .agent-action{
+  opacity:1;transform:translateX(-50%) translateY(-2px);
+}
+.agent.tool-reading .agent-action{border-color:rgba(96,165,250,.5);color:#93c5fd}
+.agent.tool-searching .agent-action{border-color:rgba(129,140,248,.5);color:#c4b5fd}
+.agent.tool-typing .agent-action{border-color:rgba(52,211,153,.5);color:#86efac}
+.agent.tool-running .agent-action{border-color:rgba(250,204,21,.5);color:#fde68a}
+.agent.tool-waiting .agent-action{border-color:rgba(248,113,113,.58);color:#fecaca;animation:actionPulse .9s ease-in-out infinite}
+@keyframes actionPulse{50%{box-shadow:0 0 14px rgba(248,113,113,.36)}}
+
+/* Status dot on agent */
+.agent-status{
+  position:absolute;top:2px;right:0;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--text2);
+  box-shadow:0 0 4px rgba(148,163,184,.8);
+}
+.agent.status-working .agent-status{
+  background:var(--green);
+  box-shadow:0 0 6px var(--green);
+}
+.agent.status-waiting .agent-status{
+  background:var(--yellow);
+  box-shadow:0 0 6px var(--yellow);
+}
+.agent.status-attention .agent-status{
+  background:var(--red);
+  box-shadow:0 0 8px var(--red);
+  animation:statusPulse .85s ease-in-out infinite;
+}
+.agent.status-recent .agent-status{
+  background:var(--accent);
+  box-shadow:0 0 5px var(--accent);
+}
+@keyframes statusPulse{50%{transform:scale(1.8);opacity:.65}}
+
+/* ── Speech Bubble ────────────────────────── */
+.bubble{
+  position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  background:rgba(35,37,44,.95);
+  border:1px solid var(--border);
+  border-radius:8px;padding:6px 10px;
+  font-size:.65rem;color:var(--text);
+  width:160px;max-width:160px;word-break:break-word;text-align:left;
+  white-space:normal;line-height:1.3;
+  z-index:25;pointer-events:none;
+  animation:bubbleIn .3s ease-out;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+  margin-bottom:4px;
+}
+.bubble::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--border);
+}
+.bubble .sender{font-weight:700;font-size:.6rem;margin-bottom:2px;display:block}
+@keyframes bubbleIn{0%{opacity:0;transform:translateX(-50%) translateY(8px)}100%{opacity:1;transform:translateX(-50%) translateY(0)}}
+.bubble.fadeout{animation:bubbleOut .5s ease-in forwards}
+@keyframes bubbleOut{to{opacity:0;transform:translateX(-50%) translateY(-8px)}}
+
+/* Connection lines between agents */
+.connection-line{
+  position:absolute;pointer-events:none;z-index:5;
+  opacity:0;transition:opacity .5s;
+}
+.connection-line.active{opacity:1}
+.connection-line line{
+  stroke:var(--green);stroke-width:2;stroke-dasharray:6 4;
+  animation:dashFlow .8s linear infinite;
+}
+@keyframes dashFlow{to{stroke-dashoffset:-10}}
+
+/* ── Stats bar at bottom of left panel ───── */
+.scene-stats{
+  padding:.8rem 1rem;
+  background:var(--surface2);border-top:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;
+  font-size:.72rem;
+}
+.scene-stat{text-align:center}
+.scene-stat .sv{font-size:1.1rem;font-weight:700;color:var(--accent)}
+.scene-stat .sl{color:var(--text2);margin-top:2px}
+
+/* ── Agent Command Grid ───────────────────── */
+.agent-grid{
+  max-height:185px;overflow-y:auto;
+  padding:.65rem;background:var(--surface);
+  border-top:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;
+}
+.agent-grid::-webkit-scrollbar{width:4px}
+.agent-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.agent-card{
+  border:1px solid var(--border);border-radius:8px;
+  background:rgba(42,45,56,.72);padding:.5rem .55rem;
+  min-height:74px;display:flex;flex-direction:column;gap:.28rem;
+  transition:border-color .2s,background .2s,transform .2s;
+}
+.agent-card.active{border-color:var(--green);background:rgba(52,211,153,.08)}
+.agent-card.attention{border-color:var(--red);background:rgba(248,113,113,.1)}
+.agent-card.waiting{border-color:var(--yellow);background:rgba(250,204,21,.08)}
+.agent-card .ac-top{display:flex;align-items:center;gap:.35rem;min-width:0}
+.agent-card .ac-name{font-size:.78rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-card .ac-role{font-size:.62rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-card .ac-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--text2)}
+.agent-card .ac-output{font-size:.68rem;color:var(--text2);line-height:1.25;min-height:1.2em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.agent-card .ac-meta{margin-top:auto;font-size:.62rem;color:var(--text2);display:flex;justify-content:space-between;gap:.4rem}
+.agent-card .ac-action{
+  width:max-content;max-width:100%;padding:1px 6px;border-radius:8px;
+  background:rgba(148,163,184,.09);border:1px solid rgba(148,163,184,.18);
+  color:var(--text2);font-size:.58rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.agent-card.status-working .ac-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+.agent-card.status-waiting .ac-dot{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.agent-card.status-attention .ac-dot{background:var(--red);box-shadow:0 0 7px var(--red)}
+.agent-card.status-recent .ac-dot{background:var(--accent);box-shadow:0 0 5px var(--accent)}
+.agent-card.state-error{border-color:rgba(248,113,113,.5)}
+.agent-card.state-syncing{border-color:rgba(34,211,238,.45)}
+.agent-card.state-researching{border-color:rgba(96,165,250,.45)}
+.agent-card.state-executing{border-color:rgba(250,204,21,.42)}
+.agent-card.tool-waiting .ac-action{color:#fecaca;border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.09)}
+.agent-card.tool-searching .ac-action{color:#c4b5fd;border-color:rgba(129,140,248,.34)}
+.agent-card.tool-reading .ac-action{color:#93c5fd;border-color:rgba(96,165,250,.34)}
+.agent-card.tool-typing .ac-action{color:#86efac;border-color:rgba(52,211,153,.34)}
+.agent-card.tool-running .ac-action{color:#fde68a;border-color:rgba(250,204,21,.34)}
+
+/* ── Right Panel: Chat Dialog ────────────── */
+.right-panel{
+  flex:1;display:flex;flex-direction:column;
+  background:var(--bg);min-width:0;
+}
+
+/* Dialog header */
+.dialog-header{
+  padding:.8rem 1.2rem;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.dialog-header h2{font-size:1rem;font-weight:600}
+.dialog-header .scenario-label{font-size:.78rem;color:var(--green);font-weight:600}
+
+.trace-strip{
+  padding:.55rem 1.2rem;
+  border-bottom:1px solid var(--border);
+  background:rgba(35,37,44,.72);
+  display:flex;gap:.45rem;overflow-x:auto;align-items:center;
+}
+.trace-node{
+  min-width:118px;border:1px solid var(--border);border-radius:8px;
+  padding:.38rem .48rem;background:var(--surface2);
+  color:var(--text2);font-size:.68rem;line-height:1.25;
+  position:relative;overflow:hidden;
+}
+.trace-node::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border);
+}
+.trace-node.active{color:var(--text);border-color:var(--green)}
+.trace-node.active::before{background:var(--green);box-shadow:0 0 10px var(--green)}
+.trace-node.done::before{background:var(--accent)}
+.trace-node.attention::before{background:var(--red)}
+.trace-node .tn-agent{font-weight:700;color:var(--text)}
+.trace-node .tn-phase{font-size:.6rem;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Dialog body (scrollable chat) */
+.dialog-body{
+  flex:1;overflow-y:auto;padding:1rem 1.2rem;
+  display:flex;flex-direction:column;gap:.8rem;
+}
+.dialog-body::-webkit-scrollbar{width:5px}
+.dialog-body::-webkit-scrollbar-track{background:transparent}
+.dialog-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Chat Message Bubble ─────────────────── */
+.msg{
+  display:flex;gap:.8rem;align-items:flex-start;
+  animation:msgIn .4s ease-out;
+  max-width:100%;
+}
+@keyframes msgIn{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+
+.msg-avatar{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;flex-shrink:0;
+  border:2px solid;
+  background:var(--surface2);
+}
+
+.msg-content{
+  flex:1;min-width:0;
+  padding:10px 14px;
+  border-radius:12px;
+  box-shadow:2px 2px 4px rgba(0,0,0,.3);
+  font-size:.88rem;line-height:1.5;
+  position:relative;
+}
+.msg-content.user-msg{background:var(--bubble-user);border:1px solid rgba(52,211,153,.2)}
+.msg-content.assistant-msg{background:var(--bubble-assistant);border:1px solid rgba(96,165,250,.2)}
+.msg-content.attention-msg{background:#4b1d2a;border:1px solid rgba(248,113,113,.45)}
+.msg-content.decision-msg{background:#3d3314;border:1px solid rgba(250,204,21,.35)}
+.msg-meta-pill{
+  margin-left:auto;padding:1px 6px;border-radius:10px;
+  border:1px solid rgba(148,163,184,.35);
+  color:var(--text2);font-size:.65rem;font-weight:600;
+}
+
+.msg-sender{
+  font-weight:700;font-size:.78rem;margin-bottom:4px;
+  display:flex;align-items:center;gap:.4rem;
+}
+.msg-text{word-break:break-word}
+.msg-time{font-size:.68rem;color:var(--text2);margin-top:6px;text-align:right}
+
+/* Typewriter cursor */
+.typing-cursor{
+  display:inline-block;width:2px;height:1em;
+  background:var(--green);vertical-align:text-bottom;
+  animation:cursorBlink .6s step-end infinite;
+  margin-left:2px;
+}
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Speed Control Bar ───────────────────── */
+.control-bar{
+  padding:.7rem 1.2rem;
+  background:var(--surface);border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:1rem;
+  font-size:.8rem;
+}
+.control-bar label{color:var(--text2);white-space:nowrap}
+.speed-slider{
+  flex:1;max-width:300px;height:4px;
+  -webkit-appearance:none;appearance:none;
+  background:var(--surface2);border-radius:2px;
+  outline:none;
+}
+.speed-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;
+  border-radius:50%;background:#fff;cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.speed-val{color:var(--accent);font-weight:600;min-width:30px}
+.control-btn{
+  padding:4px 14px;border-radius:16px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);font-size:.78rem;
+  cursor:pointer;transition:all .2s;
+}
+.control-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.control-btn.active{background:var(--green);color:#000;border-color:var(--green)}
+
+/* ── Bottom Data Panels ──────────────────── */
+.data-panels{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;
+  border-top:1px solid var(--border);
+  max-height:240px;
+}
+.data-panel{
+  background:var(--surface);border-right:1px solid var(--border);
+  overflow:hidden;display:flex;flex-direction:column;
+}
+.data-panel:last-child{border-right:none}
+.dp-head{
+  padding:.5rem .8rem;font-size:.8rem;font-weight:600;
+  border-bottom:1px solid var(--border);background:var(--surface2);
+  display:flex;align-items:center;gap:.4rem;
+}
+.dp-body{padding:.5rem .8rem;overflow-y:auto;flex:1;font-size:.78rem}
+.dp-body::-webkit-scrollbar{width:3px}
+.dp-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.dp-item{padding:.35rem 0;border-bottom:1px solid rgba(58,61,74,.4);display:flex;gap:.5rem;align-items:center}
+.dp-item:last-child{border-bottom:none}
+.dp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dp-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dp-val{color:var(--text2);flex-shrink:0}
+
+/* ── Financial Panel ──────────────────────── */
+.finance-panel{grid-column:1 / -1;border-top:1px solid var(--border)}
+.finance-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.8rem;padding:.6rem .8rem}
+.finance-card{background:var(--surface2);border-radius:8px;padding:.6rem .8rem;border:1px solid var(--border)}
+.finance-card h4{font-size:.75rem;color:var(--text2);margin-bottom:.4rem;font-weight:600}
+.finance-card .fv{font-size:1.1rem;font-weight:700;color:var(--green)}
+.finance-card .fv.negative{color:var(--red)}
+.budget-bar{height:8px;background:var(--surface);border-radius:4px;margin-top:.4rem;overflow:hidden}
+.budget-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.tx-list{max-height:120px;overflow-y:auto;font-size:.75rem}
+.tx-item{display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid rgba(58,61,74,.3)}
+.tx-item:last-child{border-bottom:none}
+.tx-expense{color:var(--red)}
+.tx-income{color:var(--green)}
+
+/* Focus mode: the office is the product, not the chrome */
+.main-flex{
+  display:block;height:calc(100vh - 86px);min-height:620px;
+}
+.left-panel{
+  width:100%;min-width:0;height:100%;border-right:0;
+}
+.right-panel,
+.scene-stats,
+.agent-grid{
+  display:none;
+}
+.company-scene.canvas-mode{
+  height:100%;min-height:620px;border-bottom:0;
+}
+.company-scene.canvas-mode::after{
+  display:none;
+}
+.pixel-office-canvas{
+  height:calc(100% - 58px);
+  width:auto;
+  max-width:calc(100% - 48px);
+  aspect-ratio:auto;
+}
+
+/* ── Pixel Agents office skin ─────────────── */
+.title-bar{
+  padding:.75rem 1rem .6rem;
+  background:#141824;
+  border-bottom:4px solid #0b0e16;
+}
+.title-bar h1{
+  font-size:1.28rem;color:#f4f7ff;text-shadow:3px 3px 0 #0b0e16,0 0 12px rgba(96,165,250,.18);
+}
+.title-bar .subtitle{font-size:.72rem;color:#aeb8cc}
+.title-bar .status-line{margin-top:.5rem;gap:1rem;font-size:.66rem}
+.main-flex{height:calc(100vh - 86px);min-height:640px;background:#10131c}
+.left-panel{
+  width:540px;min-width:500px;
+  background:#121620;border-right:4px solid #0b0e16;
+}
+.company-scene{
+  flex:1;min-height:430px;
+  background:#0d1019;
+  border-bottom:4px solid #0b0e16;
+  image-rendering:pixelated;
+}
+.company-scene::before{
+  inset:12px;
+  background:
+    linear-gradient(90deg,transparent 0 15px,rgba(0,0,0,.34) 15px 17px,transparent 17px 32px),
+    linear-gradient(transparent 0 15px,rgba(0,0,0,.24) 15px 17px,transparent 17px 32px);
+  background-size:32px 32px;
+  opacity:.35;
+}
+.company-scene::after{
+  left:10px;right:10px;bottom:10px;height:6px;
+  background:#0a0d14;border:2px solid #263143;
+}
+.company-title{
+  top:10px;left:18px;right:auto;transform:none;
+  color:#dfe7f5;background:#111827;border:3px solid #0b0e16;
+  box-shadow:0 3px 0 #000;padding:4px 8px;
+  font-size:.64rem;text-transform:uppercase;opacity:1;
+}
+.pixel-office-canvas{
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+  width:min(470px,calc(100% - 22px));height:auto;
+  image-rendering:pixelated;background:#0b0e16;
+  border:4px solid #0b0e16;box-shadow:0 6px 0 #000,0 0 0 2px #263143;
+  z-index:2;
+}
+.company-scene.canvas-mode{
+  min-height:492px;
+}
+.company-scene.canvas-mode::before{
+  inset:0;background:
+    linear-gradient(90deg,rgba(38,49,67,.28) 1px,transparent 1px),
+    linear-gradient(rgba(38,49,67,.24) 1px,transparent 1px);
+  background-size:32px 32px;opacity:.36;
+}
+.company-scene.canvas-mode .office-zone,
+.company-scene.canvas-mode > .agent,
+.company-scene.canvas-mode #conn-svg{
+  display:none;
+}
+.office-zone{
+  border-radius:0;border:4px solid #0b0e16;
+  background-color:#284461;
+  background-image:url('./static/pixel-agents/assets/floors/floor_1.png');
+  background-size:32px 32px;
+  background-repeat:repeat;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.08),0 4px 0 rgba(0,0,0,.45);
+  backdrop-filter:none;overflow:visible;
+}
+.office-zone::before{
+  inset:-4px -4px auto -4px;height:26px;
+  background:#273446;border-bottom:4px solid #0b0e16;
+}
+.office-zone::after{
+  content:'';position:absolute;left:-4px;right:-4px;bottom:-4px;height:4px;background:#0b0e16;
+}
+.office-zone.active{
+  border-color:#12141f;box-shadow:inset 0 0 0 2px rgba(52,211,153,.45),0 4px 0 rgba(0,0,0,.5);
+}
+.zone-label{
+  top:5px;left:7px;z-index:8;
+  color:#f2f5ff;font-size:.52rem;letter-spacing:0;text-shadow:2px 2px 0 #0b0e16;
+}
+.zone-executive{left:16px;top:44px;width:220px;height:158px;background-color:#8a5a2d;background-image:url('./static/pixel-agents/assets/floors/floor_7.png')}
+.zone-finance{left:236px;top:44px;width:270px;height:158px;background-color:#ddd8d2;background-image:url('./static/pixel-agents/assets/floors/floor_1.png')}
+.zone-signals{left:16px;top:202px;width:158px;height:144px;background-color:#334155;background-image:url('./static/pixel-agents/assets/floors/floor_6.png')}
+.zone-investment{left:174px;top:202px;width:186px;height:144px;background-color:#477fa5;background-image:url('./static/pixel-agents/assets/floors/floor_8.png')}
+.zone-platform{left:360px;top:202px;width:146px;height:144px;background-color:#4c596e;background-image:url('./static/pixel-agents/assets/floors/floor_5.png')}
+.zone-incident{left:360px;top:346px;width:146px;height:70px;background-color:#3a2330;background-image:url('./static/pixel-agents/assets/floors/floor_3.png')}
+.team-desk{display:none}
+.pixel-desk,.pixel-prop{position:absolute;z-index:4;image-rendering:pixelated}
+.pixel-desk{left:var(--x);top:var(--y);width:96px;height:86px}
+.pa-img{position:absolute;display:block;background-repeat:no-repeat;background-size:contain;image-rendering:pixelated}
+.pa-desk-front{left:0;top:24px;width:96px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/DESK/DESK_FRONT.png')}
+.pa-pc-front{left:32px;top:0;width:32px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/PC/PC_FRONT_ON_1.png');animation:pcBlink 1s steps(1) infinite}
+.pa-chair-front{left:32px;top:58px;width:32px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png')}
+.pa-chair-side{left:35px;top:57px;width:32px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/WOODEN_CHAIR/WOODEN_CHAIR_FRONT.png')}
+.pa-bookshelf{width:64px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/BOOKSHELF/BOOKSHELF.png')}
+.pa-double-bookshelf{width:96px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png')}
+.pa-whiteboard{width:64px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/WHITEBOARD/WHITEBOARD.png')}
+.pa-plant{width:32px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/PLANT/PLANT.png')}
+.pa-plant2{width:32px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/PLANT_2/PLANT_2.png')}
+.pa-clock{width:32px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/CLOCK/CLOCK.png')}
+.pa-painting{width:96px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/LARGE_PAINTING/LARGE_PAINTING.png')}
+.pa-sofa-front{width:64px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/SOFA/SOFA_FRONT.png')}
+.pa-coffee-table{width:64px;height:64px;background-image:url('./static/pixel-agents/assets/furniture/COFFEE_TABLE/COFFEE_TABLE.png')}
+.pa-table-front{width:96px;height:128px;background-image:url('./static/pixel-agents/assets/furniture/TABLE_FRONT/TABLE_FRONT.png')}
+.pa-bin{width:32px;height:32px;background-image:url('./static/pixel-agents/assets/furniture/BIN/BIN.png')}
+.px-exec-shelf{left:12px;top:30px}.px-exec-clock{left:168px;top:28px}
+.px-fin-board{left:172px;top:26px}.px-fin-plant{left:222px;top:42px}.px-fin-shelf{left:10px;top:30px}
+.px-signal-board{left:82px;top:28px}.px-signal-plant{left:12px;top:72px}
+.px-invest-painting{left:46px;top:28px}.px-invest-table{left:62px;top:50px}.px-invest-sofa{left:18px;top:76px}
+.px-platform-board{left:44px;top:28px}.px-platform-plant{left:8px;top:74px}.px-platform-bin{left:106px;top:100px}
+.warning-terminal{
+  left:14px;top:28px;width:54px;height:34px;border:3px solid #0b0e16;border-radius:0;
+  background:#1b1219;box-shadow:inset 0 0 0 2px rgba(248,113,113,.28);
+}
+.warning-terminal::before{left:18px;top:-2px;font-size:1.4rem}
+.warning-terminal::after{left:8px;right:8px;bottom:7px;height:3px}
+@keyframes pcBlink{
+  0%,33%{background-image:url('./static/pixel-agents/assets/furniture/PC/PC_FRONT_ON_1.png')}
+  34%,66%{background-image:url('./static/pixel-agents/assets/furniture/PC/PC_FRONT_ON_2.png')}
+  67%,100%{background-image:url('./static/pixel-agents/assets/furniture/PC/PC_FRONT_ON_3.png')}
+}
+.agent{z-index:20;transition:left .14s steps(1),top .14s steps(1);filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
+.agent-sprite{
+  width:32px;height:64px;background-size:224px 192px;
+  background-position:0 0;background-repeat:no-repeat;
+  image-rendering:pixelated;filter:none;
+}
+.agent.idle .agent-sprite,.agent.working .agent-sprite,.agent.state-syncing .agent-sprite{animation:none}
+.agent.walking .agent-sprite{animation:walkLift .22s steps(1) infinite}
+.agent.walking .agent-tag{opacity:.72}
+.agent.state-error .agent-sprite{animation:spriteError .3s steps(2) infinite}
+@keyframes walkLift{50%{transform:translateY(-2px)}}
+.agent.tool-idle:not(.walking) .agent-sprite{filter:saturate(.88) brightness(.88)}
+.agent.state-writing .agent-sprite,.agent.tool-typing .agent-sprite{filter:drop-shadow(0 0 6px rgba(52,211,153,.55))}
+.agent.tool-reading .agent-sprite,.agent.tool-searching .agent-sprite{filter:drop-shadow(0 0 6px rgba(96,165,250,.55))}
+.agent.tool-running .agent-sprite{filter:drop-shadow(0 0 6px rgba(250,204,21,.65))}
+.agent.tool-waiting .agent-sprite{filter:drop-shadow(0 0 7px rgba(248,113,113,.72))}
+.agent.tool-thinking .agent-action{animation:thinkingDots 1.1s steps(3) infinite}
+@keyframes thinkingDots{33%{transform:translateX(-50%) translateY(-3px)}66%{transform:translateX(-50%) translateY(0)}}
+.agent-tag{
+  margin-top:-4px;padding:1px 3px;max-width:72px;
+  font-size:.48rem;color:#f8fbff;background:#111827;border:2px solid #0b0e16;
+  text-shadow:none;box-shadow:0 2px 0 #000;
+}
+.agent-action{
+  bottom:calc(100% + 2px);padding:2px 4px;border-radius:0;
+  border:2px solid #0b0e16;background:#f8fafc;color:#111827;
+  font-size:.48rem;box-shadow:0 2px 0 #000;
+}
+.agent-status{top:12px;right:1px;width:7px;height:7px;border:1px solid #0b0e16}
+.bubble{
+  border-radius:0;border:3px solid #0b0e16;background:#f8fafc;color:#111827;
+  box-shadow:0 3px 0 #000;font-size:.56rem;width:154px;max-width:154px;
+}
+.bubble::after{border-top-color:#0b0e16}
+.scene-stats{
+  background:#171c28;border-top:0;border-bottom:4px solid #0b0e16;
+  padding:.55rem .7rem;gap:.4rem;
+}
+.scene-stat{background:#101620;border:3px solid #0b0e16;box-shadow:0 2px 0 #000;padding:.35rem .25rem}
+.scene-stat .sv{font-size:.9rem}
+.scene-stat .sl{font-size:.56rem}
+.agent-grid{
+  max-height:176px;background:#101620;border-top:0;
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem;
+}
+.agent-card{
+  border-radius:0;border:3px solid #0b0e16;box-shadow:0 2px 0 #000;
+  background:#1b2230;min-height:72px;padding:.42rem;
+}
+.agent-card .ac-name{font-size:.62rem}.agent-card .ac-role{font-size:.5rem}
+.agent-card .ac-output{font-size:.54rem}.agent-card .ac-meta{font-size:.49rem}
+.agent-card .ac-action{border-radius:0;border:2px solid #0b0e16;background:#101620;font-size:.5rem}
+
+/* Final focus mode: keep only the Pixel Agents office surface visible */
+.main-flex{
+  display:block;height:calc(100vh - 86px);min-height:620px;
+}
+.left-panel{
+  width:100%;min-width:0;height:100%;border-right:0;
+}
+.right-panel,
+.scene-stats,
+.agent-grid{
+  display:none;
+}
+.company-scene.canvas-mode{
+  height:100%;min-height:620px;border-bottom:0;
+}
+.company-scene.canvas-mode::after{
+  display:none;
+}
+.office-runtime-hud{
+  position:absolute;left:164px;top:10px;z-index:44;
+  display:flex;align-items:stretch;gap:8px;max-width:calc(100% - 44px);
+  font-family:Inter,Arial,sans-serif;pointer-events:none;
+}
+.office-runtime-card{
+  border:3px solid #05070d;background:#111827;color:#f8fafc;box-shadow:0 3px 0 #000;
+  padding:5px 8px;min-width:290px;
+}
+.runtime-kicker{
+  font-size:9px;line-height:1;color:#93c5fd;font-weight:900;text-transform:uppercase;letter-spacing:0;
+}
+.runtime-mode{
+  display:inline-block;margin-top:3px;font-size:13px;line-height:1;font-weight:900;text-transform:uppercase;
+}
+.runtime-mode.live{color:#34d399}
+.runtime-mode.replay{color:#fbbf24}
+.runtime-mode.idle{color:#94a3b8}
+.runtime-detail{
+  display:inline-block;margin-left:8px;font-size:10px;line-height:1.15;color:#cbd5e1;max-width:220px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:baseline;
+}
+.runtime-mini{
+  border:3px solid #05070d;background:#0f172a;color:#cbd5e1;box-shadow:0 3px 0 #000;
+  padding:5px 8px;display:grid;gap:3px;min-width:110px;
+}
+.runtime-mini span{display:flex;justify-content:space-between;gap:12px;font-size:10px;line-height:1.1;font-weight:800}
+.runtime-mini b{color:#f8fafc}
+.activity-dock{
+  position:absolute;left:22px;right:22px;bottom:64px;z-index:48;
+  display:flex;align-items:stretch;gap:8px;font-family:Inter,Arial,sans-serif;pointer-events:none;
+}
+.activity-dock-head{
+  width:132px;border:3px solid #05070d;background:#111827;color:#f8fafc;box-shadow:0 3px 0 #000;
+  padding:8px 10px;flex-shrink:0;
+}
+.activity-dock-head .k{font-size:11px;line-height:1;color:#bfdbfe;font-weight:900;text-transform:uppercase}
+.activity-dock-head .v{margin-top:6px;font-size:16px;line-height:1;font-weight:900;text-transform:uppercase;color:#fbbf24}
+.activity-dock-head .flow{
+  margin-top:6px;font-size:9px;line-height:1;color:#94a3b8;font-weight:900;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.flow-bar{
+  margin-top:6px;height:7px;border:2px solid #05070d;background:#0f172a;box-shadow:0 1px 0 #000 inset;
+}
+.flow-bar-fill{
+  width:0;height:100%;background:#fbbf24;transition:width .18s steps(5);
+}
+.activity-dock-head .flow-meta{
+  margin-top:5px;font-size:8px;line-height:1;color:#cbd5e1;font-weight:900;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.activity-dock-list{
+  flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0;
+}
+.activity-item{
+  border:3px solid #05070d;background:#0f172a;color:#f8fafc;box-shadow:0 3px 0 #000;
+  padding:8px 10px;min-width:0;overflow:hidden;
+}
+.activity-item.live{border-color:#052e22}
+.activity-item.replay{border-color:#3b2605}
+.activity-item.next{border-color:#1e3a8a;background:#111827;opacity:.86}
+.activity-item.mode-waiting{border-color:#7c2d12;background:#24170d}
+.activity-item.mode-running{border-color:#3b2605;background:#1f1a0d}
+.activity-item.mode-searching,.activity-item.mode-reading{border-color:#1e3a8a}
+.activity-item.mode-typing{border-color:#064e3b;background:#102018}
+.activity-top{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:11px;line-height:1;color:#a8b5c8;font-weight:900;text-transform:uppercase;
+}
+.activity-agent{color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-source.live{color:#34d399}
+.activity-source.replay{color:#fbbf24}
+.activity-source.next{color:#93c5fd}
+.activity-text{
+  margin-top:6px;font-size:13px;line-height:1.25;color:#e2e8f0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pixel-office-canvas{
+  top:56px;
+  bottom:auto;
+  width:min(1180px,calc(100% - 48px),calc((100vh - 132px) * 1.5));
+  height:auto;
+  max-height:calc(100% - 146px);
+  aspect-ratio:auto;
+}
+.office-label-layer{
+  position:absolute;inset:0;z-index:35;pointer-events:none;
+  font-family:Inter,Arial,sans-serif;
+}
+.office-tool-layer{
+  position:absolute;inset:0;z-index:36;pointer-events:none;
+  font-family:Inter,Arial,sans-serif;
+}
+.office-org-lines{
+  position:absolute;inset:0;z-index:31;pointer-events:none;overflow:visible;
+}
+.office-org-line{
+  stroke:rgba(226,232,240,.44);
+  stroke-width:2;
+  stroke-dasharray:7 5;
+  vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.65));
+}
+.office-org-line.primary{stroke:rgba(251,191,36,.72)}
+.office-org-line.finance{stroke:rgba(52,211,153,.62)}
+.office-org-line.support{stroke:rgba(96,165,250,.58)}
+.office-zone-label-layer{
+  position:absolute;inset:0;z-index:33;pointer-events:none;
+  font-family:Inter,Arial,sans-serif;
+}
+.office-zone-label{
+  position:absolute;transform:translate(-50%,-50%);
+  padding:2px 7px;border:2px solid #05070d;background:#111827;color:#dbeafe;
+  box-shadow:0 2px 0 #000;font-size:11px;line-height:1;font-weight:800;
+  text-transform:uppercase;letter-spacing:0;white-space:nowrap;
+  max-width:148px;overflow:hidden;text-overflow:ellipsis;
+  -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;
+}
+.office-zone-label.busy{
+  background:#fef3c7;color:#111827;border-color:#05070d;
+}
+.office-task-layer{
+  position:absolute;inset:0;z-index:32;pointer-events:none;
+  font-family:Inter,Arial,sans-serif;
+}
+.office-room-task{
+  position:absolute;transform:translate(-50%,-50%);
+  width:76px;min-height:0;padding:3px 4px;
+  border:2px solid #05070d;background:#111827;color:#f8fafc;
+  box-shadow:0 2px 0 #000;
+  opacity:0;visibility:hidden;
+  transition:opacity .14s,transform .14s,visibility .14s;
+}
+.office-room-task.visible{
+  opacity:1;visibility:visible;transform:translate(-50%,-50%);
+}
+.office-room-task.running{border-color:#3b2605;background:#1f1a0d}
+.office-room-task.waiting{border-color:#7c2d12;background:#24170d}
+.office-room-task.attention{border-color:#7f1d1d;background:#271313;animation:roomTaskAlert .8s steps(2) infinite}
+.office-room-task.reading,.office-room-task.searching{border-color:#1e3a8a;background:#111827}
+.office-room-task.typing{border-color:#064e3b;background:#102018}
+@keyframes roomTaskAlert{50%{transform:translate(-50%,-50%) translateX(2px)}}
+.office-room-task .task-top{
+  display:flex;align-items:center;justify-content:space-between;gap:4px;
+  font-size:7px;line-height:1;font-weight:900;text-transform:uppercase;color:#93c5fd;
+}
+.office-room-task .task-agent{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f8fafc;
+}
+.office-room-task .task-mode{flex-shrink:0;color:#fbbf24;font-size:8px}
+.office-room-task .task-phase{
+  margin-top:3px;font-size:8px;line-height:1.05;font-weight:900;color:#f8fafc;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.office-room-task .task-snippet{
+  display:none;
+}
+.office-agent-label{
+  position:absolute;transform:translate(-50%,0);
+  padding:3px 7px;
+  min-width:28px;max-width:112px;
+  border:2px solid #05070d;
+  background:#05070d;
+  color:#f8fafc;
+  box-shadow:0 2px 0 #000;
+  font-size:12px;line-height:1.05;font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-align:center;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+  cursor:pointer;pointer-events:auto;
+}
+.office-agent-label.active{
+  color:#0f172a;background:#f8fafc;border-color:#05070d;
+}
+.office-agent-label.manager{
+  border-color:#fbbf24;
+}
+.office-agent-label.manager::after{
+  content:'';position:absolute;left:6px;right:6px;bottom:-4px;height:3px;background:#fbbf24;
+  box-shadow:0 1px 0 #000;
+}
+.office-agent-label::before{
+  content:'';position:absolute;left:50%;top:-5px;transform:translateX(-50%);
+  border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:5px solid #05070d;
+}
+.office-tool-badge{
+  position:absolute;transform:translate(-50%,-100%);
+  padding:3px 6px;border:2px solid #05070d;background:#f8fafc;color:#0f172a;
+  box-shadow:0 2px 0 #000;font-size:10px;line-height:1;font-weight:900;
+  white-space:nowrap;opacity:0;transition:opacity .12s,transform .12s;
+  text-transform:uppercase;letter-spacing:0;
+  -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;
+}
+.office-tool-badge.active{
+  opacity:1;transform:translate(-50%,-112%);
+}
+.office-tool-badge.running{background:#fef3c7}
+.office-tool-badge.searching{background:#dbeafe}
+.office-tool-badge.reading{background:#e0f2fe}
+.office-tool-badge.typing{background:#dcfce7}
+.office-tool-badge.waiting{background:#fee2e2}
+.session-inspector{
+  position:absolute;right:22px;top:86px;width:min(356px,calc(100% - 44px));max-height:calc(100% - 118px);
+  z-index:45;display:none;flex-direction:column;
+  border:4px solid #05070d;background:#161b27;color:#f8fafc;box-shadow:0 6px 0 #000,0 0 0 2px #263143;
+  font-family:Inter,Arial,sans-serif;
+}
+.session-inspector.open{display:flex}
+.inspector-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:12px 14px;border-bottom:3px solid #05070d;background:#111827;
+}
+.inspector-kicker{font-size:10px;color:#93c5fd;font-weight:900;text-transform:uppercase;letter-spacing:0}
+.inspector-name{margin-top:3px;font-size:18px;line-height:1.05;font-weight:900;color:#fff}
+.inspector-role{margin-top:4px;font-size:11px;line-height:1.2;color:#cbd5e1}
+.inspector-close{
+  width:26px;height:26px;border:3px solid #05070d;background:#f8fafc;color:#111827;box-shadow:0 2px 0 #000;
+  font-weight:900;cursor:pointer;line-height:1;
+}
+.inspector-body{padding:12px 14px;overflow:auto}
+.inspector-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:11px}
+.inspector-stat{border:2px solid #05070d;background:#0f172a;padding:7px;box-shadow:0 2px 0 #000;min-width:0}
+.inspector-stat .k{font-size:9px;color:#94a3b8;text-transform:uppercase;font-weight:800}
+.inspector-stat .v{margin-top:4px;font-size:12px;color:#f8fafc;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inspector-section-title{
+  margin:12px 0 7px;font-size:10px;color:#93c5fd;text-transform:uppercase;font-weight:900;letter-spacing:0;
+}
+.inspector-output,.inspector-empty{
+  border:2px solid #05070d;background:#0f172a;box-shadow:0 2px 0 #000;padding:9px;
+  font-size:12px;line-height:1.35;color:#dbeafe;
+}
+.inspector-empty{color:#94a3b8}
+.inspector-events{display:flex;flex-direction:column;gap:7px}
+.inspector-event{border:2px solid #05070d;background:#1f2937;box-shadow:0 2px 0 #000;padding:8px}
+.inspector-event-top{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#94a3b8;font-weight:800}
+.inspector-event-text{margin-top:5px;font-size:12px;line-height:1.3;color:#f8fafc}
+.inspector-hint{margin-top:10px;font-size:10px;color:#64748b;line-height:1.25}
+
+/* ── Responsive ──────────────────────────── */
+@media(max-width:900px){
+  .main-flex{flex-direction:column;height:auto}
+  .left-panel{width:100%;min-width:0;height:560px}
+  .right-panel{height:500px}
+  .data-panels{grid-template-columns:1fr}
+  .finance-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Title -->
+<div class="title-bar">
+  <h1>🐋 Whale-Rader C-Suite</h1>
+  <div class="subtitle">Communicative Agents for Whale Monitoring</div>
+  <div class="status-line">
+    <span><span class="status-dot dot-on"></span> <span id="system-status">HEALTHY</span></span>
+    <span id="timestamp">--</span>
+    <span>Chains: <strong id="s-chains">-</strong></span>
+    <span>Active Agents: <strong id="s-active-agents">-</strong></span>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="main-flex">
+
+  <!-- LEFT: Company Scene with Walking Agents -->
+  <div class="left-panel">
+    <div class="company-scene canvas-mode" id="scene">
+      <canvas id="office-canvas" class="pixel-office-canvas" width="480" height="320" aria-label="Pixel Agents office"></canvas>
+      <svg id="office-org-lines" class="office-org-lines" aria-hidden="true"></svg>
+      <div id="office-zone-label-layer" class="office-zone-label-layer" aria-hidden="true"></div>
+      <div id="office-tool-layer" class="office-tool-layer" aria-hidden="true"></div>
+      <div id="office-task-layer" class="office-task-layer" aria-hidden="true"></div>
+      <div id="office-label-layer" class="office-label-layer" aria-hidden="true"></div>
+      <div id="session-inspector" class="session-inspector" aria-live="polite">
+        <div class="inspector-head">
+          <div>
+            <div class="inspector-kicker">Session Inspector</div>
+            <div class="inspector-name" id="inspector-name">Select an agent</div>
+            <div class="inspector-role" id="inspector-role">Click any agent or name label.</div>
+          </div>
+          <button type="button" class="inspector-close" id="inspector-close" aria-label="Close inspector">×</button>
+        </div>
+        <div class="inspector-body" id="inspector-body"></div>
+      </div>
+      <div class="office-runtime-hud" id="office-runtime-hud" aria-live="polite">
+        <div class="office-runtime-card">
+          <div class="runtime-kicker">Runtime</div>
+          <div class="runtime-mode idle" id="runtime-mode">Loading</div>
+          <div class="runtime-detail" id="runtime-detail">Checking agent bus...</div>
+        </div>
+        <div class="runtime-mini">
+          <span>Live <b id="runtime-active">0/0</b></span>
+          <span>Motion <b id="runtime-motion">Ambient</b></span>
+          <span>Run <b id="runtime-elapsed">00:00</b></span>
+        </div>
+      </div>
+      <div class="activity-dock" id="activity-dock" aria-live="polite">
+        <div class="activity-dock-head">
+          <div class="k">Trace Feed</div>
+          <div class="v" id="activity-dock-mode">Replay</div>
+          <div class="flow" id="activity-dock-flow">Runbook</div>
+          <div class="flow-bar" aria-hidden="true"><div class="flow-bar-fill" id="activity-dock-progress"></div></div>
+          <div class="flow-meta" id="activity-dock-meta">Handoff 0 · Q 0</div>
+        </div>
+        <div class="activity-dock-list" id="activity-dock-list"></div>
+      </div>
+      <div class="company-title">🏢 Whale-Rader C-Suite Office</div>
+
+      <!-- Team office areas: each agent has a home desk -->
+      <div class="office-zone zone-executive" id="zone-executive">
+        <span class="zone-label">Executive / Coord</span>
+        <div class="pixel-prop pa-img pa-double-bookshelf px-exec-shelf"></div>
+        <div class="pixel-prop pa-img pa-clock px-exec-clock"></div>
+        <div class="pixel-desk" style="--x:26px;--y:62px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+        <div class="pixel-desk" style="--x:106px;--y:62px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+      </div>
+      <div class="office-zone zone-finance" id="zone-finance">
+        <span class="zone-label">Finance Core</span>
+        <div class="pixel-prop pa-img pa-bookshelf px-fin-shelf"></div>
+        <div class="pixel-prop pa-img pa-whiteboard px-fin-board"></div>
+        <div class="pixel-prop pa-img pa-plant px-fin-plant"></div>
+        <div class="pixel-desk" style="--x:22px;--y:62px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+        <div class="pixel-desk" style="--x:94px;--y:62px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+        <div class="pixel-desk" style="--x:166px;--y:62px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+      </div>
+      <div class="office-zone zone-signals" id="zone-signals">
+        <span class="zone-label">Signals / Legal</span>
+        <div class="pixel-prop pa-img pa-whiteboard px-signal-board"></div>
+        <div class="pixel-prop pa-img pa-plant2 px-signal-plant"></div>
+        <div class="pixel-desk" style="--x:34px;--y:48px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+      </div>
+      <div class="office-zone zone-investment" id="zone-investment">
+        <span class="zone-label">Investment Desk</span>
+        <div class="pixel-prop pa-img pa-painting px-invest-painting"></div>
+        <div class="pixel-prop pa-img pa-coffee-table px-invest-table"></div>
+        <div class="pixel-prop pa-img pa-sofa-front px-invest-sofa"></div>
+        <div class="pixel-desk" style="--x:78px;--y:54px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+      </div>
+      <div class="office-zone zone-platform" id="zone-platform">
+        <span class="zone-label">Platform / People</span>
+        <div class="pixel-prop pa-img pa-whiteboard px-platform-board"></div>
+        <div class="pixel-prop pa-img pa-plant px-platform-plant"></div>
+        <div class="pixel-prop pa-img pa-bin px-platform-bin"></div>
+        <div class="pixel-desk" style="--x:28px;--y:52px"><span class="pa-img pa-desk-front"></span><span class="pa-img pa-pc-front"></span><span class="pa-img pa-chair-front"></span></div>
+      </div>
+      <div class="office-zone zone-incident" id="zone-incident">
+        <span class="zone-label">Alert</span>
+        <div class="area-prop warning-terminal"></div>
+      </div>
+
+      <!-- SVG for connection lines -->
+      <svg id="conn-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:15"></svg>
+
+      <!-- Agents are created dynamically by JS -->
+    </div>
+
+    <!-- Stats -->
+    <div class="scene-stats">
+      <div class="scene-stat"><div class="sv" id="s-alerts">-</div><div class="sl">Alerts</div></div>
+      <div class="scene-stat"><div class="sv" id="s-health">-</div><div class="sl">Health Checks</div></div>
+      <div class="scene-stat"><div class="sv" id="s-perf">-</div><div class="sl">Perf Records</div></div>
+    </div>
+    <div class="agent-grid" id="agent-grid"></div>
+  </div>
+
+  <!-- RIGHT: Chat Dialog -->
+  <div class="right-panel">
+    <div class="dialog-header">
+      <h2>💬 Agent Dialog Replay</h2>
+      <div class="scenario-label" id="scenario-label">▶ Scenario 1/6</div>
+    </div>
+    <div class="trace-strip" id="trace-strip"></div>
+
+    <div class="dialog-body" id="dialog-body">
+      <!-- Messages will be injected here -->
+    </div>
+
+    <!-- Speed Control -->
+    <div class="control-bar">
+      <label>Speed:</label>
+      <input type="range" class="speed-slider" id="speed-slider" min="0" max="100" value="50">
+      <span class="speed-val" id="speed-val">50</span>
+      <button class="control-btn" id="btn-pause">⏸ Pause</button>
+      <button class="control-btn" id="btn-next">⏭ Next</button>
+      <button class="control-btn" id="btn-clear">🗑 Clear</button>
+    </div>
+
+    <!-- Bottom Data Panels -->
+    <div class="data-panels">
+      <div class="data-panel">
+        <div class="dp-head">🔧 System Health</div>
+        <div class="dp-body" id="dp-health"><div style="color:var(--text2);text-align:center;padding:1rem">Loading...</div></div>
+      </div>
+      <div class="data-panel">
+        <div class="dp-head">📈 Performance</div>
+        <div class="dp-body" id="dp-perf"><div style="color:var(--text2);text-align:center;padding:1rem">Loading...</div></div>
+      </div>
+      <div class="data-panel">
+        <div class="dp-head">📨 Agent Bus</div>
+        <div class="dp-body" id="dp-activity"><div style="color:var(--text2);text-align:center;padding:1rem">Loading...</div></div>
+      </div>
+      <div class="data-panel finance-panel">
+        <div class="dp-head">💰 Financial Overview</div>
+        <div class="dp-body" id="dp-finance"><div style="color:var(--text2);text-align:center;padding:1rem">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="agent-defs-json">{{ agents|tojson }}</script>
+<script>
+// ── Agent Config ─────────────────────────────
+const DEFAULT_AGENT_DEFS = [
+  {"id":"ceo","name":"CEO","role":"Chair / Chief Executive Officer","icon":"🏢","color":"#fbbf24","heartbeat":"45s inbox + daily digest","reports_to":"board","sprite_id":1,"home":{"x":72,"y":216},"roam_zone":{"x1":20,"y1":196,"x2":166,"y2":286}},
+  {"id":"secretary-cc","name":"C.C.","role":"Secretary / Coordinator","icon":"👩‍💼","color":"#a78bfa","heartbeat":"45s inbox","reports_to":"ceo","sprite_id":2,"home":{"x":58,"y":342},"roam_zone":{"x1":35,"y1":326,"x2":160,"y2":414}},
+  {"id":"dce","name":"DCE","role":"Data Control Executive","icon":"💾","color":"#38bdf8","heartbeat":"daily / weekly","reports_to":"secretary-cc","sprite_id":3,"home":{"x":132,"y":340},"roam_zone":{"x1":60,"y1":326,"x2":210,"y2":414}},
+  {"id":"cfo-hayek","name":"Hayek","role":"CFO / Finance Owner","icon":"💰","color":"#34d399","heartbeat":"45s inbox + daily reports","reports_to":"ceo","sprite_id":4,"home":{"x":244,"y":58},"roam_zone":{"x1":220,"y1":38,"x2":370,"y2":148}},
+  {"id":"sec-monitor","name":"SEC Monitor","role":"SEC Filing Monitor","icon":"📡","color":"#60a5fa","heartbeat":"5m","reports_to":"cfo-hayek","sprite_id":5,"home":{"x":50,"y":58},"roam_zone":{"x1":18,"y1":38,"x2":170,"y2":148}},
+  {"id":"cio","name":"CIO","role":"System Health / Security","icon":"🔧","color":"#f97316","heartbeat":"45s inbox + 6h health","reports_to":"ceo","sprite_id":1,"home":{"x":236,"y":216},"roam_zone":{"x1":220,"y1":196,"x2":372,"y2":286}},
+  {"id":"cho","name":"CHO","role":"Performance / Org Review","icon":"📊","color":"#ec4899","heartbeat":"24h","reports_to":"ceo","sprite_id":2,"home":{"x":204,"y":340},"roam_zone":{"x1":155,"y1":326,"x2":318,"y2":414}},
+  {"id":"investment-president","name":"Investment President","role":"Top-down Allocation","icon":"💼","color":"#facc15","heartbeat":"45s inbox + scheduled memo","reports_to":"cfo-hayek","sprite_id":3,"home":{"x":302,"y":56},"roam_zone":{"x1":230,"y1":38,"x2":376,"y2":148}},
+  {"id":"investment-analyst","name":"Analyst","role":"Investment Analyst","icon":"🔍","color":"#818cf8","heartbeat":"24h","reports_to":"cfo-hayek","sprite_id":4,"home":{"x":282,"y":340},"roam_zone":{"x1":205,"y1":326,"x2":332,"y2":414}},
+  {"id":"legal-compliance","name":"Legal","role":"Legal & Compliance","icon":"⚖️","color":"#94a3b8","heartbeat":"7d","reports_to":"cfo-hayek","sprite_id":5,"home":{"x":124,"y":58},"roam_zone":{"x1":18,"y1":38,"x2":170,"y2":148}},
+  {"id":"tax-accountant","name":"Tax","role":"Finance & Tax Accountant","icon":"🧾","color":"#f472b6","heartbeat":"24h","reports_to":"cfo-hayek","sprite_id":1,"home":{"x":336,"y":82},"roam_zone":{"x1":235,"y1":38,"x2":376,"y2":148}},
+  {"id":"ops-admin","name":"Ops","role":"Operations & Admin","icon":"🗂️","color":"#22d3ee","heartbeat":"24h","reports_to":"cfo-hayek","sprite_id":2,"home":{"x":326,"y":216},"roam_zone":{"x1":224,"y1":196,"x2":372,"y2":286}}
+];
+function loadRenderedAgentDefs(){
+  const raw = document.getElementById('agent-defs-json')?.textContent?.trim();
+  if(!raw || raw.startsWith('{' + '{'))return DEFAULT_AGENT_DEFS;
+  try{
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_AGENT_DEFS;
+  }catch(e){
+    return DEFAULT_AGENT_DEFS;
+  }
+}
+const AGENT_DEFS = loadRenderedAgentDefs();
+const AGENT_ALIASES = {
+  secretary:'secretary-cc', cc:'secretary-cc',
+  cfo:'cfo-hayek', hayek:'cfo-hayek',
+  sec:'sec-monitor', 'sec-mon':'sec-monitor',
+  legal:'legal-compliance', tax:'tax-accountant', ops:'ops-admin'
+};
+const PARTICIPANTS = {
+  board:{name:'Board', role:'User / Final Decision Maker', emoji:'🏛️', color:'#e2e8f0', msgType:'user'},
+  system:{name:'System', role:'Workflow Runtime', emoji:'⛓️', color:'#94a3b8', msgType:'assistant'},
+  all:{name:'All Agents', role:'Broadcast', emoji:'📣', color:'#60a5fa', msgType:'assistant'}
+};
+const AGENTS = {};
+AGENT_DEFS.forEach(agent => {
+  AGENTS[agent.id] = {
+    name:agent.name,
+    role:agent.role,
+    emoji:agent.icon,
+    color:agent.color,
+    heartbeat:agent.heartbeat,
+    reportsTo:agent.reports_to,
+    msgType:'assistant',
+    spriteId:agent.sprite_id || 1,
+    homeX:(agent.home && agent.home.x) || 60,
+    homeY:(agent.home && agent.home.y) || 60,
+    roamZone:agent.roam_zone || {x1:15,y1:35,x2:170,y2:150}
+  };
+});
+
+function canonicalAgentId(id){
+  const raw = (id || 'system').trim();
+  return AGENT_ALIASES[raw] || raw;
+}
+
+function participant(id){
+  const key = canonicalAgentId(id);
+  return AGENTS[key] || PARTICIPANTS[key] || {
+    name:key || 'Unknown', role:'External participant', emoji:'•', color:'#94a3b8', msgType:'assistant'
+  };
+}
+
+const scene = document.getElementById('scene');
+const dialogBody = document.getElementById('dialog-body');
+const connSvg = document.getElementById('conn-svg');
+const agentGrid = document.getElementById('agent-grid');
+const traceStrip = document.getElementById('trace-strip');
+const speedSlider = document.getElementById('speed-slider');
+const speedVal = document.getElementById('speed-val');
+const scenarioLabel = document.getElementById('scenario-label');
+const runtimeModeEl = document.getElementById('runtime-mode');
+const runtimeDetailEl = document.getElementById('runtime-detail');
+const runtimeActiveEl = document.getElementById('runtime-active');
+const runtimeMotionEl = document.getElementById('runtime-motion');
+const runtimeElapsedEl = document.getElementById('runtime-elapsed');
+const activityDockMode = document.getElementById('activity-dock-mode');
+const activityDockFlow = document.getElementById('activity-dock-flow');
+const activityDockProgress = document.getElementById('activity-dock-progress');
+const activityDockMeta = document.getElementById('activity-dock-meta');
+const activityDockList = document.getElementById('activity-dock-list');
+const sessionInspector = document.getElementById('session-inspector');
+const inspectorName = document.getElementById('inspector-name');
+const inspectorRole = document.getElementById('inspector-role');
+const inspectorBody = document.getElementById('inspector-body');
+const inspectorClose = document.getElementById('inspector-close');
+
+let speed = 50;
+let paused = false;
+let currentScenario = 0;
+let typewriterTimers = [];
+let selectedAgentKey = null;
+let latestAgentActivity = {};
+let latestAgentMessages = [];
+let activityDockEntries = [];
+let queuedDockEntries = [];
+
+// ── Agent Scene State ────────────────────────
+const agentsState = {};
+const agentCards = {};
+const MOTION_CLASSES = ['idle','walking','working'];
+const STATUS_CLASSES = ['status-idle','status-recent','status-working','status-waiting','status-attention'];
+const OFFICE_STATE_CLASSES = ['state-idle','state-writing','state-researching','state-executing','state-syncing','state-error'];
+const TOOL_MODE_CLASSES = ['tool-idle','tool-thinking','tool-reading','tool-searching','tool-typing','tool-running','tool-waiting'];
+const OFFICE_STATES = {
+  idle:{label:'At Desk', status:'idle'},
+  writing:{label:'Writing', status:'working'},
+  researching:{label:'Researching', status:'working'},
+  executing:{label:'Executing', status:'working'},
+  syncing:{label:'Syncing', status:'recent'},
+  error:{label:'Incident', status:'attention'}
+};
+const TOOL_MODES = {
+  idle:{label:'Idle', icon:'•'},
+  thinking:{label:'Thinking', icon:'…'},
+  reading:{label:'Reading', icon:'Read'},
+  searching:{label:'Searching', icon:'Search'},
+  typing:{label:'Typing', icon:'Write'},
+  running:{label:'Running', icon:'Run'},
+  waiting:{label:'Waiting', icon:'Ask'}
+};
+function taskRouteLabel(officeState, toolMode){
+  const state = normalizeOfficeState(officeState || 'idle');
+  const mode = normalizeToolMode(toolMode || 'idle');
+  if(state === 'error')return 'Incident room';
+  if(state === 'syncing' || mode === 'waiting')return 'Meeting room';
+  if(mode === 'reading' || mode === 'searching')return 'Team board';
+  if(mode === 'running')return 'At terminal';
+  if(mode === 'typing')return 'At desk';
+  if(mode === 'thinking')return 'Thinking';
+  return 'Home desk';
+}
+const TEAM_AREAS = {
+  executive:{label:'Executive / Coord'},
+  finance:{label:'Finance Core'},
+  signals:{label:'Signals / Legal'},
+  investment:{label:'Investment Desk'},
+  platform:{label:'Platform / People'}
+};
+const TEAM_BY_AGENT = {
+  'ceo':'executive',
+  'secretary-cc':'executive',
+  'dce':'executive',
+  'cfo-hayek':'finance',
+  'tax-accountant':'finance',
+  'ops-admin':'finance',
+  'sec-monitor':'signals',
+  'legal-compliance':'signals',
+  'investment-president':'investment',
+  'investment-analyst':'investment',
+  'cio':'platform',
+  'cho':'platform'
+};
+const AGENT_DESKS = {
+  'ceo':{x:72,y:128},
+  'secretary-cc':{x:128,y:128},
+  'dce':{x:184,y:128},
+  'cfo-hayek':{x:280,y:128},
+  'tax-accountant':{x:352,y:128},
+  'ops-admin':{x:424,y:128},
+  'sec-monitor':{x:58,y:284},
+  'legal-compliance':{x:122,y:284},
+  'investment-president':{x:220,y:284},
+  'investment-analyst':{x:292,y:284},
+  'cio':{x:386,y:284},
+  'cho':{x:448,y:284}
+};
+const INCIDENT_SLOTS = [
+  {x:394,y:366},{x:442,y:366},{x:472,y:366}
+];
+const WALK_STEP_PX = 16;
+const WALK_STEP_MS = 135;
+const AMBIENT_WANDER_MS = 2600;
+const AMBIENT_RETURN_MS = 2800;
+const AMBIENT_POINTS = {
+  executive:[{x:42,y:82},{x:96,y:168},{x:170,y:86},{x:204,y:164}],
+  finance:[{x:264,y:82},{x:332,y:166},{x:462,y:84},{x:472,y:166}],
+  signals:[{x:42,y:232},{x:116,y:248},{x:142,y:314}],
+  investment:[{x:202,y:236},{x:260,y:318},{x:330,y:248}],
+  platform:[{x:384,y:240},{x:430,y:318},{x:474,y:246}]
+};
+const agentOfficeState = {};
+let officeLayoutReady = false;
+let officeLayoutSuspended = false;
+let pendingOfficeLayout = false;
+
+function normalizeOfficeState(state){
+  return OFFICE_STATES[state] ? state : 'idle';
+}
+
+function teamForAgent(key){
+  return TEAM_BY_AGENT[key] || 'executive';
+}
+
+function officeAreaForAgentState(key, state){
+  return normalizeOfficeState(state) === 'error' ? 'incident' : teamForAgent(key);
+}
+
+function officeAreaLabel(key, state){
+  const area = officeAreaForAgentState(key, state);
+  if(area === 'incident')return 'Incident Corner';
+  return TEAM_AREAS[area]?.label || 'Team Desk';
+}
+
+function officeStateLabel(state){
+  return OFFICE_STATES[normalizeOfficeState(state)].label;
+}
+
+function statusToOfficeState(status, lastType, text){
+  const hay = ((text || '') + ' ' + (lastType || '')).toLowerCase();
+  if(status === 'attention' || ['alert','escalation'].includes(lastType))return 'error';
+  if(['error','fail','critical','warning','異常','警報','告警','出錯'].some(t => hay.includes(t)))return 'error';
+  if(['sync','backup','supabase','push','deploy','同步','備份','寫入','更新'].some(t => hay.includes(t)))return 'syncing';
+  if(['research','scan','filing','vcp','screener','analysis','analyst','研究','掃描','分析','篩','資料','數據'].some(t => hay.includes(t)))return 'researching';
+  if(status === 'waiting' || lastType === 'request' || lastType === 'decision')return 'executing';
+  if(status === 'working' || status === 'recent')return 'writing';
+  return 'idle';
+}
+
+function normalizeToolMode(mode){
+  return TOOL_MODES[mode] ? mode : 'thinking';
+}
+
+function toolModeLabel(mode){
+  return TOOL_MODES[normalizeToolMode(mode)].label;
+}
+
+function toolModeIcon(mode){
+  return TOOL_MODES[normalizeToolMode(mode)].icon;
+}
+
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[ch]));
+}
+
+function openSessionInspector(key){
+  if(!AGENTS[key] || !sessionInspector)return;
+  selectedAgentKey = key;
+  sessionInspector.classList.add('open');
+  renderSessionInspector(key);
+}
+
+function closeSessionInspector(){
+  selectedAgentKey = null;
+  if(sessionInspector)sessionInspector.classList.remove('open');
+}
+
+function renderSessionInspector(key){
+  if(!AGENTS[key] || !inspectorName || !inspectorRole || !inspectorBody)return;
+  const a = AGENTS[key];
+  const activity = latestAgentActivity[key] || {};
+  const status = activity.status || 'idle';
+  const officeState = normalizeOfficeState(activity.office_state || activity.officeState || agentOfficeState[key] || 'idle');
+  const toolMode = normalizeToolMode(activity.last_tool_mode || activity.tool_mode || activity.toolMode || agentsState[key]?.toolMode || 'idle');
+  const pending = activity.pending || 0;
+  const phase = activity.phase || activity.last_phase || '-';
+  const team = TEAM_AREAS[teamForAgent(key)]?.label || 'Team';
+  const source = liveMode ? 'Live bus' : demoStarted ? 'Replay' : 'Ambient';
+  const lastText = activity.last_text || activity.lastText || '';
+  const relatedMessages = latestAgentMessages
+    .filter(msg => canonicalAgentId(msg.from_agent) === key || canonicalAgentId(msg.to_agent) === key)
+    .slice(0,5);
+
+  inspectorName.textContent = a.emoji + ' ' + a.name;
+  inspectorRole.textContent = a.role;
+  inspectorBody.innerHTML =
+    '<div class="inspector-stats">' +
+      '<div class="inspector-stat"><div class="k">State</div><div class="v">' + escapeHtml(officeStateLabel(officeState)) + '</div></div>' +
+      '<div class="inspector-stat"><div class="k">Tool</div><div class="v">' + escapeHtml(toolModeLabel(toolMode)) + '</div></div>' +
+      '<div class="inspector-stat"><div class="k">Phase</div><div class="v">' + escapeHtml(phase) + '</div></div>' +
+    '</div>' +
+    '<div class="inspector-stats">' +
+      '<div class="inspector-stat"><div class="k">Pending</div><div class="v">' + escapeHtml(pending) + '</div></div>' +
+      '<div class="inspector-stat"><div class="k">Team</div><div class="v">' + escapeHtml(team) + '</div></div>' +
+      '<div class="inspector-stat"><div class="k">Status</div><div class="v">' + escapeHtml(status) + '</div></div>' +
+    '</div>' +
+    '<div class="inspector-stats">' +
+      '<div class="inspector-stat"><div class="k">Source</div><div class="v">' + escapeHtml(source) + '</div></div>' +
+      '<div class="inspector-stat"><div class="k">Heartbeat</div><div class="v">' + escapeHtml(a.heartbeat || '-') + '</div></div>' +
+      '<div class="inspector-stat"><div class="k">Motion</div><div class="v">' + escapeHtml(taskRouteLabel(officeState, toolMode)) + '</div></div>' +
+    '</div>' +
+    '<div class="inspector-section-title">Latest Output</div>' +
+    (lastText
+      ? '<div class="inspector-output">' + escapeHtml(lastText) + '</div>'
+      : '<div class="inspector-empty">No recent output yet.</div>') +
+    '<div class="inspector-section-title">Related Agent Bus</div>' +
+    (relatedMessages.length
+      ? '<div class="inspector-events">' + relatedMessages.map(msg => {
+          const from = participant(msg.from_agent);
+          const to = participant(msg.to_agent);
+          const label = (msg.type_label || msg.msg_type || 'Message') + ' · ' + from.name + ' → ' + to.name;
+          const when = msg.created_at ? timeAgo(msg.created_at) : '';
+          return '<div class="inspector-event"><div class="inspector-event-top"><span>' + escapeHtml(label) + '</span><span>' + escapeHtml(when) + '</span></div><div class="inspector-event-text">' + escapeHtml(msg.text || '') + '</div></div>';
+        }).join('') + '</div>'
+      : '<div class="inspector-empty">No live transcript linked to this agent yet.</div>') +
+    '<div class="inspector-hint">Ctrl-style: click another agent to inspect their current session.</div>';
+}
+
+if(inspectorClose)inspectorClose.addEventListener('click', closeSessionInspector);
+
+function inferToolMode(status, lastType, text, officeState){
+  const hay = ((text || '') + ' ' + (lastType || '') + ' ' + (officeState || '')).toLowerCase();
+  if(status === 'attention' || status === 'waiting' || ['request','decision','alert','escalation'].includes(lastType))return 'waiting';
+  if(['grep','search','websearch','scan','screener','filing','vcp','搜尋','搜索','掃描','篩'].some(t => hay.includes(t)))return 'searching';
+  if(['read','file','report','memo','data','log','資料','數據','報告','讀'].some(t => hay.includes(t)))return 'reading';
+  if(['bash','run','execute','deploy','workflow','command','執行','跑','修復'].some(t => hay.includes(t)))return 'running';
+  if(['write','edit','brief','summary','recommendation','commentary','docs','整理','建議','簡報','撰寫'].some(t => hay.includes(t)))return 'typing';
+  if(status === 'idle')return 'idle';
+  return 'thinking';
+}
+
+function placeAgent(key, x, y){
+  const s = agentsState[key];
+  if(!s)return;
+  clearMove(key);
+  s.el.style.left = x + 'px';
+  s.el.style.top = y + 'px';
+  s.x = x;
+  s.y = y;
+  updateAgentDepth(key);
+}
+
+function updateAgentDepth(key){
+  const s = agentsState[key];
+  if(!s)return;
+  s.el.style.zIndex = String(20 + Math.round(s.y));
+}
+
+function homeSlotForAgent(key){
+  const state = normalizeOfficeState(agentOfficeState[key] || 'idle');
+  if(state === 'error')return INCIDENT_SLOTS[Object.keys(agentsState).indexOf(key) % INCIDENT_SLOTS.length];
+  return AGENT_DESKS[key] || {x:40,y:80};
+}
+
+function isAgentBusy(key){
+  const s = agentsState[key];
+  const state = normalizeOfficeState(agentOfficeState[key] || 'idle');
+  return !s || state !== 'idle' || s.el.classList.contains('working') || !!s.bubble || !!s.moveTimer;
+}
+
+function clearMove(key){
+  const s = agentsState[key];
+  if(!s)return;
+  if(s.moveTimer){
+    clearTimeout(s.moveTimer);
+    s.moveTimer = null;
+  }
+  s.moveToken = (s.moveToken || 0) + 1;
+}
+
+function scheduleOfficeLayout(animate){
+  if(officeLayoutSuspended){
+    pendingOfficeLayout = pendingOfficeLayout || animate;
+    return;
+  }
+  layoutOfficeAgents(animate);
+}
+
+function layoutOfficeAgents(animate){
+  const byArea = {executive:[], finance:[], signals:[], investment:[], platform:[], incident:[]};
+  Object.keys(AGENTS).forEach(key => {
+    const state = normalizeOfficeState(agentOfficeState[key] || 'idle');
+    byArea[officeAreaForAgentState(key, state)].push(key);
+  });
+
+  Object.keys(byArea).forEach(area => {
+    const zone = document.getElementById('zone-' + area);
+    if(zone)zone.classList.toggle('active', byArea[area].some(key => (agentOfficeState[key] || 'idle') !== 'idle'));
+    byArea[area].sort((a,b) => AGENTS[a].name.localeCompare(AGENTS[b].name));
+    byArea[area].forEach((key, idx) => {
+      const slot = area === 'incident'
+        ? INCIDENT_SLOTS[idx % INCIDENT_SLOTS.length]
+        : (AGENT_DESKS[key] || {x:40,y:80});
+      if(!officeLayoutReady || animate === false){
+        placeAgent(key, slot.x, slot.y);
+      }else{
+        const s = agentsState[key];
+        if(!s || Math.hypot(s.x - slot.x, s.y - slot.y) > 8){
+          moveAgent(key, slot.x, slot.y);
+        }
+      }
+    });
+  });
+  officeLayoutReady = true;
+}
+
+function setAgentOfficeState(key, state, shouldLayout){
+  if(!AGENTS[key])return;
+  const next = normalizeOfficeState(state);
+  agentOfficeState[key] = next;
+  const s = agentsState[key];
+  if(s){
+    OFFICE_STATE_CLASSES.forEach(c => s.el.classList.remove(c));
+    s.el.classList.add('state-' + next);
+    s.el.dataset.officeState = next;
+  }
+  const card = agentCards[key];
+  if(card){
+    OFFICE_STATE_CLASSES.forEach(c => card.classList.remove(c));
+    card.classList.add('state-' + next);
+  }
+  if(shouldLayout !== false)scheduleOfficeLayout(true);
+}
+
+function setAgentToolMode(key, mode){
+  if(!AGENTS[key])return;
+  const next = normalizeToolMode(mode);
+  const s = agentsState[key];
+  if(s){
+    s.toolMode = next;
+    TOOL_MODE_CLASSES.forEach(c => s.el.classList.remove(c));
+    s.el.classList.add('tool-' + next);
+    if(s.actionEl)s.actionEl.textContent = toolModeIcon(next);
+    startToolAnim(key, next);
+  }
+  const card = agentCards[key];
+  if(card){
+    TOOL_MODE_CLASSES.forEach(c => card.classList.remove(c));
+    card.classList.add('tool-' + next);
+    const action = card.querySelector('.ac-action');
+    if(action)action.textContent = toolModeLabel(next);
+  }
+}
+
+function setAgentMotion(key, motion){
+  const s = agentsState[key];
+  if(!s)return;
+  MOTION_CLASSES.forEach(c => s.el.classList.remove(c));
+  s.el.classList.add(motion);
+}
+
+function setAgentStatus(key, status){
+  const s = agentsState[key];
+  const next = status || 'idle';
+  if(s){
+    STATUS_CLASSES.forEach(c => s.el.classList.remove(c));
+    s.el.classList.add('status-' + next);
+  }
+  const card = agentCards[key];
+  if(card){
+    STATUS_CLASSES.forEach(c => card.classList.remove(c));
+    card.classList.remove('active','waiting','attention');
+    card.classList.add('status-' + next);
+    if(next === 'working')card.classList.add('active');
+    if(next === 'waiting')card.classList.add('waiting');
+    if(next === 'attention')card.classList.add('attention');
+  }
+}
+
+function updateAgentCard(key, data){
+  if(!AGENTS[key])return;
+  latestAgentActivity[key] = {...(latestAgentActivity[key] || {}), ...(data || {})};
+  const card = agentCards[key];
+  const status = data?.status || 'idle';
+  const officeState = normalizeOfficeState(data?.office_state || data?.officeState || statusToOfficeState(status, data?.last_type, data?.last_text || data?.lastText || ''));
+  const toolMode = normalizeToolMode(data?.last_tool_mode || data?.tool_mode || data?.toolMode || inferToolMode(status, data?.last_type, data?.last_text || data?.lastText || '', officeState));
+  const text = data?.last_text || data?.lastText || '';
+  const phase = data?.phase || data?.last_phase || latestAgentActivity[key]?.phase || latestAgentActivity[key]?.last_phase || '';
+  const pending = data?.pending || 0;
+  latestAgentActivity[key] = {
+    ...latestAgentActivity[key],
+    status,
+    office_state: officeState,
+    last_tool_mode: toolMode,
+    last_text: text,
+    phase,
+    last_phase: phase,
+    pending
+  };
+  setAgentStatus(key, status);
+  setAgentOfficeState(key, officeState);
+  setAgentToolMode(key, toolMode);
+  if(canvasOffice)canvasOffice.setAgentState(key, {status, officeState, toolMode, text, pending, phase});
+  if(selectedAgentKey === key)renderSessionInspector(key);
+  if(!card)return;
+  const output = card.querySelector('.ac-output');
+  const meta = card.querySelector('.ac-meta');
+  output.textContent = text || 'No recent output';
+  meta.innerHTML = '<span>' + officeStateLabel(officeState) + '</span><span>' +
+    (pending ? ('待 ' + pending) : officeAreaLabel(key, officeState)) +
+    '</span>';
+}
+
+function createAgentCard(key){
+  if(!agentGrid)return;
+  const a = AGENTS[key];
+  const card = document.createElement('div');
+  card.className = 'agent-card status-idle';
+  card.id = 'agent-card-' + key;
+  card.innerHTML =
+    '<div class="ac-top"><span class="ac-dot"></span><span>' + a.emoji + '</span><span class="ac-name">' + a.name + '</span></div>' +
+    '<div class="ac-role">' + a.role + '</div>' +
+    '<div class="ac-action">Idle</div>' +
+    '<div class="ac-output">No recent output</div>' +
+    '<div class="ac-meta"><span>idle</span><span>' + (a.heartbeat || '') + '</span></div>';
+  agentGrid.appendChild(card);
+  agentCards[key] = card;
+  setAgentToolMode(key, 'idle');
+}
+
+function renderAgentGrid(activityAgents){
+  if(!agentGrid)return;
+  if(!Object.keys(agentCards).length){
+    Object.keys(AGENTS).forEach(createAgentCard);
+    officeLayoutSuspended = true;
+    Object.keys(AGENTS).forEach(key => setAgentOfficeState(key, 'idle', false));
+    officeLayoutSuspended = false;
+    layoutOfficeAgents(false);
+  }
+  if(Array.isArray(activityAgents)){
+    officeLayoutSuspended = true;
+    activityAgents.forEach(a => updateAgentCard(a.id, a));
+    officeLayoutSuspended = false;
+    if(pendingOfficeLayout){
+      pendingOfficeLayout = false;
+      layoutOfficeAgents(true);
+    }
+  }
+}
+
+function staticAssetBase(){
+  if(location.protocol === 'file:')return './static/';
+  const localHost = ['localhost','127.0.0.1','0.0.0.0'].includes(location.hostname);
+  if(localHost && ['', '5050', '5053'].includes(location.port))return '/static/';
+  return './static/';
+}
+
+const CANVAS_DIR = {D:0,U:1,R:2,L:3};
+const CANVAS_DIR_ROW = {D:0,U:1,R:2,L:2};
+const CANVAS_TILE = 16;
+const CANVAS_AGENT_SEATS = {
+  'secretary-cc':{col:3,row:7,dir:'U'},
+  'ceo':{col:7,row:7,dir:'U'},
+  'dce':{col:10,row:7,dir:'U'},
+  'cfo-hayek':{col:15,row:7,dir:'U'},
+  'tax-accountant':{col:18,row:7,dir:'U'},
+  'ops-admin':{col:21,row:7,dir:'U'},
+  'sec-monitor':{col:3,row:13,dir:'U'},
+  'legal-compliance':{col:8,row:13,dir:'U'},
+  'investment-president':{col:15,row:13,dir:'U'},
+  'investment-analyst':{col:20,row:13,dir:'U'},
+  'cio':{col:3,row:18,dir:'U'},
+  'cho':{col:8,row:18,dir:'U'}
+};
+const CANVAS_AGENT_ORDER = Object.keys(CANVAS_AGENT_SEATS);
+const CANVAS_INCIDENT_SEATS = [
+  {col:25,row:13,dir:'U'},
+  {col:27,row:13,dir:'U'},
+  {col:24,row:12,dir:'R'},
+  {col:28,row:12,dir:'L'},
+  {col:24,row:14,dir:'R'},
+  {col:28,row:14,dir:'L'},
+  {col:25,row:17,dir:'U'},
+  {col:27,row:17,dir:'U'},
+  {col:24,row:15,dir:'R'},
+  {col:28,row:15,dir:'L'},
+  {col:24,row:17,dir:'R'},
+  {col:28,row:17,dir:'L'}
+];
+const CANVAS_MEETING_SEATS = [
+  {col:25,row:3,dir:'D'},
+  {col:26,row:3,dir:'D'},
+  {col:27,row:3,dir:'D'},
+  {col:24,row:5,dir:'R'},
+  {col:24,row:6,dir:'R'},
+  {col:24,row:7,dir:'R'},
+  {col:28,row:5,dir:'L'},
+  {col:28,row:6,dir:'L'},
+  {col:28,row:7,dir:'L'},
+  {col:25,row:8,dir:'U'},
+  {col:27,row:8,dir:'U'},
+  {col:26,row:8,dir:'U'}
+];
+const CANVAS_WORK_SEATS_BY_TEAM = {
+  executive:[
+    {col:4,row:4,dir:'U'},
+    {col:7,row:4,dir:'U'},
+    {col:10,row:4,dir:'U'}
+  ],
+  finance:[
+    {col:15,row:4,dir:'U'},
+    {col:18,row:4,dir:'U'},
+    {col:21,row:4,dir:'U'}
+  ],
+  signals:[
+    {col:3,row:12,dir:'U'},
+    {col:8,row:12,dir:'U'}
+  ],
+  investment:[
+    {col:15,row:12,dir:'U'},
+    {col:20,row:12,dir:'U'}
+  ],
+  platform:[
+    {col:3,row:17,dir:'U'},
+    {col:8,row:17,dir:'U'}
+  ]
+};
+const CANVAS_WANDER_BY_TEAM = {
+  executive:[{col:4,row:8},{col:8,row:8},{col:10,row:6}],
+  finance:[{col:14,row:8},{col:20,row:8},{col:22,row:6}],
+  signals:[{col:4,row:14},{col:9,row:14},{col:5,row:10}],
+  investment:[{col:14,row:14},{col:18,row:10},{col:22,row:13}],
+  platform:[{col:3,row:17},{col:8,row:17},{col:6,row:16}]
+};
+const CANVAS_AGENT_LABELS = {
+  'ceo':'CEO',
+  'secretary-cc':'C.C.',
+  'dce':'DCE',
+  'cfo-hayek':'Hayek',
+  'tax-accountant':'Tax',
+  'ops-admin':'Ops',
+  'sec-monitor':'SEC',
+  'legal-compliance':'Legal',
+  'investment-president':'Invest Pres',
+  'investment-analyst':'Analyst',
+  'cio':'CIO',
+  'cho':'CHO'
+};
+const CANVAS_MANAGER_KEYS = new Set(['ceo','secretary-cc','cfo-hayek','investment-president']);
+function canvasAgentOrderIndex(key){
+  const idx = CANVAS_AGENT_ORDER.indexOf(key);
+  return idx === -1 ? 999 : idx;
+}
+const CANVAS_ORG_LINES = [
+  {from:'ceo',to:'secretary-cc',tone:'primary'},
+  {from:'secretary-cc',to:'dce',tone:'support'},
+  {from:'ceo',to:'cfo-hayek',tone:'primary'},
+  {from:'ceo',to:'cio',tone:'support'},
+  {from:'ceo',to:'cho',tone:'support'},
+  {from:'cfo-hayek',to:'tax-accountant',tone:'finance'},
+  {from:'cfo-hayek',to:'ops-admin',tone:'finance'},
+  {from:'cfo-hayek',to:'sec-monitor',tone:'finance'},
+  {from:'cfo-hayek',to:'legal-compliance',tone:'finance'},
+  {from:'cfo-hayek',to:'investment-president',tone:'finance'},
+  {from:'investment-president',to:'investment-analyst',tone:'finance'}
+];
+const CANVAS_ZONE_LABELS = [
+  {label:'Executive',lead:'CEO',col:6,row:3,team:'executive'},
+  {label:'Finance',lead:'Hayek',col:18,row:3,team:'finance'},
+  {label:'Meeting',col:26,row:3,kind:'meeting'},
+  {label:'Signals / Legal',lead:'SEC',col:6,row:11,team:'signals'},
+  {label:'Investment',lead:'Pres',col:18,row:11,team:'investment'},
+  {label:'Platform',lead:'CIO',col:6,row:16,team:'platform'},
+  {label:'Break Room',col:18,row:16,kind:'break'},
+  {label:'Incident',col:26,row:11,kind:'incident'}
+];
+const CANVAS_ROOM_TASK_POSITIONS = {
+  executive:{col:2.8,row:3.7},
+  finance:{col:14.4,row:3.55},
+  meeting:{col:25.2,row:3.7},
+  signals:{col:2.8,row:10.85},
+  investment:{col:14.4,row:10.85},
+  platform:{col:2.8,row:16.55},
+  incident:{col:25.2,row:10.85}
+};
+const CANVAS_ROOM_BOUNDS = {
+  executive:{col:1,row:2,w:11,h:7,color:'#fbbf24'},
+  finance:{col:13,row:2,w:10,h:7,color:'#34d399'},
+  meeting:{col:24,row:2,w:5,h:7,color:'#facc15'},
+  signals:{col:1,row:10,w:11,h:5,color:'#60a5fa'},
+  investment:{col:13,row:10,w:10,h:5,color:'#818cf8'},
+  platform:{col:1,row:16,w:11,h:3,color:'#ec4899'},
+  incident:{col:24,row:10,w:5,h:9,color:'#f87171'}
+};
+const FURNITURE_META = {
+  DESK_FRONT:{w:3,h:2,bg:1,cat:'desks',desk:true},
+  DESK_SIDE:{w:1,h:4,bg:1,cat:'desks',desk:true},
+  PC_FRONT_OFF:{w:1,h:2,bg:0,cat:'electronics',surface:true},
+  PC_FRONT_ON_1:{w:1,h:2,bg:0,cat:'electronics',surface:true},
+  PC_FRONT_ON_2:{w:1,h:2,bg:0,cat:'electronics',surface:true},
+  PC_FRONT_ON_3:{w:1,h:2,bg:0,cat:'electronics',surface:true},
+  PC_SIDE:{w:1,h:2,bg:0,cat:'electronics',surface:true},
+  PC_BACK:{w:1,h:2,bg:0,cat:'electronics',surface:true},
+  WOODEN_CHAIR_SIDE:{w:1,h:2,bg:0,cat:'chairs'},
+  WOODEN_CHAIR_FRONT:{w:1,h:2,bg:0,cat:'chairs'},
+  WOODEN_CHAIR_BACK:{w:1,h:2,bg:0,cat:'chairs'},
+  CUSHIONED_CHAIR_FRONT:{w:1,h:1,bg:0,cat:'chairs'},
+  CUSHIONED_CHAIR_BACK:{w:1,h:1,bg:0,cat:'chairs'},
+  CUSHIONED_CHAIR_SIDE:{w:1,h:1,bg:0,cat:'chairs'},
+  CUSHIONED_BENCH:{w:1,h:1,bg:0,cat:'chairs'},
+  SOFA_FRONT:{w:2,h:1,bg:0,cat:'chairs'},
+  SOFA_BACK:{w:2,h:1,bg:0,cat:'chairs'},
+  SOFA_SIDE:{w:1,h:2,bg:0,cat:'chairs'},
+  TABLE_FRONT:{w:3,h:4,bg:1,cat:'desks',desk:true},
+  COFFEE_TABLE:{w:2,h:2,bg:0,cat:'desks',desk:true},
+  SMALL_TABLE_SIDE:{w:1,h:3,bg:1,cat:'desks',desk:true},
+  SMALL_TABLE_FRONT:{w:2,h:2,bg:1,cat:'desks',desk:true},
+  BOOKSHELF:{w:2,h:1,bg:0,cat:'wall',wall:true},
+  DOUBLE_BOOKSHELF:{w:2,h:2,bg:0,cat:'wall',wall:true},
+  HANGING_PLANT:{w:1,h:2,bg:0,cat:'wall',wall:true},
+  SMALL_PAINTING:{w:1,h:2,bg:0,cat:'wall',wall:true},
+  SMALL_PAINTING_2:{w:1,h:2,bg:0,cat:'wall',wall:true},
+  LARGE_PAINTING:{w:2,h:2,bg:0,cat:'wall',wall:true},
+  WHITEBOARD:{w:2,h:2,bg:0,cat:'wall',wall:true},
+  CLOCK:{w:1,h:2,bg:0,cat:'wall',wall:true},
+  PLANT:{w:1,h:2,bg:1,cat:'decor'},
+  PLANT_2:{w:1,h:2,bg:1,cat:'decor'},
+  LARGE_PLANT:{w:1,h:2,bg:1,cat:'decor'},
+  CACTUS:{w:1,h:2,bg:1,cat:'decor'},
+  BIN:{w:1,h:1,bg:0,cat:'misc'},
+  COFFEE:{w:1,h:1,bg:0,cat:'misc',surface:true},
+  POT:{w:1,h:1,bg:0,cat:'misc',surface:true}
+};
+
+function furnitureBaseType(type){
+  return (type || '').split(':')[0];
+}
+
+function furnitureFolder(type){
+  const base = furnitureBaseType(type);
+  if(base.startsWith('DESK_'))return 'DESK';
+  if(base.startsWith('PC_'))return 'PC';
+  if(base.startsWith('WOODEN_CHAIR_'))return 'WOODEN_CHAIR';
+  if(base.startsWith('CUSHIONED_CHAIR_'))return 'CUSHIONED_CHAIR';
+  if(base.startsWith('SOFA_'))return 'SOFA';
+  if(base.startsWith('SMALL_TABLE_'))return 'SMALL_TABLE';
+  return base;
+}
+
+function furniturePath(type){
+  const base = furnitureBaseType(type);
+  return staticAssetBase() + 'pixel-agents/assets/furniture/' + furnitureFolder(base) + '/' + base + '.png';
+}
+
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function tileCenter(tile){
+  return {x:tile.col * CANVAS_TILE + CANVAS_TILE / 2, y:tile.row * CANVAS_TILE + CANVAS_TILE};
+}
+
+function tileKey(col,row){return col + ',' + row}
+
+function createWhaleOfficeLayout(){
+  const cols = 30;
+  const rows = 20;
+  const tiles = [];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      let tile = 2;
+      if(r === 0 || r === 1 || r === rows - 1 || c === 0 || c === cols - 1)tile = 0;
+      else if(r >= 2 && r <= 8 && c >= 1 && c <= 11)tile = 8;
+      else if(r >= 2 && r <= 8 && c >= 13 && c <= 22)tile = 5;
+      else if(r >= 2 && r <= 8 && c >= 24 && c <= 28)tile = 6;
+      else if(r >= 10 && r <= 14 && c >= 1 && c <= 11)tile = 7;
+      else if(r >= 10 && r <= 14 && c >= 13 && c <= 22)tile = 9;
+      else if(r >= 16 && r <= 18 && c >= 1 && c <= 11)tile = 6;
+      else if(r >= 16 && r <= 18 && c >= 13 && c <= 22)tile = 5;
+      else if(r >= 10 && r <= 18 && c >= 24 && c <= 28)tile = 4;
+      tiles.push(tile);
+    }
+  }
+
+  const setTile = (col,row,tile) => {
+    if(col < 0 || row < 0 || col >= cols || row >= rows)return;
+    tiles[row * cols + col] = tile;
+  };
+  const floorFor = (col,row) => {
+    if(row >= 2 && row <= 8 && col >= 1 && col <= 11)return 8;
+    if(row >= 2 && row <= 8 && col >= 13 && col <= 22)return 5;
+    if(row >= 2 && row <= 8 && col >= 24 && col <= 28)return 6;
+    if(row >= 10 && row <= 14 && col >= 1 && col <= 11)return 7;
+    if(row >= 10 && row <= 14 && col >= 13 && col <= 22)return 9;
+    if(row >= 16 && row <= 18 && col >= 1 && col <= 11)return 6;
+    if(row >= 16 && row <= 18 && col >= 13 && col <= 22)return 5;
+    if(row >= 10 && row <= 18 && col >= 24 && col <= 28)return 4;
+    return 2;
+  };
+  const addVerticalWall = (col,r1,r2,gaps=[]) => {
+    for(let row=r1;row<=r2;row++){
+      if(gaps.includes(row))setTile(col,row,floorFor(col,row));
+      else setTile(col,row,0);
+    }
+  };
+  const addHorizontalWall = (row,c1,c2,gaps=[]) => {
+    for(let col=c1;col<=c2;col++){
+      if(gaps.includes(col))setTile(col,row,floorFor(col,row));
+      else setTile(col,row,0);
+    }
+  };
+
+  addVerticalWall(12,2,18,[6,8,12,16,17]);
+  addHorizontalWall(9,1,28,[5,18,25]);
+  addVerticalWall(23,2,18,[6,8,13,16]);
+  addHorizontalWall(15,1,11,[6]);
+  addHorizontalWall(15,13,22,[18]);
+
+  const furniture = [];
+  const add = (type,col,row) => furniture.push({uid:'whale-' + furniture.length + '-' + type,col,row,type});
+  const deskPod = (col,row,chairCol,chairRow,pcCol,pcRow) => {
+    add('DESK_FRONT',col,row);
+    add('PC_FRONT_ON_1',pcCol,pcRow);
+    add('CUSHIONED_CHAIR_BACK',chairCol,chairRow);
+  };
+
+  add('DOUBLE_BOOKSHELF',1,2);
+  add('WHITEBOARD',5,2);
+  add('CLOCK',10,2);
+  add('PLANT_2',1,7);
+  deskPod(2,5,3,7,3,5);
+  deskPod(6,5,7,7,7,5);
+  deskPod(9,5,10,7,10,5);
+
+  add('DOUBLE_BOOKSHELF',13,2);
+  add('WHITEBOARD',18,2);
+  add('SMALL_TABLE_FRONT',14,3);
+  add('COFFEE',15,4);
+  deskPod(14,5,15,7,15,5);
+  deskPod(17,5,18,7,18,5);
+  deskPod(20,5,21,7,21,5);
+
+  add('WHITEBOARD',24,2);
+  add('LARGE_PAINTING',26,2);
+  add('PLANT',28,3);
+  add('CUSHIONED_CHAIR_FRONT',25,3);
+  add('CUSHIONED_CHAIR_FRONT',26,3);
+  add('CUSHIONED_CHAIR_FRONT',27,3);
+  add('CUSHIONED_CHAIR_SIDE',24,5);
+  add('CUSHIONED_CHAIR_SIDE',24,6);
+  add('CUSHIONED_CHAIR_SIDE',24,7);
+  add('CUSHIONED_CHAIR_SIDE:left',28,5);
+  add('CUSHIONED_CHAIR_SIDE:left',28,6);
+  add('CUSHIONED_CHAIR_SIDE:left',28,7);
+  add('TABLE_FRONT',25,4);
+  add('COFFEE',26,5);
+  add('POT',27,5);
+  add('CUSHIONED_CHAIR_BACK',25,8);
+  add('CUSHIONED_CHAIR_BACK',26,8);
+  add('CUSHIONED_CHAIR_BACK',27,8);
+
+  add('BOOKSHELF',1,10);
+  add('WHITEBOARD',5,10);
+  add('PLANT_2',10,11);
+  deskPod(2,11,3,13,3,11);
+  deskPod(7,11,8,13,8,11);
+
+  add('LARGE_PAINTING',14,10);
+  add('WHITEBOARD',19,10);
+  add('SOFA_FRONT',13,14);
+  add('COFFEE_TABLE',17,12);
+  add('POT',18,12);
+  add('PLANT',22,12);
+  deskPod(14,11,15,13,15,11);
+  deskPod(19,11,20,13,20,11);
+
+  add('WHITEBOARD',1,16);
+  add('BOOKSHELF',5,16);
+  add('CACTUS',10,16);
+  add('BIN',10,18);
+  deskPod(2,16,3,18,3,16);
+  deskPod(7,16,8,18,8,16);
+
+  add('HANGING_PLANT',13,16);
+  add('SMALL_PAINTING',21,16);
+  add('SOFA_FRONT',13,17);
+  add('COFFEE_TABLE',16,17);
+  add('COFFEE',17,17);
+  add('POT',18,17);
+  add('SOFA_FRONT',20,17);
+  add('PLANT_2',22,17);
+
+  add('SMALL_PAINTING_2',24,10);
+  add('WHITEBOARD',26,10);
+  add('DESK_FRONT',24,11);
+  add('PC_FRONT_ON_1',25,11);
+  add('CUSHIONED_CHAIR_BACK',25,13);
+  add('DESK_FRONT',25,15);
+  add('PC_FRONT_ON_1',25,15);
+  add('PC_FRONT_ON_1',27,15);
+  add('CUSHIONED_CHAIR_BACK',25,17);
+  add('CUSHIONED_CHAIR_BACK',27,17);
+  add('BIN',28,18);
+  add('CACTUS',24,17);
+
+  return {version:1,cols,rows,layoutRevision:3,tiles,furniture,tileColors:[]};
+}
+
+class PixelOfficeCanvas{
+  constructor(canvas){
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.layout = null;
+    this.tileMap = [];
+    this.cropTopRows = 0;
+    this.labelLayer = document.getElementById('office-label-layer');
+    this.toolLayer = document.getElementById('office-tool-layer');
+    this.zoneLayer = document.getElementById('office-zone-label-layer');
+    this.taskLayer = document.getElementById('office-task-layer');
+    this.orgLinesSvg = document.getElementById('office-org-lines');
+    this.labels = {};
+    this.toolBadges = {};
+    this.zoneLabels = [];
+    this.roomTaskEls = {};
+    this.roomTasks = {};
+    this.orgLines = [];
+    this.floorImages = {};
+    this.furnitureImages = {};
+    this.characterImages = {};
+    this.agents = {};
+    this.blocked = new Set();
+    this.connections = [];
+    this.ready = false;
+    this.lastTs = 0;
+    this.canvas.addEventListener('click', event => this.handleCanvasClick(event));
+  }
+
+  async init(){
+    this.layout = createWhaleOfficeLayout();
+    this.canvas.width = this.layout.cols * CANVAS_TILE;
+    this.canvas.height = (this.layout.rows - this.cropTopRows) * CANVAS_TILE;
+    this.tileMap = [];
+    for(let r=0;r<this.layout.rows;r++){
+      this.tileMap.push(this.layout.tiles.slice(r*this.layout.cols,(r+1)*this.layout.cols));
+    }
+    await this.loadAssets();
+    this.buildBlockedTiles();
+    this.createAgents();
+    this.createLabels();
+    this.createToolBadges();
+    this.createZoneLabels();
+    this.createRoomTasks();
+    this.createOrgLines();
+    this.ready = true;
+    requestAnimationFrame(ts => this.loop(ts));
+  }
+
+  async loadAssets(){
+    const floorIds = [...new Set(this.layout.tiles.filter(t => t > 0 && t < 255))];
+    await Promise.all(floorIds.map(async id => {
+      this.floorImages[id] = await loadImage(staticAssetBase() + 'pixel-agents/assets/floors/floor_' + (id - 1) + '.png');
+    }));
+    const furnitureTypes = [...new Set(this.layout.furniture.map(f => f.type))];
+    await Promise.all(furnitureTypes.map(async type => {
+      this.furnitureImages[type] = await loadImage(furniturePath(type));
+    }));
+    const spriteIds = [...new Set(Object.values(AGENTS).map(a => (a.spriteId - 1) % 6))];
+    await Promise.all(spriteIds.map(async idx => {
+      this.characterImages[idx] = await loadImage(staticAssetBase() + 'pixel-agents/assets/characters/char_' + idx + '.png');
+    }));
+  }
+
+  buildBlockedTiles(){
+    this.blocked.clear();
+    this.layout.furniture.forEach(item => {
+      const base = furnitureBaseType(item.type);
+      const meta = FURNITURE_META[base];
+      if(!meta || meta.surface || meta.wall)return;
+      for(let dr=meta.bg || 0;dr<meta.h;dr++){
+        for(let dc=0;dc<meta.w;dc++){
+          this.blocked.add(tileKey(item.col + dc,item.row + dr));
+        }
+      }
+    });
+  }
+
+  createAgents(){
+    Object.keys(AGENTS).forEach((key, idx) => {
+      const seat = CANVAS_AGENT_SEATS[key] || {col:2 + idx,row:14,dir:'D'};
+      const p = tileCenter(seat);
+      this.agents[key] = {
+        key, seat, targetSeat:seat, col:seat.col, row:seat.row,
+        x:p.x, y:p.y, dir:seat.dir || 'D', path:[], moveProgress:0,
+        toolMode:'idle', officeState:'idle', status:'idle',
+        frame:1, frameTimer:0, walkFrame:1, active:false,
+        idleTimer:6 + Math.random() * 12, returnTimer:0,
+        bubble:null
+      };
+    });
+  }
+
+  createLabels(){
+    if(!this.labelLayer)return;
+    this.labelLayer.innerHTML = '';
+    Object.keys(this.agents).forEach(key => {
+      const label = document.createElement('div');
+      label.className = 'office-agent-label' + (CANVAS_MANAGER_KEYS.has(key) ? ' manager' : '');
+      label.textContent = CANVAS_AGENT_LABELS[key] || AGENTS[key]?.name || key;
+      label.title = AGENTS[key]?.name || key;
+      label.dataset.agentId = key;
+      label.addEventListener('click', event => {
+        event.stopPropagation();
+        openSessionInspector(key);
+      });
+      this.labelLayer.appendChild(label);
+      this.labels[key] = label;
+    });
+  }
+
+  createToolBadges(){
+    if(!this.toolLayer)return;
+    this.toolLayer.innerHTML = '';
+    Object.keys(this.agents).forEach(key => {
+      const badge = document.createElement('div');
+      badge.className = 'office-tool-badge';
+      badge.textContent = 'Idle';
+      this.toolLayer.appendChild(badge);
+      this.toolBadges[key] = badge;
+    });
+  }
+
+  createZoneLabels(){
+    if(!this.zoneLayer)return;
+    this.zoneLayer.innerHTML = '';
+    this.zoneLabels = CANVAS_ZONE_LABELS.map(item => {
+      const label = document.createElement('div');
+      label.className = 'office-zone-label';
+      label.textContent = item.label;
+      this.zoneLayer.appendChild(label);
+      return {...item, el:label};
+    });
+  }
+
+  createRoomTasks(){
+    if(!this.taskLayer)return;
+    this.taskLayer.innerHTML = '';
+    this.roomTaskEls = {};
+    Object.keys(CANVAS_ROOM_TASK_POSITIONS).forEach(room => {
+      const card = document.createElement('div');
+      card.className = 'office-room-task';
+      card.innerHTML =
+        '<div class="task-top"><span class="task-agent"></span><span class="task-mode"></span></div>' +
+        '<div class="task-phase"></div>' +
+        '<div class="task-snippet"></div>';
+      this.taskLayer.appendChild(card);
+      this.roomTaskEls[room] = {
+        el:card,
+        agentEl:card.querySelector('.task-agent'),
+        modeEl:card.querySelector('.task-mode'),
+        phaseEl:card.querySelector('.task-phase'),
+        snippetEl:card.querySelector('.task-snippet')
+      };
+    });
+  }
+
+  createOrgLines(){
+    if(!this.orgLinesSvg)return;
+    this.orgLinesSvg.innerHTML = '';
+    this.orgLines = CANVAS_ORG_LINES.map(item => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('class','office-org-line ' + (item.tone || ''));
+      this.orgLinesSvg.appendChild(line);
+      return {...item, el:line};
+    });
+  }
+
+  setAgentState(key, data){
+    const a = this.agents[key];
+    if(!a)return;
+    a.status = data.status || 'idle';
+    a.officeState = normalizeOfficeState(data.officeState || data.office_state || 'idle');
+    a.toolMode = normalizeToolMode(data.toolMode || data.tool_mode || 'idle');
+    a.lastText = data.text || data.last_text || '';
+    a.phase = data.phase || data.last_phase || '';
+    a.active = a.officeState !== 'idle' || a.status === 'working' || a.status === 'waiting' || a.status === 'attention';
+    a.targetSeat = this.targetSeatForAgent(key,a);
+    if(a.active || this.distanceToSeat(a,a.targetSeat) > .2){
+      this.walkToSeat(a,a.targetSeat);
+    }
+    if(a.active){
+      this.setRoomTask(this.roomIdForAgentActivity(key,a), {
+        agent:key,
+        mode:a.toolMode,
+        phase:a.phase || officeStateLabel(a.officeState),
+        text:a.lastText,
+        tone:a.status,
+        route:taskRouteLabel(a.officeState,a.toolMode)
+      });
+    }
+  }
+
+  roomIdForAgentActivity(key,a){
+    if(a.officeState === 'error' || a.status === 'attention')return 'incident';
+    if(a.toolMode === 'waiting' || a.officeState === 'syncing')return 'meeting';
+    return teamForAgent(key);
+  }
+
+  setRoomTask(room,data){
+    if(!room || !this.roomTaskEls[room])return;
+    this.roomTasks[room] = {
+      ...data,
+      until:performance.now() + (data.tone === 'attention' ? 12000 : 9000)
+    };
+  }
+
+  targetSeatForAgent(key,a){
+    let seat = null;
+    if(a.officeState === 'error'){
+      seat = this.seatFromList(CANVAS_INCIDENT_SEATS,key);
+    }else if(a.toolMode === 'waiting' || a.officeState === 'syncing'){
+      seat = this.seatFromList(CANVAS_MEETING_SEATS,key);
+    }else if(a.toolMode === 'reading' || a.toolMode === 'searching'){
+      seat = this.workSeatForAgent(key) || a.seat;
+    }else{
+      seat = CANVAS_AGENT_SEATS[key] || a.seat;
+    }
+    return this.resolveSeatConflict(key,seat);
+  }
+
+  seatFromList(seats,key){
+    if(!seats || !seats.length)return CANVAS_AGENT_SEATS[key] || this.agents[key]?.seat;
+    return seats[canvasAgentOrderIndex(key) % seats.length];
+  }
+
+  workSeatForAgent(key){
+    const team = teamForAgent(key);
+    const seats = CANVAS_WORK_SEATS_BY_TEAM[team] || [];
+    if(!seats.length)return CANVAS_AGENT_SEATS[key] || this.agents[key]?.seat;
+    const teamKeys = CANVAS_AGENT_ORDER.filter(agentKey => teamForAgent(agentKey) === team);
+    const idx = teamKeys.indexOf(key);
+    return seats[(idx === -1 ? canvasAgentOrderIndex(key) : idx) % seats.length];
+  }
+
+  seatTakenByOther(key,seat){
+    if(!seat)return false;
+    return Object.values(this.agents).some(other => {
+      if(!other || other.key === key || !other.active || !other.targetSeat)return false;
+      return other.targetSeat.col === seat.col && other.targetSeat.row === seat.row;
+    });
+  }
+
+  resolveSeatConflict(key,seat){
+    if(!seat || !this.seatTakenByOther(key,seat))return seat;
+    const offsets = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1],[2,0],[-2,0],[0,2],[0,-2]];
+    for(const [dc,dr] of offsets){
+      const candidate = {col:seat.col + dc,row:seat.row + dr,dir:seat.dir};
+      if(!this.isWalkable(candidate.col,candidate.row,null))continue;
+      if(!this.seatTakenByOther(key,candidate))return candidate;
+    }
+    return seat;
+  }
+
+  showBubble(key, text, duration){
+    const a = this.agents[key];
+    if(!a)return;
+    a.bubble = {text, until:performance.now() + (duration || 3000)};
+  }
+
+  showConnection(from,to,duration){
+    const a = this.agents[from], b = this.agents[to];
+    if(!a || !b)return;
+    const now = performance.now();
+    const life = duration || 3500;
+    this.connections.push({
+      from,
+      to,
+      started:now,
+      duration:life,
+      until:now + life,
+      color:AGENTS[from]?.color || '#60a5fa'
+    });
+  }
+
+  distanceToSeat(a, seat){
+    return Math.abs(a.col - seat.col) + Math.abs(a.row - seat.row);
+  }
+
+  walkToSeat(agent, seat){
+    if(agent.path.length && agent.targetSeat?.col === seat.col && agent.targetSeat?.row === seat.row)return;
+    const path = this.findPath(Math.round(agent.col),Math.round(agent.row),seat.col,seat.row);
+    agent.path = path;
+    agent.targetSeat = seat;
+  }
+
+  isWalkable(col,row,target){
+    if(col < 0 || row < 0 || col >= this.layout.cols || row >= this.layout.rows)return false;
+    if(target && target.col === col && target.row === row)return true;
+    const tile = this.tileMap[row]?.[col];
+    if(!tile || tile === 255)return false;
+    return !this.blocked.has(tileKey(col,row));
+  }
+
+  findPath(sc,sr,tc,tr){
+    const target = {col:tc,row:tr};
+    const q = [{col:sc,row:sr}];
+    const prev = new Map([[tileKey(sc,sr),null]]);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while(q.length){
+      const cur = q.shift();
+      if(cur.col === tc && cur.row === tr)break;
+      for(const [dc,dr] of dirs){
+        const nc = cur.col + dc, nr = cur.row + dr, k = tileKey(nc,nr);
+        if(prev.has(k) || !this.isWalkable(nc,nr,target))continue;
+        prev.set(k,cur);
+        q.push({col:nc,row:nr});
+      }
+    }
+    const endKey = tileKey(tc,tr);
+    if(!prev.has(endKey))return [];
+    const path = [];
+    let cur = {col:tc,row:tr};
+    while(cur && !(cur.col === sc && cur.row === sr)){
+      path.unshift(cur);
+      cur = prev.get(tileKey(cur.col,cur.row));
+    }
+    return path;
+  }
+
+  loop(ts){
+    const dt = this.lastTs ? Math.min(.05,(ts - this.lastTs) / 1000) : .016;
+    this.lastTs = ts;
+    this.update(dt);
+    this.draw();
+    requestAnimationFrame(next => this.loop(next));
+  }
+
+  update(dt){
+    Object.values(this.agents).forEach(a => this.updateAgent(a,dt));
+    const now = performance.now();
+    this.connections = this.connections.filter(c => c.until > now);
+  }
+
+  updateAgent(a,dt){
+    a.frameTimer += dt;
+    const walking = a.path.length > 0;
+    if(walking){
+      if(a.frameTimer > .14){
+        a.frameTimer = 0;
+        a.walkFrame = (a.walkFrame % 4) + 1;
+      }
+      const next = a.path[0];
+      const tx = next.col * CANVAS_TILE + CANVAS_TILE / 2;
+      const ty = next.row * CANVAS_TILE + CANVAS_TILE;
+      const dx = tx - a.x;
+      const dy = ty - a.y;
+      const dist = Math.hypot(dx,dy);
+      const speedPx = 38 * dt;
+      if(Math.abs(dx) > Math.abs(dy))a.dir = dx > 0 ? 'R' : 'L';
+      else if(Math.abs(dy) > .1)a.dir = dy > 0 ? 'D' : 'U';
+      if(dist <= speedPx){
+        a.x = tx;a.y = ty;a.col = next.col;a.row = next.row;a.path.shift();
+        if(!a.path.length && a.targetSeat?.dir)a.dir = a.targetSeat.dir;
+      }else{
+        a.x += dx / dist * speedPx;
+        a.y += dy / dist * speedPx;
+      }
+      return;
+    }
+
+    if(a.active){
+      if(a.frameTimer > (a.toolMode === 'waiting' ? .46 : .24)){
+        a.frameTimer = 0;
+        a.frame = a.frame === 4 ? 5 : 4;
+        if(a.toolMode === 'reading' || a.toolMode === 'searching' || a.toolMode === 'waiting'){
+          a.frame = a.frame === 6 ? 7 : 6;
+        }
+      }
+      return;
+    }
+
+    a.frame = 1;
+    a.idleTimer -= dt;
+    if(a.idleTimer <= 0){
+      const points = CANVAS_WANDER_BY_TEAM[teamForAgent(a.key)] || [];
+      const point = points[Math.floor(Math.random() * points.length)];
+      if(point && Math.random() < .12){
+        a.path = this.findPath(Math.round(a.col),Math.round(a.row),point.col,point.row);
+        a.returnTimer = .8 + Math.random() * 1.4;
+      }else{
+        const dirs = ['D','U','R','L'];
+        a.dir = dirs[Math.floor(Math.random() * dirs.length)];
+      }
+      a.idleTimer = 18 + Math.random() * 24;
+    }
+    if(!a.path.length && a.returnTimer > 0){
+      a.returnTimer -= dt;
+      if(a.returnTimer <= 0)this.walkToSeat(a,a.seat);
+    }
+  }
+
+  draw(){
+    const ctx = this.ctx;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+    ctx.save();
+    ctx.translate(0,-this.cropTopRows * CANVAS_TILE);
+    this.drawTiles(ctx);
+    this.drawRoomHighlights(ctx);
+    this.drawAgentRoutes(ctx);
+    this.drawConnections(ctx);
+    const drawables = [];
+    this.layout.furniture.forEach(item => {
+      const img = this.furnitureImages[item.type];
+      if(!img)return;
+      const base = furnitureBaseType(item.type);
+      const meta = FURNITURE_META[base] || {};
+      const x = item.col * CANVAS_TILE;
+      const y = item.row * CANVAS_TILE;
+      const z = meta.cat === 'chairs'
+        ? (item.row + Math.max(1,meta.h || 1)) * CANVAS_TILE + .25
+        : y + img.height;
+      drawables.push({z,draw:() => this.drawFurniture(ctx,item,img,x,y)});
+    });
+    Object.values(this.agents).forEach(a => {
+      drawables.push({z:a.y + 4,draw:() => this.drawAgent(ctx,a)});
+    });
+    drawables.sort((a,b) => a.z - b.z);
+    drawables.forEach(d => d.draw());
+    this.drawBubbles(ctx);
+    ctx.restore();
+    this.updateLabels();
+    this.updateToolBadges();
+    this.updateZoneLabels();
+    this.updateRoomTasks();
+    this.updateOrgLines();
+  }
+
+  drawTiles(ctx){
+    for(let r=0;r<this.layout.rows;r++){
+      for(let c=0;c<this.layout.cols;c++){
+        const tile = this.tileMap[r][c];
+        const x = c * CANVAS_TILE, y = r * CANVAS_TILE;
+        if(tile === 255){
+          ctx.fillStyle = '#0b0e16';
+          ctx.fillRect(x,y,CANVAS_TILE,CANVAS_TILE);
+        }else if(tile === 0){
+          ctx.fillStyle = '#263143';
+          ctx.fillRect(x,y,CANVAS_TILE,CANVAS_TILE);
+          ctx.fillStyle = 'rgba(11,14,22,.24)';
+          ctx.fillRect(x,y + CANVAS_TILE - 3,CANVAS_TILE,3);
+        }else{
+          const img = this.floorImages[tile];
+          if(img)ctx.drawImage(img,x,y,CANVAS_TILE,CANVAS_TILE);
+          else{
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(x,y,CANVAS_TILE,CANVAS_TILE);
+          }
+        }
+      }
+    }
+  }
+
+  drawRoomHighlights(ctx){
+    const now = performance.now();
+    Object.entries(CANVAS_ROOM_BOUNDS).forEach(([room,bounds]) => {
+      const task = this.roomTasks[room];
+      if(!task || task.until < now)return;
+      const x = bounds.col * CANVAS_TILE;
+      const y = bounds.row * CANVAS_TILE;
+      const w = bounds.w * CANVAS_TILE;
+      const h = bounds.h * CANVAS_TILE;
+      ctx.save();
+      ctx.globalAlpha = .18;
+      ctx.fillStyle = bounds.color;
+      ctx.fillRect(x + 2,y + 2,w - 4,h - 4);
+      ctx.globalAlpha = .8;
+      ctx.strokeStyle = bounds.color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 2.5,y + 2.5,w - 5,h - 5);
+      ctx.globalAlpha = .55;
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 5.5,y + 5.5,w - 11,h - 11);
+      ctx.restore();
+    });
+  }
+
+  routeColor(mode){
+    const key = normalizeToolMode(mode || 'idle');
+    if(key === 'waiting')return '#f87171';
+    if(key === 'running')return '#fbbf24';
+    if(key === 'typing')return '#34d399';
+    if(key === 'searching' || key === 'reading')return '#60a5fa';
+    return '#e2e8f0';
+  }
+
+  drawAgentRoutes(ctx){
+    const now = performance.now();
+    Object.values(this.agents).forEach(a => {
+      if(!a.active || !a.path.length)return;
+      const color = this.routeColor(a.toolMode);
+      ctx.save();
+      ctx.globalAlpha = .62;
+      a.path.slice(0,12).forEach((step,idx) => {
+        if(idx > 0 && idx % 2 === 0)return;
+        const x = step.col * CANVAS_TILE + 7;
+        const y = step.row * CANVAS_TILE + 8;
+        ctx.fillStyle = ((Math.floor(now / 180) + idx) % 2) ? color : '#f8fafc';
+        ctx.fillRect(x,y,3,3);
+        ctx.fillStyle = '#05070d';
+        ctx.fillRect(x + 1,y + 1,1,1);
+      });
+      ctx.restore();
+    });
+  }
+
+  drawFurniture(ctx,item,img,x,y){
+    const mirrored = item.type.includes(':left');
+    if(mirrored){
+      ctx.save();
+      ctx.translate(x + img.width,y);
+      ctx.scale(-1,1);
+      ctx.drawImage(img,0,0);
+      ctx.restore();
+    }else{
+      ctx.drawImage(img,x,y);
+    }
+  }
+
+  frameForAgent(a){
+    if(a.path.length)return a.walkFrame - 1;
+    if(a.active){
+      if(a.toolMode === 'reading' || a.toolMode === 'searching' || a.toolMode === 'waiting')return a.frame === 7 ? 6 : 5;
+      if(a.toolMode === 'typing' || a.toolMode === 'running')return a.frame === 5 ? 4 : 3;
+      return 1;
+    }
+    return 1;
+  }
+
+  drawAgentMarker(ctx,a){
+    const x = Math.round(a.x - 7);
+    const y = Math.round(a.y - 3);
+    ctx.fillStyle = 'rgba(5,7,13,.72)';
+    ctx.fillRect(x,y,14,3);
+    if(a.active){
+      ctx.fillStyle = AGENTS[a.key]?.color || '#f8fafc';
+      ctx.fillRect(x + 1,y,12,2);
+    }
+    if(CANVAS_MANAGER_KEYS.has(a.key)){
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(x + 4,y - 3,6,2);
+      ctx.fillStyle = '#05070d';
+      ctx.fillRect(x + 6,y - 4,2,1);
+    }
+  }
+
+  drawAgent(ctx,a){
+    const agent = AGENTS[a.key];
+    const palette = (agent.spriteId - 1) % 6;
+    const img = this.characterImages[palette];
+    if(!img)return;
+    const row = CANVAS_DIR_ROW[a.dir] ?? 0;
+    const frame = this.frameForAgent(a);
+    const sx = frame * 16, sy = row * 32;
+    const dx = Math.round(a.x - 8), dy = Math.round(a.y - 32);
+    this.drawAgentMarker(ctx,a);
+    if(a.dir === 'L'){
+      ctx.save();
+      ctx.translate(dx + 16,dy);
+      ctx.scale(-1,1);
+      ctx.drawImage(img,sx,sy,16,32,0,0,16,32);
+      ctx.restore();
+    }else{
+      ctx.drawImage(img,sx,sy,16,32,dx,dy,16,32);
+    }
+  }
+
+  drawAgentLabel(ctx,a,x,y){
+    const name = AGENTS[a.key].name;
+    ctx.font = '5px PixelAgents, monospace';
+    const w = Math.min(44,Math.max(18,ctx.measureText(name).width + 5));
+    const lx = Math.round(x + 8 - w / 2), ly = Math.round(y + 3);
+    ctx.fillStyle = '#0b0e16';
+    ctx.fillRect(lx,ly,w,7);
+    ctx.fillStyle = a.active ? (AGENTS[a.key].color || '#f8fafc') : '#dbe5f4';
+    ctx.fillText(name,lx + 2,ly + 5);
+  }
+
+  updateLabels(){
+    if(!this.labelLayer)return;
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const sceneRect = scene.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
+    Object.values(this.agents).forEach(a => {
+      const label = this.labels[a.key];
+      if(!label)return;
+      const x = canvasRect.left - sceneRect.left + a.x * scaleX;
+      const y = canvasRect.top - sceneRect.top + (a.y - this.cropTopRows * CANVAS_TILE + 3) * scaleY;
+      label.style.left = Math.round(x) + 'px';
+      label.style.top = Math.round(y) + 'px';
+      label.style.borderColor = a.active ? (AGENTS[a.key]?.color || '#05070d') : '#05070d';
+      label.classList.toggle('active', !!a.active);
+    });
+  }
+
+  updateToolBadges(){
+    if(!this.toolLayer)return;
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const sceneRect = scene.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
+    Object.values(this.agents).forEach(a => {
+      const badge = this.toolBadges[a.key];
+      if(!badge)return;
+      const mode = normalizeToolMode(a.toolMode || 'idle');
+      const visible = a.active && mode !== 'idle';
+      const x = canvasRect.left - sceneRect.left + a.x * scaleX;
+      const y = canvasRect.top - sceneRect.top + (a.y - this.cropTopRows * CANVAS_TILE - 34) * scaleY;
+      badge.style.left = Math.round(x) + 'px';
+      badge.style.top = Math.round(y) + 'px';
+      badge.textContent = toolModeIcon(mode);
+      badge.title = toolModeLabel(mode);
+      badge.className = 'office-tool-badge ' + mode + (visible ? ' active' : '');
+    });
+  }
+
+  handleCanvasClick(event){
+    if(!this.ready)return;
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY + this.cropTopRows * CANVAS_TILE;
+    let best = null;
+    let bestDist = Infinity;
+    Object.values(this.agents).forEach(a => {
+      const dx = a.x - x;
+      const dy = (a.y - 18) - y;
+      const d = Math.hypot(dx,dy);
+      if(d < bestDist && d < 20){
+        best = a;
+        bestDist = d;
+      }
+    });
+    if(best)openSessionInspector(best.key);
+  }
+
+  screenPointForTile(col,row){
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const sceneRect = scene.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
+    return {
+      x: canvasRect.left - sceneRect.left + (col * CANVAS_TILE + CANVAS_TILE / 2) * scaleX,
+      y: canvasRect.top - sceneRect.top + ((row - this.cropTopRows) * CANVAS_TILE + CANVAS_TILE / 2) * scaleY
+    };
+  }
+
+  screenPointForAgent(a){
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const sceneRect = scene.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
+    return {
+      x: canvasRect.left - sceneRect.left + a.x * scaleX,
+      y: canvasRect.top - sceneRect.top + (a.y - this.cropTopRows * CANVAS_TILE - 18) * scaleY
+    };
+  }
+
+  updateZoneLabels(){
+    if(!this.zoneLayer)return;
+    this.zoneLabels.forEach(item => {
+      const p = this.screenPointForTile(item.col,item.row);
+      const activeCount = this.zoneActivityCount(item);
+      const owner = item.lead ? ' · ' + item.lead : '';
+      item.el.textContent = item.label + owner + (activeCount ? ' +' + activeCount : '');
+      item.el.classList.toggle('busy', activeCount > 0);
+      item.el.style.left = Math.round(p.x) + 'px';
+      item.el.style.top = Math.round(p.y) + 'px';
+    });
+  }
+
+  updateRoomTasks(){
+    if(!this.taskLayer)return;
+    const now = performance.now();
+    Object.entries(this.roomTaskEls).forEach(([room, item]) => {
+      const pos = CANVAS_ROOM_TASK_POSITIONS[room];
+      const p = this.screenPointForTile(pos.col,pos.row);
+      const task = this.roomTasks[room];
+      if(task && task.until < now)delete this.roomTasks[room];
+      const activeTask = this.roomTasks[room];
+      item.el.style.left = Math.round(p.x) + 'px';
+      item.el.style.top = Math.round(p.y) + 'px';
+      ['running','waiting','attention','reading','searching','typing'].forEach(cls => item.el.classList.remove(cls));
+      item.el.classList.toggle('visible', !!activeTask);
+      if(!activeTask)return;
+      const agent = AGENTS[activeTask.agent] || {};
+      const taskTone = activeTask.tone === 'attention' ? 'attention' : normalizeToolMode(activeTask.mode || 'idle');
+      if(['running','waiting','attention','reading','searching','typing'].includes(taskTone)){
+        item.el.classList.add(taskTone);
+      }
+      item.agentEl.textContent = CANVAS_AGENT_LABELS[activeTask.agent] || agent.name || activeTask.agent || 'Agent';
+      item.modeEl.textContent = toolModeIcon(activeTask.mode || 'idle');
+      item.phaseEl.textContent = activeTask.route || activeTask.phase || 'Working';
+      item.snippetEl.textContent = activeTask.text || officeAreaLabel(activeTask.agent, 'idle');
+    });
+  }
+
+  zoneActivityCount(item){
+    const agents = Object.values(this.agents);
+    if(item.team){
+      return agents.filter(a => a.active && teamForAgent(a.key) === item.team).length;
+    }
+    if(item.kind === 'meeting'){
+      return agents.filter(a => a.active && (a.toolMode === 'waiting' || a.officeState === 'syncing')).length;
+    }
+    if(item.kind === 'incident'){
+      return agents.filter(a => a.officeState === 'error' || a.status === 'attention').length;
+    }
+    return 0;
+  }
+
+  updateOrgLines(){
+    if(!this.orgLinesSvg)return;
+    const sceneRect = scene.getBoundingClientRect();
+    this.orgLinesSvg.setAttribute('viewBox','0 0 ' + Math.round(sceneRect.width) + ' ' + Math.round(sceneRect.height));
+    this.orgLines.forEach(item => {
+      const from = this.agents[item.from], to = this.agents[item.to];
+      if(!from || !to)return;
+      const a = this.screenPointForAgent(from);
+      const b = this.screenPointForAgent(to);
+      item.el.setAttribute('x1',Math.round(a.x));
+      item.el.setAttribute('y1',Math.round(a.y));
+      item.el.setAttribute('x2',Math.round(b.x));
+      item.el.setAttribute('y2',Math.round(b.y));
+      item.el.style.opacity = (from.active || to.active) ? '.8' : '.34';
+    });
+  }
+
+  drawBubbles(ctx){
+    const now = performance.now();
+    Object.values(this.agents).forEach(a => {
+      if(!a.bubble || a.bubble.until <= now){
+        a.bubble = null;return;
+      }
+      const text = a.bubble.text || '';
+      ctx.font = '6px PixelAgents, monospace';
+      const label = text.length > 28 ? text.slice(0,28) + '...' : text;
+      const w = Math.min(96,Math.max(42,ctx.measureText(label).width + 10));
+      const x = Math.max(2,Math.min(this.canvas.width - w - 2,Math.round(a.x - w / 2)));
+      const y = Math.max(8,Math.round(a.y - 46));
+      ctx.fillStyle = '#0b0e16';ctx.fillRect(x - 2,y - 2,w + 4,17);
+      ctx.fillStyle = '#f8fafc';ctx.fillRect(x,y,w,13);
+      ctx.fillStyle = '#111827';ctx.fillText(label,x + 4,y + 9);
+      ctx.fillStyle = '#f8fafc';ctx.fillRect(Math.round(a.x),y + 13,3,3);
+    });
+  }
+
+  drawConnections(ctx){
+    const now = performance.now();
+    this.connections.forEach(c => {
+      const a = this.agents[c.from], b = this.agents[c.to];
+      if(!a || !b)return;
+      const duration = c.duration || 3000;
+      const remaining = Math.max(0,Math.min(1,(c.until - now) / duration));
+      const progress = Math.max(0,Math.min(1,(now - (c.started || (c.until - duration))) / duration));
+      const ax = a.x, ay = a.y - 18, bx = b.x, by = b.y - 18;
+      const mx = ax + (bx - ax) * progress;
+      const my = ay + (by - ay) * progress;
+      ctx.save();
+      ctx.globalAlpha = .35 + .45 * remaining;
+      ctx.strokeStyle = c.color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4,3]);
+      ctx.lineDashOffset = -now / 90;
+      ctx.beginPath();
+      ctx.moveTo(ax,ay);
+      ctx.lineTo(bx,by);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      ctx.globalAlpha = .95;
+      ctx.fillStyle = '#05070d';
+      ctx.fillRect(Math.round(mx - 4),Math.round(my - 4),8,8);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(Math.round(mx - 2),Math.round(my - 2),4,4);
+
+      const angle = Math.atan2(by - ay,bx - ax);
+      ctx.translate(mx,my);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(6,0);
+      ctx.lineTo(1,-3);
+      ctx.lineTo(1,3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+}
+
+let canvasOffice = null;
+
+function characterSheetPath(id) {
+  const spriteId = Math.max(1, parseInt(id, 10) || 1);
+  const palette = (spriteId - 1) % 6;
+  return staticAssetBase() + 'pixel-agents/assets/characters/char_' + palette + '.png';
+}
+
+function spriteFrameMeta(dir, frame) {
+  const rowByDir = {D:0, U:1, R:2, L:2};
+  return {
+    col: Math.max(0, Math.min(6, (frame || 1) - 1)),
+    row: rowByDir[dir] ?? 0,
+    flip: dir === 'L'
+  };
+}
+
+function setSpriteFrame(key, dir, frame) {
+  const s = agentsState[key];
+  if(!s)return;
+  const meta = spriteFrameMeta(dir, frame);
+  s.spriteEl.style.backgroundImage = 'url(' + characterSheetPath(AGENTS[key].spriteId) + ')';
+  s.spriteEl.style.backgroundPosition = '-' + (meta.col * 32) + 'px -' + (meta.row * 64) + 'px';
+  s.spriteEl.style.scale = meta.flip ? '-1 1' : '1 1';
+}
+
+function clearToolAnim(key) {
+  const s = agentsState[key];
+  if(!s)return;
+  if(s.toolTimer){
+    clearInterval(s.toolTimer);
+    s.toolTimer = null;
+  }
+}
+
+function toolFrames(mode) {
+  const next = normalizeToolMode(mode);
+  if(next === 'typing' || next === 'running')return [4,5];
+  if(next === 'reading' || next === 'searching' || next === 'waiting')return [6,7];
+  if(next === 'thinking')return [1,2];
+  return [1];
+}
+
+function facingDirForMode(key, mode) {
+  if(normalizeOfficeState(agentOfficeState[key] || 'idle') === 'error')return 'D';
+  return normalizeToolMode(mode) === 'idle' ? 'D' : 'U';
+}
+
+function startToolAnim(key, mode) {
+  const s = agentsState[key];
+  if(!s)return;
+  s.toolMode = normalizeToolMode(mode);
+  clearToolAnim(key);
+  if(s.walkTimer)return;
+  const frames = toolFrames(s.toolMode);
+  const faceDir = facingDirForMode(key, s.toolMode);
+  s.dir = faceDir;
+  let idx = 0;
+  setSpriteFrame(key, faceDir, frames[idx]);
+  if(frames.length < 2)return;
+  const interval = s.toolMode === 'waiting' ? 460 : 260;
+  s.toolTimer = setInterval(() => {
+    idx = (idx + 1) % frames.length;
+    setSpriteFrame(key, faceDir, frames[idx]);
+  }, interval);
+}
+
+function createAgentEl(key) {
+  const a = AGENTS[key];
+  const div = document.createElement('div');
+  div.className = 'agent idle state-idle';
+  div.id = 'agent-' + key;
+  div.style.left = a.homeX + 'px';
+  div.style.top = a.homeY + 'px';
+
+  const spriteDiv = document.createElement('div');
+  spriteDiv.className = 'agent-sprite';
+  spriteDiv.style.backgroundImage = 'url(' + characterSheetPath(a.spriteId) + ')';
+
+  const statusDot = document.createElement('div');
+  statusDot.className = 'agent-status';
+
+  const actionTag = document.createElement('div');
+  actionTag.className = 'agent-action';
+  actionTag.textContent = '•';
+
+  const tag = document.createElement('div');
+  tag.className = 'agent-tag';
+  tag.textContent = a.name;
+
+  const roleTag = document.createElement('div');
+  roleTag.className = 'agent-role-tag';
+  roleTag.textContent = a.role;
+
+  div.appendChild(statusDot);
+  div.appendChild(actionTag);
+  div.appendChild(spriteDiv);
+  div.appendChild(tag);
+  div.appendChild(roleTag);
+  scene.appendChild(div);
+
+  agentsState[key] = {
+    el: div,
+    spriteEl: spriteDiv,
+    x: a.homeX,
+    y: a.homeY,
+    dir: 'D',
+    frame: 1,
+    walkTimer: null,
+    moveTimer: null,
+    moveToken: 0,
+    toolTimer: null,
+    toolMode: 'idle',
+    bubble: null,
+    actionEl: actionTag
+  };
+  agentOfficeState[key] = 'idle';
+  setSpriteFrame(key, 'D', 1);
+  setAgentStatus(key, 'idle');
+  setAgentToolMode(key, 'idle');
+}
+
+// ── Sprite Frame Animation ───────────────────
+function startWalkAnim(key) {
+  const s = agentsState[key];
+  if (!s || s.walkTimer) return;
+  clearToolAnim(key);
+  let frame = 1;
+  s.walkTimer = setInterval(() => {
+    frame = (frame % 3) + 1;
+    setSpriteFrame(key, s.dir, frame);
+  }, 150);
+}
+
+function stopWalkAnim(key) {
+  const s = agentsState[key];
+  if (!s) return;
+  if (s.walkTimer) { clearInterval(s.walkTimer); s.walkTimer = null; }
+  s.dir = facingDirForMode(key, s.toolMode || 'idle');
+  setSpriteFrame(key, s.dir, 1);
+  startToolAnim(key, s.toolMode || 'idle');
+}
+
+// ── Movement ─────────────────────────────────
+function buildWalkPath(fromX, fromY, toX, toY){
+  const path = [];
+  let x = Math.round(fromX);
+  let y = Math.round(fromY);
+  const tx = Math.round(toX);
+  const ty = Math.round(toY);
+  const horizontalFirst = Math.abs(tx - x) >= Math.abs(ty - y);
+  const addAxis = (axis) => {
+    if(axis === 'x'){
+      while(Math.abs(tx - x) > 1){
+        x += Math.sign(tx - x) * Math.min(WALK_STEP_PX, Math.abs(tx - x));
+        path.push({x,y});
+      }
+    }else{
+      while(Math.abs(ty - y) > 1){
+        y += Math.sign(ty - y) * Math.min(WALK_STEP_PX, Math.abs(ty - y));
+        path.push({x,y});
+      }
+    }
+  };
+  addAxis(horizontalFirst ? 'x' : 'y');
+  addAxis(horizontalFirst ? 'y' : 'x');
+  if(!path.length || path[path.length - 1].x !== tx || path[path.length - 1].y !== ty){
+    path.push({x:tx,y:ty});
+  }
+  return path;
+}
+
+function moveAgent(key, x, y, callback) {
+  const s = agentsState[key];
+  if (!s) return;
+  clearMove(key);
+  const token = s.moveToken;
+  const path = buildWalkPath(s.x, s.y, x, y);
+  if(!path.length){
+    if(callback)callback();
+    return;
+  }
+  setAgentMotion(key, 'walking');
+  startWalkAnim(key);
+
+  function step(i){
+    if(s.moveToken !== token)return;
+    if(i >= path.length){
+      s.moveTimer = null;
+      stopWalkAnim(key);
+      setAgentMotion(key, 'idle');
+      s.dir = facingDirForMode(key, s.toolMode || 'idle');
+      setSpriteFrame(key, s.dir, 1);
+      startToolAnim(key, s.toolMode || 'idle');
+      if(callback)callback();
+      return;
+    }
+    const p = path[i];
+    const dx = p.x - s.x;
+    const dy = p.y - s.y;
+    if(Math.abs(dx) > Math.abs(dy)){
+      s.dir = dx > 0 ? 'R' : 'L';
+    }else if(Math.abs(dy) > 0){
+      s.dir = dy > 0 ? 'D' : 'U';
+    }
+    s.el.style.left = p.x + 'px';
+    s.el.style.top = p.y + 'px';
+    s.x = p.x;
+    s.y = p.y;
+    updateAgentDepth(key);
+    s.moveTimer = setTimeout(() => step(i + 1), WALK_STEP_MS);
+  }
+  step(0);
+}
+
+function roamAgent(key) {
+  const a = AGENTS[key];
+  const s = agentsState[key];
+  if (!a || !s) return;
+  if (isAgentBusy(key)) return;
+  const z = a.roamZone;
+  const nx = z.x1 + Math.random() * (z.x2 - z.x1 - 48);
+  const ny = z.y1 + Math.random() * (z.y2 - z.y1 - 80);
+  moveAgent(key, nx, ny);
+}
+
+function startAmbientOfficeLoop(){
+  if(canvasOffice)return;
+  setInterval(() => {
+    Object.keys(AGENTS).forEach(key => {
+      if(Math.random() > .18 || isAgentBusy(key))return;
+      const area = teamForAgent(key);
+      const points = AMBIENT_POINTS[area] || [];
+      if(!points.length)return;
+      const target = points[Math.floor(Math.random() * points.length)];
+      moveAgent(key, target.x, target.y, () => {
+        const s = agentsState[key];
+        if(!s)return;
+        s.moveTimer = setTimeout(() => {
+          s.moveTimer = null;
+          if(!isAgentBusy(key)){
+            const home = homeSlotForAgent(key);
+            moveAgent(key, home.x, home.y);
+          }
+        }, AMBIENT_RETURN_MS + Math.random() * 1600);
+      });
+    });
+  }, AMBIENT_WANDER_MS);
+}
+
+// ── Speech Bubble ────────────────────────────
+function showBubble(key, text, duration) {
+  if(canvasOffice)canvasOffice.showBubble(key, text, duration);
+  const s = agentsState[key];
+  if (!s) return;
+  removeBubble(key);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const senderSpan = document.createElement('span');
+  senderSpan.className = 'sender';
+  senderSpan.style.color = AGENTS[key].color;
+  senderSpan.textContent = AGENTS[key].name;
+  bubble.appendChild(senderSpan);
+  bubble.appendChild(document.createTextNode(text));
+  if(s.x < 120){
+    bubble.style.left = Math.max(0, 120 - s.x) + 'px';
+    bubble.style.transform = 'none';
+  }else if(s.x > 300){
+    bubble.style.left = 'auto';
+    bubble.style.right = '0';
+    bubble.style.transform = 'none';
+  }
+  s.el.appendChild(bubble);
+  s.bubble = bubble;
+
+  const dur = duration || 3000;
+  setTimeout(() => {
+    if (bubble.parentNode) {
+      bubble.classList.add('fadeout');
+      setTimeout(() => { if (bubble.parentNode) bubble.remove(); }, 500);
+    }
+    if (s.bubble === bubble) s.bubble = null;
+  }, dur);
+}
+
+function removeBubble(key) {
+  const s = agentsState[key];
+  if (!s || !s.bubble) return;
+  if (s.bubble.parentNode) s.bubble.remove();
+  s.bubble = null;
+}
+
+// ── Speaking Indicator ───────────────────────
+function setSpeaking(agentId, on) {
+  const s = agentsState[agentId];
+  if (!s) return;
+  if (on) {
+    // Clear other working states
+    Object.keys(agentsState).forEach(k => {
+      if (agentsState[k].el.classList.contains('working')) {
+        setAgentMotion(k, 'idle');
+        stopWalkAnim(k);
+      }
+    });
+    if (!s.el.classList.contains('walking')) setAgentMotion(agentId, 'working');
+  } else {
+    if (!s.el.classList.contains('walking')) setAgentMotion(agentId, 'idle');
+  }
+}
+
+// ── Connection Line (agent-to-agent) ─────────
+function showConnection(from, to, duration) {
+  if(canvasOffice)canvasOffice.showConnection(from, to, duration);
+  const s1 = agentsState[from], s2 = agentsState[to];
+  if (!s1 || !s2) return;
+
+  const x1 = s1.x + 17, y1 = s1.y + 27;
+  const x2 = s2.x + 17, y2 = s2.y + 27;
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+  line.style.stroke = AGENTS[from].color;
+  line.style.strokeWidth = '2.5';
+  line.style.strokeDasharray = '6 4';
+  line.style.animation = 'dashFlow .8s linear infinite';
+  line.style.filter = 'drop-shadow(0 0 4px ' + AGENTS[from].color + ')';
+  connSvg.appendChild(line);
+
+  setTimeout(() => { if (line.parentNode) line.remove(); }, duration || 4000);
+}
+
+speedSlider.addEventListener('input', e => {
+  speed = parseInt(e.target.value);
+  speedVal.textContent = speed;
+});
+
+// ── Typewriter Message ───────────────────────
+function addMessage(agentId, text, callback) {
+  const a = AGENTS[agentId];
+  if (!a) { if (callback) callback(); return; }
+
+  setSpeaking(agentId, true);
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'msg';
+
+  const avatarDiv = document.createElement('div');
+  avatarDiv.className = 'msg-avatar';
+  avatarDiv.style.borderColor = a.color;
+  avatarDiv.textContent = a.emoji;
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'msg-content ' + (a.msgType === 'user' ? 'user-msg' : 'assistant-msg');
+
+  const senderDiv = document.createElement('div');
+  senderDiv.className = 'msg-sender';
+  senderDiv.style.color = a.color;
+  senderDiv.innerHTML = a.name + ' <span style="font-weight:400;color:var(--text2);font-size:.7rem">' + a.role + '</span>';
+
+  const textDiv = document.createElement('div');
+  textDiv.className = 'msg-text';
+
+  const cursor = document.createElement('span');
+  cursor.className = 'typing-cursor';
+
+  const timeDiv = document.createElement('div');
+  timeDiv.className = 'msg-time';
+  const now = new Date();
+  timeDiv.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+  contentDiv.appendChild(senderDiv);
+  contentDiv.appendChild(textDiv);
+  contentDiv.appendChild(cursor);
+  contentDiv.appendChild(timeDiv);
+  msgDiv.appendChild(avatarDiv);
+  msgDiv.appendChild(contentDiv);
+  dialogBody.appendChild(msgDiv);
+
+  // Scroll to bottom
+  dialogBody.scrollTop = dialogBody.scrollHeight;
+
+  // Typewriter effect
+  if (speed === 0) {
+    textDiv.textContent = text;
+    cursor.remove();
+    setSpeaking(agentId, false);
+    if (callback) callback();
+    return;
+  }
+
+  const interval = Math.max(10, 150 - speed * 1.4);
+  let i = 0;
+
+  function typeChar() {
+    if (paused) {
+      const tid = setTimeout(typeChar, 200);
+      typewriterTimers.push(tid);
+      return;
+    }
+    if (i < text.length) {
+      textDiv.textContent = text.substring(0, i + 1);
+      i++;
+      dialogBody.scrollTop = dialogBody.scrollHeight;
+      const tid = setTimeout(typeChar, interval);
+      typewriterTimers.push(tid);
+    } else {
+      cursor.remove();
+      setSpeaking(agentId, false);
+      if (callback) callback();
+    }
+  }
+  typeChar();
+}
+
+// ── Scenarios ────────────────────────────────
+const scenarios = [
+  {
+    title: 'CEO chair whale alert chain',
+    steps: [
+      { agent:'ceo', officeState:'executing', toolMode:'running', phase:'Kickoff', text:'🏢 Whale Alert Chain 開始。各位請就位，我會負責 kickoff 同 wrap-up。' },
+      { connect:['ceo','sec-monitor'] },
+      { agent:'sec-monitor', officeState:'researching', toolMode:'searching', phase:'Scan filing', text:'📡 掃描 SEC filing，只交 raw signal、異常同 filing 資料。' },
+      { connect:['sec-monitor','cfo-hayek'] },
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'Finance readout', text:'💰 收到 filing signal。Hayek 會做財務解讀同投資建議，不會直接霸佔 screener engine。' },
+      { connect:['cfo-hayek','secretary-cc'] },
+      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Briefing', text:'📝 C.C. 整理 action brief，將結果用老闆睇得明嘅方式收口。' },
+      { connect:['secretary-cc','ceo'] },
+      { agent:'ceo', officeState:'syncing', toolMode:'running', phase:'Wrap-up', text:'✅ Chain wrap-up：完成就交俾老闆；有 escalation 就升上 Board。' },
+    ]
+  },
+  {
+    title: 'TG CFO cached VCP report',
+    steps: [
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'TG CFO report', text:'📨 Telegram CFO 回傳 latest VCP v4.1 cached report，Hayek 只負責讀取同總結。' },
+      { connect:['cfo-hayek','investment-analyst'] },
+      { agent:'investment-analyst', officeState:'researching', toolMode:'searching', phase:'SP500 scan', text:'🔍 VCP v4.1 Screen：Universe sp500，503/503 symbols 掃完；Finnhub daily candles，fundamentals Data Missing 不亂作。' },
+      { connect:['investment-analyst','investment-president'] },
+      { agent:'investment-president', officeState:'writing', toolMode:'reading', phase:'No candidate', text:'💼 Rank table 暫時冇 candidate；無 Triggered setup，所以 tactical tilt 不加倉。' },
+      { connect:['investment-president','cfo-hayek'] },
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'typing', phase:'暫不下單', text:'💰 CFO 結論：2026-05-03 18:26 HKT，min_price 20.00，暫時冇 candidate，暫不下單。' },
+    ]
+  },
+  {
+    title: 'Data control line',
+    steps: [
+      { agent:'dce', officeState:'researching', toolMode:'reading', phase:'Data check', text:'💾 DCE 做資料品質、retention、敏感資料暴露檢查，只向 C.C. 匯報。' },
+      { connect:['dce','secretary-cc'] },
+      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Follow-up', text:'👩‍💼 C.C. 接收 data-health 結果，整理成可執行 follow-up。' },
+      { connect:['secretary-cc','ceo'] },
+      { agent:'ceo', officeState:'writing', toolMode:'reading', phase:'Decision summary', text:'🏢 CEO 只收需要決策嘅 summary；DCE 唔再雙線直報 CEO。' },
+    ]
+  },
+  {
+    title: 'CIO alert path',
+    steps: [
+      { agent:'cio', officeState:'error', toolMode:'waiting', tone:'attention', phase:'Incident', text:'🔧 CIO 偵測 GitHub Actions / Supabase / secrets 風險，只講技術同營運修復。' },
+      { connect:['cio','ceo'] },
+      { agent:'ceo', officeState:'executing', toolMode:'waiting', phase:'Triage', text:'🏢 CEO 收 alert，判斷係咪要 board-facing commentary 或派工修復。' },
+      { connect:['ceo','cio'] },
+      { agent:'cio', officeState:'executing', toolMode:'running', phase:'Fix path', text:'🛠️ 收到 decision 後執行 safe deterministic fix 或開修復建議。' },
+    ]
+  },
+  {
+    title: 'Operations handoff',
+    steps: [
+      { agent:'ops-admin', officeState:'researching', toolMode:'searching', phase:'Admin scan', text:'🗂️ Ops Admin 檢查 renewal、文件到期、vendor follow-up。' },
+      { connect:['ops-admin','secretary-cc'] },
+      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Scheduling', text:'📋 有行政 follow-up 就 ping C.C.，由秘書安排提醒同日程。' },
+      { connect:['secretary-cc','cfo-hayek'] },
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'Finance gate', text:'💰 只有涉及 budget / payment / finance decision，先交 CFO 處理。' },
+    ]
+  },
+  {
+    title: 'CHO org review',
+    steps: [
+      { agent:'cho', officeState:'researching', toolMode:'reading', phase:'Org metrics', text:'📊 CHO 讀 agent_performance、chain_history、agent_messages，評估人同流程。' },
+      { connect:['cho','cio'] },
+      { agent:'cho', officeState:'writing', toolMode:'typing', phase:'Boundary review', text:'📈 技術問題交 CIO；人手、分工、overlap 先由 CHO 提 org review。' },
+      { connect:['cho','ceo'] },
+      { agent:'ceo', officeState:'executing', toolMode:'waiting', phase:'Org decision', text:'🏢 CEO 收組織建議，決定是否更新職責邊界或派工。' },
+    ]
+  },
+];
+
+function getStepDelay() {
+  if (speed === 0) return 500;
+  return Math.max(500, 3500 - speed * 30);
+}
+
+function renderTraceStrip(sc, activeIdx){
+  if(!traceStrip)return;
+  const nodes = sc.steps.filter(step => step.agent);
+  const scenarioNumber = scenarios.indexOf(sc) + 1;
+  const currentStep = Math.min(activeIdx + 1,nodes.length);
+  const handoffTotal = sc.steps.filter(step => step.connect).length;
+  const handoffDone = Math.min(activeIdx,handoffTotal);
+  if(activityDockFlow){
+    activityDockFlow.textContent = 'Flow ' + scenarioNumber + '/' + scenarios.length + ' · Step ' + currentStep + '/' + nodes.length;
+  }
+  queuedDockEntries = nodes.slice(activeIdx + 1,activeIdx + 4).map((step, idx) => ({
+    id:'next|' + scenarioNumber + '|' + activeIdx + '|' + idx + '|' + step.agent + '|' + step.phase,
+    source:'Next',
+    agent:step.agent,
+    phase:step.phase,
+    text:step.text || 'Queued next step',
+    mode:step.toolMode
+  }));
+  if(activityDockProgress)activityDockProgress.style.width = Math.round((currentStep / Math.max(1,nodes.length)) * 100) + '%';
+  if(activityDockMeta)activityDockMeta.textContent = 'Handoff ' + handoffDone + '/' + handoffTotal + ' · Q ' + queuedDockEntries.length;
+  renderActivityDock();
+  traceStrip.innerHTML = nodes.map((step, idx) => {
+    const a = participant(step.agent);
+    const state = idx < activeIdx ? 'done' : idx === activeIdx ? (step.tone === 'attention' ? 'attention active' : 'active') : '';
+    const label = step.phase || step.agent;
+    return '<div class="trace-node ' + state + '">' +
+      '<div class="tn-agent">' + a.emoji + ' ' + a.name + '</div>' +
+      '<div class="tn-phase">' + label + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function updateDemoAgentStatus(step){
+  if(!step || !step.agent)return;
+  const officeState = normalizeOfficeState(step.officeState || statusToOfficeState(step.tone === 'attention' ? 'attention' : 'working', step.msg_type, step.text));
+  const status = step.tone === 'attention' ? 'attention' : OFFICE_STATES[officeState].status;
+  const toolMode = normalizeToolMode(step.toolMode || inferToolMode(status, step.msg_type, step.text, officeState));
+  pushActivityDock({
+    source:'Replay',
+    agent:step.agent,
+    phase:step.phase,
+    text:step.text,
+    mode:toolMode
+  });
+  updateAgentCard(step.agent, {
+    status,
+    office_state: officeState,
+    last_tool_mode: toolMode,
+    phase: step.phase,
+    last_text: step.text,
+    pending: status === 'attention' ? 1 : 0
+  });
+  setTimeout(() => {
+    if(!liveMode)updateAgentCard(step.agent, {status:'recent', office_state:officeState, last_tool_mode:toolMode, phase:step.phase, last_text:step.text, pending:0});
+  }, 1800);
+  setTimeout(() => {
+    if(!liveMode)updateAgentCard(step.agent, {status:'idle', office_state:'idle', last_tool_mode:'idle', phase:step.phase, last_text:step.text, pending:0});
+  }, Math.max(4200, getStepDelay() + 2400));
+}
+
+function playScenario(idx) {
+  const sc = scenarios[idx % scenarios.length];
+  resetRunClock();
+  scenarioLabel.textContent = '▶ ' + sc.title + ' (' + ((idx % scenarios.length) + 1) + '/' + scenarios.length + ')';
+  if(!liveMode)setRuntimeMode('replay', 'Task routes light up. Idle stays near desks.', '0/' + AGENT_DEFS.length, 'Task-led');
+  renderTraceStrip(sc, 0);
+
+  let stepIdx = 0;
+  let messageIdx = 0;
+
+  function nextStep() {
+    if (paused) {
+      const tid = setTimeout(nextStep, 300);
+      typewriterTimers.push(tid);
+      return;
+    }
+    if (stepIdx >= sc.steps.length) {
+      const tid = setTimeout(() => {
+        currentScenario = (currentScenario + 1) % scenarios.length;
+        playScenario(currentScenario);
+      }, getStepDelay() * 2);
+      typewriterTimers.push(tid);
+      return;
+    }
+
+    const step = sc.steps[stepIdx];
+    stepIdx++;
+
+    if (step.connect) {
+      showConnection(step.connect[0], step.connect[1], getStepDelay() + 2000);
+      const tid = setTimeout(nextStep, 1200);
+      typewriterTimers.push(tid);
+    } else if (step.agent) {
+      renderTraceStrip(sc, messageIdx);
+      updateDemoAgentStatus(step);
+      messageIdx++;
+      // Show bubble on sprite agent (left panel)
+      const bubbleText = step.text.length > 32 ? step.text.substring(0, 32) + '...' : step.text;
+      showBubble(step.agent, bubbleText, getStepDelay() + 2000);
+
+      // Show typewriter message (right panel)
+      addMessage(step.agent, step.text, () => {
+        const tid = setTimeout(nextStep, getStepDelay());
+        typewriterTimers.push(tid);
+      });
+    }
+  }
+
+  nextStep();
+}
+
+// ── Controls ─────────────────────────────────
+document.getElementById('btn-pause').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? '▶ Play' : '⏸ Pause';
+  this.classList.toggle('active', paused);
+});
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  typewriterTimers.forEach(t => clearTimeout(t));
+  typewriterTimers = [];
+  // Clear working states
+  Object.keys(agentsState).forEach(k => {
+    clearMove(k);
+    setAgentMotion(k, 'idle');
+    stopWalkAnim(k);
+    removeBubble(k);
+  });
+  currentScenario = (currentScenario + 1) % scenarios.length;
+  playScenario(currentScenario);
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  dialogBody.innerHTML = '';
+});
+
+// ── Helpers ──────────────────────────────────
+function fmt(v){
+  if(v==null)return'-';
+  if(typeof v==='number')return v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toLocaleString();
+  return v;
+}
+function timeAgo(ts){
+  if(!ts)return'';
+  const d=new Date(ts),now=new Date(),s=Math.floor((now-d)/1000);
+  if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';
+}
+
+// ── Authenticated Fetch ──────────────────────
+const renderedApiKey='{{ api_key }}';
+const _apiKey = renderedApiKey.startsWith('{' + '{')
+  ? (new URLSearchParams(location.search).get('api_key') || 'test')
+  : renderedApiKey;
+const isLocalDashboardHost = ['localhost','127.0.0.1','0.0.0.0'].includes(location.hostname);
+const isDashboardApiHost = location.protocol === 'file:' || (isLocalDashboardHost && ['', '5050', '5053'].includes(location.port));
+const isStaticHostedDashboard = !isDashboardApiHost;
+const apiBase = location.protocol === 'file:' ? 'http://127.0.0.1:5050' : '';
+function delay(ms){return new Promise(resolve => setTimeout(resolve,ms))}
+async function apiFetch(url){
+  if(isStaticHostedDashboard){
+    throw new Error('Static dashboard demo has no live API');
+  }
+  const fullUrl = apiBase + url;
+  const requestUrl = apiBase
+    ? fullUrl + (fullUrl.includes('?') ? '&' : '?') + 'api_key=' + encodeURIComponent(_apiKey)
+    : url;
+  const requestOptions = apiBase ? undefined : {headers:{'X-API-Key':_apiKey}};
+  let lastError = null;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      return await fetch(requestUrl,requestOptions);
+    }catch(err){
+      lastError = err;
+      await delay(180 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+function logApiError(label,error){
+  if(!isStaticHostedDashboard)console.error(label,error);
+}
+
+let liveMode = false;
+let liveSeeded = false;
+let demoStarted = false;
+let runStartedAt = Date.now();
+const liveMessageIds = new Set();
+
+function resetRunClock(){
+  runStartedAt = Date.now();
+  updateRunClock();
+}
+
+function updateRunClock(){
+  if(!runtimeElapsedEl)return;
+  const elapsed = Math.max(0,Math.floor((Date.now() - runStartedAt) / 1000));
+  const mins = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const secs = String(elapsed % 60).padStart(2,'0');
+  runtimeElapsedEl.textContent = mins + ':' + secs;
+}
+
+function setRuntimeMode(mode, detail, activeText, motionText){
+  if(runtimeModeEl){
+    runtimeModeEl.className = 'runtime-mode ' + mode;
+    runtimeModeEl.textContent = mode === 'live' ? 'LIVE' : mode === 'replay' ? 'REPLAY' : 'IDLE';
+  }
+  if(runtimeDetailEl)runtimeDetailEl.textContent = detail || '';
+  if(runtimeActiveEl && activeText)runtimeActiveEl.textContent = activeText;
+  if(runtimeMotionEl && motionText)runtimeMotionEl.textContent = motionText;
+  if(activityDockMode)activityDockMode.textContent = mode === 'live' ? 'Live' : mode === 'replay' ? 'Replay' : 'Idle';
+}
+
+function renderActivityDock(){
+  if(!activityDockList)return;
+  const visibleEntries = [
+    ...activityDockEntries,
+    ...queuedDockEntries.filter(entry => !activityDockEntries.some(existing => existing.agent === entry.agent && existing.phase === entry.phase))
+  ].slice(0,3);
+  if(!visibleEntries.length){
+    activityDockList.innerHTML = '<div class="activity-item"><div class="activity-top"><span class="activity-agent">No event</span><span class="activity-source">Idle</span></div><div class="activity-text">Waiting for agent bus or replay step.</div></div>';
+    return;
+  }
+  activityDockList.innerHTML = visibleEntries.map(entry => {
+    const key = canonicalAgentId(entry.agent);
+    const p = participant(key);
+    const source = entry.source || (liveMode ? 'Live' : 'Replay');
+    const lowerSource = source.toLowerCase();
+    const sourceClass = lowerSource.includes('live') ? 'live' : lowerSource.includes('next') ? 'next' : 'replay';
+    const modeKey = normalizeToolMode(entry.mode || 'idle');
+    const modeClass = modeKey === 'idle' ? '' : ' mode-' + modeKey;
+    const phase = entry.phase ? ' · ' + entry.phase : '';
+    const mode = entry.mode ? ' · ' + toolModeLabel(modeKey) : '';
+    return '<div class="activity-item ' + sourceClass + modeClass + '">' +
+      '<div class="activity-top"><span class="activity-agent">' + escapeHtml(p.emoji + ' ' + p.name + phase) + '</span><span class="activity-source ' + sourceClass + '">' + escapeHtml(source) + '</span></div>' +
+      '<div class="activity-text">' + escapeHtml((entry.text || 'No details') + mode) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function pushActivityDock(entry){
+  if(!entry || !entry.agent)return;
+  const id = entry.id || [entry.source,entry.agent,entry.phase,entry.text].join('|');
+  activityDockEntries = [
+    {...entry,id},
+    ...activityDockEntries.filter(existing => existing.id !== id)
+  ].slice(0,12);
+  renderActivityDock();
+}
+
+function messageClassFor(msg){
+  if(msg.tone === 'attention')return'attention-msg';
+  if(msg.tone === 'decision' || msg.msg_type === 'decision')return'decision-msg';
+  return participant(msg.from_agent).msgType === 'user' ? 'user-msg' : 'assistant-msg';
+}
+
+function appendLiveMessage(msg){
+  const id = msg.id || [msg.created_at,msg.from_agent,msg.to_agent,msg.phase,msg.text].join('|');
+  if(liveMessageIds.has(id))return;
+  liveMessageIds.add(id);
+  latestAgentMessages = [msg, ...latestAgentMessages.filter(existing => {
+    const existingId = existing.id || [existing.created_at,existing.from_agent,existing.to_agent,existing.phase,existing.text].join('|');
+    return existingId !== id;
+  })].slice(0,30);
+  pushActivityDock({
+    id,
+    source:'Live',
+    agent:msg.from_agent,
+    phase:msg.phase || msg.msg_type,
+    text:msg.text || '',
+    mode:msg.tool_mode
+  });
+
+  const from = participant(msg.from_agent);
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'msg';
+  msgDiv.dataset.liveId = id;
+
+  const avatarDiv = document.createElement('div');
+  avatarDiv.className = 'msg-avatar';
+  avatarDiv.style.borderColor = msg.from_color || from.color;
+  avatarDiv.textContent = msg.from_icon || from.emoji;
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'msg-content ' + messageClassFor(msg);
+
+  const senderDiv = document.createElement('div');
+  senderDiv.className = 'msg-sender';
+  senderDiv.style.color = msg.from_color || from.color;
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = msg.from_label || from.name;
+  const roleSpan = document.createElement('span');
+  roleSpan.style.fontWeight = '400';
+  roleSpan.style.color = 'var(--text2)';
+  roleSpan.style.fontSize = '.7rem';
+  roleSpan.textContent = msg.from_role || from.role;
+  const pill = document.createElement('span');
+  pill.className = 'msg-meta-pill';
+  pill.textContent = (msg.type_label || msg.msg_type || 'Message') + ' → ' + (msg.to_label || msg.to_agent || 'all');
+  senderDiv.appendChild(nameSpan);
+  senderDiv.appendChild(roleSpan);
+  senderDiv.appendChild(pill);
+
+  const textDiv = document.createElement('div');
+  textDiv.className = 'msg-text';
+  textDiv.textContent = msg.text || '';
+
+  const timeDiv = document.createElement('div');
+  timeDiv.className = 'msg-time';
+  const dt = msg.created_at ? new Date(msg.created_at) : new Date();
+  timeDiv.textContent = isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  contentDiv.appendChild(senderDiv);
+  contentDiv.appendChild(textDiv);
+  contentDiv.appendChild(timeDiv);
+  msgDiv.appendChild(avatarDiv);
+  msgDiv.appendChild(contentDiv);
+  dialogBody.appendChild(msgDiv);
+  dialogBody.scrollTop = dialogBody.scrollHeight;
+
+  const fromId = canonicalAgentId(msg.from_agent);
+  const toId = canonicalAgentId(msg.to_agent);
+  if(AGENTS[fromId]){
+    const officeState = statusToOfficeState(msg.tone === 'attention' ? 'attention' : 'working', msg.msg_type, msg.text || msg.phase || '');
+    const toolMode = normalizeToolMode(msg.tool_mode || inferToolMode(msg.tone === 'attention' ? 'attention' : 'working', msg.msg_type, msg.text || msg.phase || '', officeState));
+    setAgentOfficeState(fromId, officeState);
+    updateAgentCard(fromId, {
+      status: OFFICE_STATES[officeState].status,
+      office_state: officeState,
+      last_tool_mode: toolMode,
+      phase: msg.phase || msg.msg_type,
+      last_text: msg.text || '',
+      last_type: msg.msg_type,
+      pending: msg.tone === 'attention' ? 1 : 0
+    });
+    setSpeaking(fromId, true);
+    showBubble(fromId, (msg.text || '').slice(0, 36), 4500);
+    setTimeout(() => setSpeaking(fromId, false), 1600);
+    if(selectedAgentKey === fromId)renderSessionInspector(fromId);
+  }
+  if(AGENTS[fromId] && AGENTS[toId])showConnection(fromId, toId, 4200);
+  if(selectedAgentKey === toId)renderSessionInspector(toId);
+}
+
+// ── Data Loading ─────────────────────────────
+async function loadOverview(){
+  try{
+    const r=await apiFetch('/api/overview');const d=await r.json();
+    document.getElementById('s-alerts').textContent=fmt(d.total_alerts);
+    document.getElementById('s-health').textContent=fmt(d.health_checks);
+    document.getElementById('s-perf').textContent=fmt(d.perf_records);
+    document.getElementById('timestamp').textContent=d.timestamp;
+    const chainsEl=document.getElementById('s-chains');
+    if(chainsEl&&d.chain_runs!=null)chainsEl.textContent=fmt(d.chain_runs);
+    const activeEl=document.getElementById('s-active-agents');
+    if(activeEl&&activeEl.textContent==='-'&&d.agent_count!=null)activeEl.textContent='0/'+d.agent_count;
+    document.getElementById('system-status').textContent=(d.system_status||'healthy').toUpperCase();
+  }catch(e){logApiError('overview',e)}
+}
+
+async function loadHealth(){
+  const el=document.getElementById('dp-health');
+  try{
+    const r=await apiFetch('/api/health');const data=await r.json();
+    if(!data.length){el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">No data</div>';return}
+    el.innerHTML=data.slice(0,8).map(h=>{
+      const c=h.status==='healthy'?'var(--green)':h.status==='warning'?'var(--yellow)':'var(--red)';
+      return'<div class="dp-item"><div class="dp-dot" style="background:'+c+'"></div><div class="dp-label">'+
+        (h.check_type||'unknown')+'</div><div class="dp-val">'+timeAgo(h.created_at)+'</div></div>';
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">Error</div>'}
+}
+
+async function loadPerformance(){
+  const el=document.getElementById('dp-perf');
+  try{
+    const r=await apiFetch('/api/performance');const data=await r.json();
+    if(!data.length){el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">No data</div>';return}
+    const latest={};
+    data.forEach(d=>{if(!latest[d.agent_name]||d.period_end>latest[d.agent_name].period_end)latest[d.agent_name]=d;});
+    el.innerHTML=Object.values(latest).map(p=>{
+      const rate=p.runs>0?Math.round(p.successes/p.runs*100):0;
+      const c=rate>=95?'var(--green)':rate>=80?'var(--yellow)':'var(--red)';
+      return'<div class="dp-item"><div class="dp-dot" style="background:'+c+'"></div><div class="dp-label">'+
+        p.agent_name+'</div><div class="dp-val">'+rate+'%</div></div>';
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">Error</div>'}
+}
+
+async function loadAgentActivity(){
+  const el=document.getElementById('dp-activity');
+  try{
+    const r=await apiFetch('/api/agent_activity');const data=await r.json();
+    const agents=data.agents||[];
+    const messages=data.messages||[];
+    latestAgentMessages = messages;
+    agents.forEach(a => {
+      latestAgentActivity[a.id] = {...(latestAgentActivity[a.id] || {}), ...a};
+    });
+    if(selectedAgentKey)renderSessionInspector(selectedAgentKey);
+    const activeEl=document.getElementById('s-active-agents');
+    if(activeEl)activeEl.textContent=(data.active_agents||0)+'/'+AGENT_DEFS.length;
+    const activeText = (data.active_agents||0)+'/'+AGENT_DEFS.length;
+    const realActive = agents.filter(a => ['attention','waiting','working'].includes(a.status)).length;
+
+    renderAgentGrid(agents);
+
+    const active = agents.filter(a => ['attention','waiting','working','recent'].includes(a.status));
+    if(!active.length){
+      el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">No recent bus activity</div>';
+    }else{
+      el.innerHTML=active.slice(0,8).map(a=>{
+        const c=a.status==='attention'?'var(--red)':a.status==='waiting'?'var(--yellow)':a.status==='working'?'var(--green)':'var(--accent)';
+        const mode = a.last_tool_label || toolModeLabel(a.last_tool_mode || inferToolMode(a.status,a.last_type,a.last_text,a.office_state));
+        return'<div class="dp-item"><div class="dp-dot" style="background:'+c+'"></div><div class="dp-label">'+
+          a.name+'</div><div class="dp-val">'+(a.pending?('待 '+a.pending):mode)+'</div></div>';
+      }).join('');
+    }
+
+    if(messages.length){
+      if(!liveMode){
+        typewriterTimers.forEach(t => clearTimeout(t));
+        typewriterTimers = [];
+        Object.keys(agentsState).forEach(k => {
+          setAgentMotion(k, 'idle');
+          stopWalkAnim(k);
+          removeBubble(k);
+        });
+      }
+      liveMode = true;
+      scenarioLabel.textContent = '● Live Agent Bus (' + messages.length + ' recent)';
+      if(!liveSeeded)resetRunClock();
+      if(activityDockFlow)activityDockFlow.textContent = 'Live bus · ' + messages.length + ' recent';
+      if(activityDockProgress)activityDockProgress.style.width = realActive ? '100%' : '0';
+      if(activityDockMeta)activityDockMeta.textContent = 'Recent ' + messages.length + ' · Active ' + realActive;
+      queuedDockEntries = [];
+      renderActivityDock();
+      setRuntimeMode('live', 'Live bus connected; task routes follow messages.', activeText, realActive ? 'Live work' : 'Ambient');
+      if(!liveSeeded){
+        dialogBody.innerHTML = '';
+        liveMessageIds.clear();
+        messages.slice(0,10).reverse().forEach(appendLiveMessage);
+        liveSeeded = true;
+      }else{
+        messages.slice().reverse().forEach(appendLiveMessage);
+      }
+    }else if(!demoStarted){
+      if(activityDockFlow)activityDockFlow.textContent = 'No live bus';
+      if(activityDockProgress)activityDockProgress.style.width = '0';
+      if(activityDockMeta)activityDockMeta.textContent = 'Handoff 0 · Q 0';
+      setRuntimeMode('idle', 'No live bus messages yet. Agents stay near rooms.', activeText, 'Ambient');
+    }else if(!liveMode){
+      setRuntimeMode('replay', 'Replay on; task routes light up.', activeText, 'Task-led');
+    }
+    return messages.length;
+  }catch(e){
+    logApiError('agent activity',e);
+    if(el)el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">Error</div>';
+    return 0;
+  }
+}
+
+// ── Financial Data ───────────────────────────
+async function loadFinance(){
+  const el=document.getElementById('dp-finance');
+  if(!el)return;
+  try{
+    const[accRes,txRes,budRes]=await Promise.all([
+      apiFetch('/api/finance/accounts'),
+      apiFetch('/api/finance/transactions'),
+      apiFetch('/api/finance/budget')
+    ]);
+    const accounts=await accRes.json();
+    const transactions=await txRes.json();
+    const budgets=await budRes.json();
+
+    if(!accounts.length&&!transactions.length&&!budgets.length){
+      el.innerHTML='<div style="color:var(--text2);text-align:center;padding:1rem">No financial data</div>';return;
+    }
+
+    let totalAssets=0,totalLiabilities=0;
+    accounts.forEach(a=>{
+      const bal=parseFloat(a.balance)||0;
+      if(a.account_type==='credit_card')totalLiabilities+=Math.abs(bal);
+      else totalAssets+=bal;
+    });
+    const netWorth=totalAssets-totalLiabilities;
+
+    const latestBudget=budgets.length?budgets[0]:null;
+    const monthlyBudget=latestBudget?parseFloat(latestBudget.monthly_budget)||0:0;
+    const dailyAllowance=latestBudget?parseFloat(latestBudget.daily_allowance)||0:0;
+
+    const today=new Date().toISOString().slice(0,10);
+    const todayTx=transactions.filter(t=>t.transaction_date===today&&parseFloat(t.amount)<0);
+    const todaySpent=todayTx.reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
+
+    const monthPrefix=today.slice(0,7);
+    const monthTx=transactions.filter(t=>t.transaction_date&&t.transaction_date.startsWith(monthPrefix)&&parseFloat(t.amount)<0);
+    const monthSpent=monthTx.reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
+    const budgetPct=monthlyBudget>0?Math.min((monthSpent/monthlyBudget)*100,100):0;
+    const barColor=budgetPct>90?'var(--red)':budgetPct>70?'var(--yellow)':'var(--green)';
+
+    let h='<div class="finance-grid">';
+
+    h+='<div class="finance-card"><h4>淨資產 Net Worth</h4>';
+    h+='<div class="fv'+(netWorth<0?' negative':'')+'">'+fmt(netWorth)+'</div>';
+    h+='<div style="font-size:.7rem;color:var(--text2);margin-top:.2rem">';
+    h+='資產 '+fmt(totalAssets)+' / 負債 '+fmt(totalLiabilities)+'</div></div>';
+
+    h+='<div class="finance-card"><h4>今日可用 Daily Allowance</h4>';
+    h+='<div class="fv">'+fmt(dailyAllowance)+'</div>';
+    h+='<div style="font-size:.7rem;color:var(--text2);margin-top:.2rem">';
+    h+='今日已花 '+fmt(todaySpent);
+    if(todaySpent>dailyAllowance&&dailyAllowance>0){
+      h+=' <span style="color:var(--red)">⚠️ 超支</span>';
+    }
+    h+='</div></div>';
+
+    h+='<div class="finance-card"><h4>月預算 Monthly Budget</h4>';
+    h+='<div class="fv">'+fmt(monthSpent)+' / '+fmt(monthlyBudget)+'</div>';
+    h+='<div class="budget-bar"><div class="budget-bar-fill" style="width:'+budgetPct+
+      '%;background:'+barColor+'"></div></div></div>';
+
+    h+='<div class="finance-card"><h4>近期支出 Recent</h4>';
+    const recentExp=transactions.filter(t=>parseFloat(t.amount)<0).slice(0,5);
+    if(recentExp.length){
+      h+='<div class="tx-list">';
+      recentExp.forEach(t=>{
+        const amt=parseFloat(t.amount);
+        h+='<div class="tx-item"><span>'+(t.category||'')+' '+
+          (t.description||'').substring(0,15)+'</span>'+
+          '<span class="tx-expense">'+amt.toFixed(0)+'</span></div>';
+      });
+      h+='</div>';
+    }else{
+      h+='<div style="color:var(--text2);font-size:.75rem">No expenses</div>';
+    }
+    h+='</div>';
+
+    h+='</div>';
+    el.innerHTML=h;
+  }catch(e){
+    logApiError('finance load error',e);
+    el.innerHTML='<div style="color:var(--text2);text-align:center;padding:.5rem">Error loading financial data</div>';
+  }
+}
+
+// ── Init ─────────────────────────────────────
+// Create all agents on the scene
+Object.keys(AGENTS).forEach(createAgentEl);
+
+const officeCanvasEl = document.getElementById('office-canvas');
+if(officeCanvasEl){
+  canvasOffice = new PixelOfficeCanvas(officeCanvasEl);
+  canvasOffice.init().catch(err => console.error('pixel office canvas', err));
+}
+
+renderAgentGrid();
+startAmbientOfficeLoop();
+renderActivityDock();
+updateRunClock();
+setInterval(updateRunClock, 1000);
+
+async function init(){
+  await loadOverview();
+  loadHealth();
+  loadPerformance();
+  const liveCount = await loadAgentActivity();
+  loadFinance();
+  if(!demoStarted && !liveCount){
+    demoStarted = true;
+    setRuntimeMode('replay', 'Replay on; task routes light up.', '0/' + AGENT_DEFS.length, 'Task-led');
+    playScenario(0);
+  }
+}
+
+init();
+setInterval(init, 30000);
+</script>
+</body>
+</html>
