@@ -1433,6 +1433,7 @@ function freshSession(){
   };
 }
 let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0,
+             gen:0 /* generation token: any start/stop invalidates suspended async handlers */,
              multi:false /* per-frame full detection: finds EVERYONE, slightly less smooth */,
              targetPos:null /* single-mode: tracked person's mid-hip (normalized) */, lastRanked:null,
              subjectId:null, oppId:null, lastSubjectPos:null, lastCands:null };
@@ -1447,6 +1448,7 @@ $("mMultiBtn").addEventListener("click", async ()=>{
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   tracker.reset();
   if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
+  updateSparCard();
   toast(mRun.multi
     ? "多人模式開：撳人物鎖定「主角」；有第二個人會自動當「對手」計對戰數據"
     : "單人模式：自動鎖定畫面中最大嘅人物（最快最順）", 4200);
@@ -1504,17 +1506,37 @@ $("mCamBtn").addEventListener("click", async ()=>{
   mCamBusy = true; $("mCamBtn").disabled = true;
   try{
     stopMotion();
+    const gen = ++mRun.gen;
     try{
       await openCam(mVideo, mRun.facing);
     }catch(e){
       try{ await openCam(mVideo, undefined); }
       catch(e2){ toast("無法開啟鏡頭：" + (e2?.message||e2)); return; }
     }
+    if(gen !== mRun.gen){ stopStream(mVideo); return; }   // another flow took over mid-await
+    await nextFrame(mVideo);                              // let auto-exposure settle past the first frame
+    if(gen !== mRun.gen){ stopStream(mVideo); return; }
+    await autoDetectMulti();
+    if(gen !== mRun.gen){ stopStream(mVideo); return; }
     await startMotion("cam");
+    // camera warm-up frames can be too dark for the people-count probe — retry once mid-session
+    setTimeout(async ()=>{
+      if(gen === mRun.gen && mRun.on && mRun.source === "cam" && !mRun.multi) await autoDetectMulti();
+    }, 1500);
   }finally{
     mCamBusy = false; $("mCamBtn").disabled = false;
   }
 });
+/* resolve after the next real video frame (or a short fallback delay) */
+function nextFrame(v){
+  return new Promise(res=>{
+    let done = false;
+    const finish = ()=>{ if(!done){ done = true; res(); } };
+    setTimeout(finish, 600);
+    if(v.requestVideoFrameCallback) v.requestVideoFrameCallback(()=>finish());
+    else setTimeout(finish, 350);
+  });
+}
 $("mFlipBtn").addEventListener("click", async ()=>{
   if(mCamBusy || !mRun.on || mRun.source !== "cam") return;
   mCamBusy = true;
@@ -1537,20 +1559,51 @@ $("mFile").addEventListener("change", async e=>{
   if(!f) return;
   if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
   stopMotion();
+  const gen = ++mRun.gen;
   mVideo.srcObject = null;
   const url = URL.createObjectURL(f);
   mVideo.src = url;
   mVideo.loop = false;
+  const taken = ()=> gen !== mRun.gen || mVideo.src !== url || mVideo.srcObject;
   try{
     await mVideo.play();
   }catch(err){
+    if(taken()){ URL.revokeObjectURL(url); return; }
     toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
     URL.revokeObjectURL(url);
     mVideo.removeAttribute("src"); mVideo.load();
     return;
   }
+  if(taken()){ URL.revokeObjectURL(url); return; }
+  mVideo.pause();                 // freeze the first frame while probing for people
+  await autoDetectMulti();
+  if(taken()){ URL.revokeObjectURL(url); return; }
+  mVideo.currentTime = 0;         // analyse the clip from the start
+  try{ await mVideo.play(); }catch(e){}
+  if(taken()){ URL.revokeObjectURL(url); return; }
   await startMotion("file");
 });
+
+/* probe the current frame: if 2+ people are visible, switch multi-person mode on
+   automatically so sparring stats are always computed without a manual toggle */
+async function autoDetectMulti(){
+  if(mRun.multi || !landmarker || mVideo.readyState < 2) return;
+  try{
+    await setMode("IMAGE");
+    if(currentMode !== "IMAGE") return;
+    const probe = landmarker.detect(mVideo);
+    const n = rankPeople(probe.landmarks || []).length;
+    if(n >= 2){
+      mRun.multi = true;
+      $("mMultiBtn").textContent = "👥 多人模式：開";
+      toast(`偵測到 ${n} 人 — 已自動開啟多人模式，計算對戰數據`, 4200);
+    }
+  }catch(e){ console.warn("multi probe skipped", e); }
+  finally{
+    // a running single-person session needs VIDEO mode back, or its loop stalls
+    if(mRun.on && !mRun.multi) await setMode("VIDEO");
+  }
+}
 async function startMotion(source){
   const wantMode = mRun.multi ? "IMAGE" : "VIDEO";
   await setMode(wantMode);
@@ -1572,6 +1625,7 @@ async function startMotion(source){
   motionLoop();
 }
 function stopMotion(){
+  mRun.gen++;                          // invalidate any handler parked mid-await (probe, play, …)
   if(!mRun.on) return;
   cancelAnimationFrame(mRun.raf);
   mRun.on = false;
@@ -1587,6 +1641,7 @@ function stopMotion(){
   $("mSelLabel").style.display = "none";
   mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);   // no stale skeleton over the idle message
   updateTiles(null, null, true);       // blank the live tiles; session totals stay
+  updateSparCard();                    // re-evaluate card visibility at the transition
   drawSpark();
 }
 $("mStopBtn").addEventListener("click", stopMotion);
@@ -1691,7 +1746,7 @@ function renderTechAnalysis(){
 
   /* ---- quantified fighter profile (0–100 axes + style label) ---- */
   let profileHtml = "";
-  if(dur >= 5 && punches.length){
+  if(dur >= 5){
     const sp = sparStats();
     const durMin = Math.max(dur/60, 1/60);
     const rate = punches.length/durMin;
@@ -1911,7 +1966,7 @@ function processMotion(wl, lm, W, H, t, opp){
     const sIdx = hand==="L"?LM.L_SHOULDER:LM.R_SHOULDER, eIdx = hand==="L"?LM.L_ELBOW:LM.R_ELBOW;
     const elbowNow = angle3D(wl[sIdx], wl[eIdx], wl[wristIdx]);
     // punch state machine
-    if(!h.active && sp > 3.0 && t - h.lastEnd > 0.25){
+    if(!h.active && sp > 2.5 && t - h.lastEnd > 0.25){
       h.active = true; h.peak = sp; h.start = t; h.maxElbow = elbowNow;
       h.minHeadRatio = 1e9; h.minBodyRatio = 1e9; h.hadOpp = false;
     }else if(h.active){
@@ -1924,9 +1979,9 @@ function processMotion(wl, lm, W, H, t, opp){
         h.minHeadRatio = Math.min(h.minHeadRatio, Math.hypot(wpx.x-oppZones.head.x, wpx.y-oppZones.head.y)/oppZones.headR);
         h.minBodyRatio = Math.min(h.minBodyRatio, Math.hypot(wpx.x-oppZones.belly.x, wpx.y-oppZones.belly.y)/oppZones.bodyR);
       }
-      if(sp < 1.2){
+      if(sp < 1.0){
         h.active = false; h.lastEnd = t;
-        if(h.peak > 3.5 && t - h.start > 0.05){
+        if(h.peak > 3.0 && t - h.start > 0.05){
           mState.counts[hand]++;
           mState.punches.push({t, v:h.peak});
           const w = parseFloat($("weightInput").value) || 70;
@@ -2012,7 +2067,7 @@ function processIncoming(oppWl, oppLm, W, H, t, subjLm){
     }else{ h.v = h.v ?? 0; }
     const sp = h.v || 0;
 
-    if(!h.active && sp > 3.0 && t - h.lastEnd > 0.25){
+    if(!h.active && sp > 2.5 && t - h.lastEnd > 0.25){
       h.active = true; h.peak = sp; h.start = t;
       h.minHeadRatio = 1e9; h.minBodyRatio = 1e9; h.minBlockDist = 1e9;
       h.defHeadStart = { x: subjZ.head.x, y: subjZ.head.y };
@@ -2027,9 +2082,9 @@ function processIncoming(oppWl, oppLm, W, H, t, subjLm){
         h.minBlockDist = Math.min(h.minBlockDist, Math.hypot(wpx.x-swpx.x, wpx.y-swpx.y));
       }
       h.defMaxDisp = Math.max(h.defMaxDisp, Math.hypot(subjZ.head.x-h.defHeadStart.x, subjZ.head.y-h.defHeadStart.y));
-      if(sp < 1.2){
+      if(sp < 1.0){
         h.active = false; h.lastEnd = t;
-        if(h.peak > 3.5 && t - h.start > 0.05){
+        if(h.peak > 3.0 && t - h.start > 0.05){
           const w = parseFloat($("weightInput").value) || 70;
           const ke = 0.5 * (0.05*w) * h.peak*h.peak;
           const landedZone = h.minHeadRatio < 1 ? "head" : (h.minBodyRatio < 1 ? "body" : null);
@@ -2087,7 +2142,10 @@ function sparStats(){
   return { atk, headHits, bodyHits, landed, kes, inc, incLanded, dodges, dodgeOk, blocks, heavy, stability, projected };
 }
 function updateSparCard(){
-  const active = mRun.multi && (mRun.oppId != null || mState.spar.atk.length || mState.spar.def.length);
+  const sp = mState.spar;
+  const hasData = sp.atk.length || sp.def.length || sp.hitsTaken.length;
+  // always show the full metric set once multi-person mode is on — zeros included
+  const active = mRun.multi && (mRun.on || hasData);
   $("sparCard").style.display = active ? "" : "none";
   if(!active) return;
   const s = sparStats();
@@ -2098,6 +2156,7 @@ function updateSparCard(){
       <div class="metric-val">${val}</div>
     </div>`;
   $("sparList").innerHTML =
+    row("對手狀態", mRun.oppId != null ? "已鎖定（橙牌「對」）" : "等待對手入鏡…") +
     row("攻擊次數", s.atk.length) +
     row("命中頭部", `${s.headHits} 次（${pct(s.headHits, s.atk.length)}）`) +
     row("命中腹部", `${s.bodyHits} 次（${pct(s.bodyHits, s.atk.length)}）`) +
