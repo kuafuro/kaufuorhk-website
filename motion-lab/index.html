@@ -100,7 +100,7 @@ section.tab-panel.active{display:block}
 }
 .stage video,.stage canvas{display:block;max-width:100%;height:auto}
 .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.stage canvas{position:relative;z-index:2;width:100%}
+.stage canvas{position:relative;z-index:2;width:100%;pointer-events:none}
 .stage.mirrored video{transform:scaleX(-1)}
 .stage-msg{
   position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:10px;
@@ -114,6 +114,14 @@ section.tab-panel.active{display:block}
   position:absolute;inset:0;z-index:6;display:none;align-items:center;justify-content:center;
   font-size:6rem;font-weight:800;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.8);
 }
+.progressbar{position:absolute;left:0;right:0;top:0;height:5px;z-index:6;background:rgba(255,255,255,.15);display:none}
+.progressbar>div{height:100%;width:0;background:var(--series-1);transition:width .25s linear}
+.prog-label{
+  position:absolute;top:10px;left:10px;z-index:6;background:rgba(13,13,13,.78);
+  border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.78rem;color:var(--ink-2);display:none;
+}
+.loadbar{width:min(240px,70%);height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+.loadbar>div{height:100%;width:0;background:var(--series-1);transition:width .2s}
 
 /* ============ Stat tiles ============ */
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -202,6 +210,19 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
   opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center;
 }
 .toast.show{opacity:1}
+
+/* ============ Mobile polish ============ */
+@media (max-width:560px){
+  .hd-sub{display:none}
+  .tabs{gap:6px}
+  .tab-btn{flex:1;text-align:center;padding:10px 6px;font-size:.88rem}
+  .controls .btn{flex:1 1 auto;min-height:46px}
+  .controls .seg{flex:1 1 100%;display:flex}
+  .controls .seg button{flex:1}
+  .field input[type=text]{width:110px}
+  main{padding:12px}
+  .card{padding:13px}
+}
 </style>
 </head>
 <body>
@@ -240,6 +261,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <button class="btn" id="pTimerBtn" style="display:none">⏱ 5 秒倒數</button>
       <button class="btn" id="pUploadBtn">🖼 上載相片</button>
       <input type="file" id="pFile" accept="image/*" hidden>
+      <button class="btn" id="pVideoBtn">🎞 上載影片</button>
+      <input type="file" id="pVideoFile" accept="video/*" hidden>
     </div>
     <p class="hint">受測者請除鞋、穿貼身衣物，雙腳與肩同寬自然企直，望向正前方。鏡頭放胸口高度、距離 2–3 米，全身入鏡。</p>
   </div>
@@ -335,6 +358,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <input type="file" id="mFile" accept="video/*" hidden>
       <label class="field">體重 <input type="number" id="weightInput" value="70" min="30" max="150" step="1"> kg</label>
       <span class="hd-spacer"></span>
+      <button class="btn" id="mTechBtn">📋 技術分析</button>
       <button class="btn" id="mResetBtn">↺ 重設數據</button>
       <button class="btn" id="mStopBtn" style="display:none">⏹ 停止</button>
     </div>
@@ -347,6 +371,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <video id="mVideo" playsinline muted></video>
         <canvas id="mCanvas"></canvas>
         <div class="stage-msg" id="mMsg"><div>開啟鏡頭或上載影片開始分析</div></div>
+        <div class="progressbar" id="mProg"><div id="mProgFill"></div></div>
+        <div class="prog-label" id="mProgLabel"></div>
       </div>
       <div class="card sparkwrap" style="margin-top:10px">
         <div class="tile-lb" style="font-size:.78rem;color:var(--ink-muted)">手部速度（最近 6 秒）·<span style="color:var(--series-1)"> ─ 速度</span> ·<span style="color:var(--critical)"> ● 出拳峰值</span></div>
@@ -393,6 +419,11 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
           <div class="sub">拳擊常見 1.0–1.6×</div>
         </div>
       </div>
+      <div class="card" id="techCard" style="margin-top:12px;display:none">
+        <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small></h3>
+        <div id="techList"></div>
+        <div class="note-strip">分析基於 AI 骨架估算同拍攝角度，屬教練參考，唔係絕對標準。側面 45°–90° 拍攝結果最準。</div>
+      </div>
       <div class="card" style="margin-top:12px">
         <h3>教練提示</h3>
         <ul style="font-size:.84rem;padding-left:18px;color:var(--ink-2)">
@@ -415,7 +446,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <li>手機／平板放胸口高度，距離 2–3 米</li>
         <li>正面：雙腳與肩同寬，雙手自然垂下，望正前方</li>
         <li>側面：身體轉 90°，維持平時慣常站姿（唔好刻意企直）</li>
-        <li>輸入身高（用作換算公分），影相或上載相片</li>
+        <li>輸入身高（用作換算公分），影相、上載相片，或上載影片再揀最合適嘅一格畫面</li>
         <li>撳「生成報告」可列印或儲存 PDF</li>
       </ol>
     </div>
@@ -424,8 +455,9 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <ol class="steps">
         <li>鏡頭放側面 45°–90°，全身入鏡</li>
         <li>輸入體重（用作估算出拳動能）</li>
-        <li>開鏡頭即時分析，或上載訓練影片</li>
+        <li>開鏡頭即時分析，或上載訓練影片（會顯示分析進度）</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
+        <li>撳「技術分析」攞弱點總結（影片播完會自動生成）</li>
         <li>「重設數據」開始新一節統計</li>
       </ol>
     </div>
@@ -509,16 +541,58 @@ const round1 = v => Math.round(v*10)/10;   // grade what the user sees (1-decima
    Model loading (single landmarker, mode-switched)
    ============================================================ */
 let landmarker = null, currentMode = null, modeLock = Promise.resolve();
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+const setLoadMsg = html => { $("pMsg").innerHTML = html; $("pMsg").classList.remove("hidden"); };
+
+/* download the model with a visible progress bar, and keep it in the Cache API
+   so repeat visits skip the ~9MB download entirely */
+async function loadModelBuffer(onPct){
+  try{
+    let resp = null, fromCache = false;
+    try{
+      const cache = await caches.open("kuafuor-motion-lab-v1");
+      resp = await cache.match(MODEL_URL);
+      if(resp){ fromCache = true; }
+      else{
+        resp = await fetch(MODEL_URL);
+        if(!resp.ok) throw new Error("HTTP " + resp.status);
+        try{ await cache.put(MODEL_URL, resp.clone()); }catch(_){/* quota — ignore */}
+      }
+    }catch(_){ // Cache API unavailable (private mode etc.) — plain fetch
+      resp = await fetch(MODEL_URL);
+      if(!resp.ok) throw new Error("HTTP " + resp.status);
+    }
+    const total = +resp.headers.get("Content-Length") || 9400000;
+    if(!resp.body){ onPct(100, fromCache); return new Uint8Array(await resp.arrayBuffer()); }
+    const reader = resp.body.getReader();
+    const chunks = []; let got = 0;
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      chunks.push(value); got += value.length;
+      onPct(Math.min(100, Math.round(got/total*100)), fromCache);
+    }
+    const buf = new Uint8Array(got); let o = 0;
+    for(const c of chunks){ buf.set(c, o); o += c.length; }
+    return buf;
+  }catch(e){ console.warn("model prefetch failed, falling back to URL loading", e); return null; }
+}
+
 async function initModel(){
-  $("pMsg").classList.remove("hidden");
+  setLoadMsg('<div class="spinner"></div><div>準備 AI 引擎…</div>');
   try{
     const vision = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    const modelBuf = await loadModelBuffer((pct, fromCache)=>{
+      setLoadMsg(`<div class="spinner"></div>
+        <div>下載 AI 模型 ${pct}%${fromCache ? "（從快取，好快）" : "（約 9 MB，只需下載一次）"}</div>
+        <div class="loadbar"><div style="width:${pct}%"></div></div>`);
+    });
+    setLoadMsg('<div class="spinner"></div><div>啟動 AI 引擎…（1–3 秒）</div>');
     const make = delegate => PoseLandmarker.createFromOptions(vision, {
-      baseOptions:{
-        modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
-        delegate
-      },
+      baseOptions: modelBuf
+        ? { modelAssetBuffer: modelBuf.slice(), delegate }
+        : { modelAssetPath: MODEL_URL, delegate },
       runningMode:"VIDEO", numPoses:1,
       minPoseDetectionConfidence:0.5, minPosePresenceConfidence:0.5, minTrackingConfidence:0.5
     });
@@ -531,11 +605,10 @@ async function initModel(){
       c.getContext("2d").fillRect(0,0,64,64);
       landmarker.detectForVideo(c, performance.now());
     }catch(e){ console.warn("warm-up skipped", e); }
-    $("pMsg").classList.add("hidden");
-    $("pMsg").innerHTML = "";
+    setLoadMsg('<div style="font-size:2rem">✅</div><div>AI 已就緒 — 開啟鏡頭，或上載相片／影片開始</div>');
   }catch(err){
     console.error(err);
-    $("pMsg").innerHTML = "<div>⚠️ AI 模型載入失敗，請檢查網絡後重新整理頁面。</div>";
+    setLoadMsg("<div>⚠️ AI 模型載入失敗，請檢查網絡後重新整理頁面。</div>");
     toast("模型載入失敗：" + (err?.message || err));
   }
 }
@@ -562,7 +635,7 @@ document.querySelectorAll(".tab-btn").forEach(b=>{
   b.addEventListener("click", ()=>{
     document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active", x===b));
     document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("active", p.id === "tab-"+b.dataset.tab));
-    if(b.dataset.tab !== "posture") stopPostureCam();
+    if(b.dataset.tab !== "posture") stopPostureSource();
     if(b.dataset.tab !== "motion") stopMotion();
   });
 });
@@ -586,7 +659,8 @@ function stopStream(videoEl){
    POSTURE TAB
    ============================================================ */
 const pVideo = $("pVideo"), pCanvas = $("pCanvas"), pCtx = pCanvas.getContext("2d");
-let pState = { camOn:false, facing:"environment", raf:0, lastTs:-1, analyzed:null };
+let pState = { source:null /* 'cam' | 'file' */, previewOn:false, videoUrl:null,
+               facing:"environment", raf:0, lastTs:-1, analyzed:null };
 
 $("viewSeg").querySelectorAll("button").forEach(b=>{
   b.addEventListener("click", ()=>{
@@ -599,10 +673,11 @@ pState.view = "front";
 let pCamBusy = false;
 $("pCamBtn").addEventListener("click", async ()=>{
   if(pCamBusy) return;                      // ignore clicks while getUserMedia is pending
-  if(pState.camOn){ stopPostureCam(); return; }
+  if(pState.source === "cam"){ stopPostureSource(); return; }
   if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
   pCamBusy = true; $("pCamBtn").disabled = true;
   try{
+    stopPostureSource();                    // clears any uploaded-video source first
     try{
       await openCam(pVideo, pState.facing);
     }catch(e){
@@ -610,8 +685,9 @@ $("pCamBtn").addEventListener("click", async ()=>{
       try{ await openCam(pVideo, undefined); }
       catch(e2){ toast("無法開啟鏡頭：" + (e2?.message||e2)); return; }
     }
-    pState.camOn = true;
+    pState.source = "cam"; pState.previewOn = true;
     $("pCamBtn").textContent = "⏹ 關閉鏡頭";
+    $("pShotBtn").textContent = "📸 拍攝";
     $("pShotBtn").style.display = $("pTimerBtn").style.display = $("pFlipBtn").style.display = "";
     $("pMsg").classList.add("hidden");
     $("pStage").classList.toggle("mirrored", isFrontFacing(pVideo));
@@ -624,7 +700,7 @@ $("pCamBtn").addEventListener("click", async ()=>{
   }
 });
 $("pFlipBtn").addEventListener("click", async ()=>{
-  if(pCamBusy || !pState.camOn) return;
+  if(pCamBusy || pState.source !== "cam") return;
   pCamBusy = true;
   try{
     pState.facing = pState.facing === "user" ? "environment" : "user";
@@ -639,22 +715,31 @@ function isFrontFacing(videoEl){
   const fm = track?.getSettings?.().facingMode;
   return fm ? fm === "user" : true; // laptops: single user-facing cam
 }
-function stopPostureCam(){
+/* stop whichever preview source (camera or uploaded video) is active */
+function stopPostureSource(){
   countdownToken++;                        // cancel any pending 5s countdown
   $("pCount").style.display = "none";
-  if(!pState.camOn) return;
   cancelAnimationFrame(pState.raf);
-  stopStream(pVideo);
-  pState.camOn = false;
+  pState.previewOn = false;
+  if(pState.source === "cam"){
+    stopStream(pVideo);
+  }else if(pState.source === "file"){
+    pVideo.pause();
+    if(pState.videoUrl){ URL.revokeObjectURL(pState.videoUrl); pState.videoUrl = null; }
+    pVideo.removeAttribute("src"); pVideo.load();
+    pVideo.controls = false;
+  }
+  pState.source = null;
   $("pCamBtn").textContent = "📷 開啟鏡頭";
   $("pShotBtn").style.display = $("pTimerBtn").style.display = $("pFlipBtn").style.display = "none";
   $("pStage").classList.remove("mirrored");
 }
 
 function postureLiveLoop(){
-  if(!pState.camOn) return;
+  if(!pState.previewOn) return;
   pState.raf = requestAnimationFrame(postureLiveLoop);
   if(pVideo.readyState < 2 || currentMode !== "VIDEO") return;
+  if(pState.source === "file" && pVideo.paused) return;   // frozen frame keeps last skeleton
   const ts = performance.now();
   if(ts <= pState.lastTs) return;
   pState.lastTs = ts;
@@ -674,25 +759,26 @@ $("pTimerBtn").addEventListener("click", async ()=>{
   const tok = ++countdownToken;
   const cd = $("pCount"); cd.style.display = "flex";
   for(let i=5;i>=1;i--){
-    if(tok !== countdownToken || !pState.camOn){ cd.style.display = "none"; return; }
+    if(tok !== countdownToken || pState.source !== "cam"){ cd.style.display = "none"; return; }
     cd.textContent = i;
     await new Promise(r=>setTimeout(r,1000));
   }
   cd.style.display = "none";
-  if(tok !== countdownToken || !pState.camOn) return;   // cancelled while counting
+  if(tok !== countdownToken || pState.source !== "cam") return;   // cancelled while counting
   capturePhoto();
 });
 function capturePhoto(){
-  if(!pState.camOn || pVideo.readyState < 2){ toast("鏡頭未就緒"); return; }
+  if(!pState.previewOn || pVideo.readyState < 2){ toast("畫面未就緒"); return; }
   const c = document.createElement("canvas");
   c.width = pVideo.videoWidth; c.height = pVideo.videoHeight;
   c.getContext("2d").drawImage(pVideo, 0, 0);   // capture un-mirrored frame (subject-true left/right)
-  stopPostureCam();
+  stopPostureSource();
   analyzePosture(c);
 }
 $("pUploadBtn").addEventListener("click", ()=>$("pFile").click());
 $("pFile").addEventListener("change", e=>{
   const f = e.target.files[0];
+  e.target.value = "";
   if(!f) return;
   const img = new Image();
   img.onload = ()=>{
@@ -702,19 +788,50 @@ $("pFile").addEventListener("change", e=>{
     c.width = Math.round(img.naturalWidth*sc); c.height = Math.round(img.naturalHeight*sc);
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
     URL.revokeObjectURL(img.src);
-    stopPostureCam();
+    stopPostureSource();
     analyzePosture(c);
   };
   img.onerror = ()=>toast("讀取相片失敗");
   img.src = URL.createObjectURL(f);
+});
+
+/* upload a video, scrub to the wanted moment, analyse that frame */
+$("pVideoBtn").addEventListener("click", ()=>$("pVideoFile").click());
+$("pVideoFile").addEventListener("change", async e=>{
+  const f = e.target.files[0];
   e.target.value = "";
+  if(!f) return;
+  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  stopPostureSource();
+  pVideo.srcObject = null;
+  const url = URL.createObjectURL(f);
+  pState.videoUrl = url;
+  pVideo.src = url; pVideo.loop = true; pVideo.controls = true;
+  try{
+    await pVideo.play();
+  }catch(err){
+    toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
+    stopPostureSource();
+    return;
+  }
+  pState.source = "file"; pState.previewOn = true; pState.lastTs = -1;
+  $("pMsg").classList.add("hidden");
+  $("pShotBtn").textContent = "✅ 用此畫面分析";
+  $("pShotBtn").style.display = "";
+  $("pTimerBtn").style.display = $("pFlipBtn").style.display = "none";
+  await setMode("VIDEO");
+  cancelAnimationFrame(pState.raf);
+  postureLiveLoop();
+  toast("用影片控制列暫停／拖到想要嘅一格，再撳「用此畫面分析」", 4500);
 });
 
 /* --- analysis core --- */
 async function analyzePosture(srcCanvas){
   if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
-  $("pMsg").innerHTML = '<div class="spinner"></div><div>分析中…</div>';
+  const t0 = performance.now();
+  $("pMsg").innerHTML = '<div class="spinner"></div><div>分析中…（一般 1–3 秒）</div>';
   $("pMsg").classList.remove("hidden");
+  await new Promise(r=>setTimeout(r, 30));   // let the spinner paint before blocking inference
   try{
     await setMode("IMAGE");
     if(currentMode !== "IMAGE"){ toast("AI 未就緒，請再試一次"); return; }
@@ -757,6 +874,8 @@ async function analyzePosture(srcCanvas){
     $("pResultCard").style.display = "";
     $("pEmptyCard").style.display = "none";
     $("pFindings").style.display = "";
+    toast(`分析完成 ✔（用時 ${((performance.now()-t0)/1000).toFixed(1)} 秒）`);
+    $("pResultCard").scrollIntoView({ behavior:"smooth", block:"nearest" });
   }finally{
     $("pMsg").classList.add("hidden");
   }
@@ -1104,6 +1223,10 @@ function freshSession(){
     peak:0, counts:{L:0,R:0}, lastKE:null, sepMax:0,
     trace:[],                     // {t, v} for sparkline
     punches:[],                   // {t, v} punch peaks for sparkline dots
+    punchLog:[],                  // {t, hand, v, elbowExt, sep} full-session log for technique review
+    guard:{ low:0, total:0 },     // non-punching wrist-below-chin samples
+    stanceSum:0, stanceN:0,
+    startT:null, lastT:null,
     hands:{
       L:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
       R:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
@@ -1178,6 +1301,10 @@ async function startMotion(source){
   $("mFlipBtn").style.display = source === "cam" ? "" : "none";
   $("mCamBtn").textContent = source === "cam" ? "⏹ 關閉鏡頭" : "📷 開啟鏡頭";
   $("mStage").classList.toggle("mirrored", source === "cam" && isFrontFacingM());
+  const showProg = source === "file";
+  $("mProg").style.display = showProg ? "block" : "none";
+  $("mProgLabel").style.display = showProg ? "block" : "none";
+  mRun.startedAt = performance.now();
   motionLoop();
 }
 function stopMotion(){
@@ -1191,6 +1318,8 @@ function stopMotion(){
   $("mFlipBtn").style.display = "none";
   $("mStage").classList.remove("mirrored");
   $("mMsg").classList.remove("hidden");
+  $("mProg").style.display = "none";
+  $("mProgLabel").style.display = "none";
   updateTiles(null, null, true);       // blank the live tiles; session totals stay
   drawSpark();
 }
@@ -1199,16 +1328,106 @@ $("mResetBtn").addEventListener("click", ()=>{
   mState = freshSession();
   updateTiles(null, null, true);
   drawSpark();
+  $("techCard").style.display = "none";
   toast("已重設本節數據");
 });
+$("mTechBtn").addEventListener("click", renderTechAnalysis);
+
+/* ---- rule-based technique / weakness review over the session data ---- */
+function renderTechAnalysis(){
+  const s = mState;
+  const dur = (s.startT != null && s.lastT != null) ? s.lastT - s.startT : 0;
+  const punches = s.punchLog;
+  const items = [];
+
+  if(dur < 5 || !punches.length){
+    items.push({ sev:"warning", t:"數據不足，未能分析弱點",
+      d:"開鏡頭或上載影片，側面 45°–90° 全身入鏡，打幾記出拳（刺拳／直拳／組合）再撳「技術分析」。" });
+  }else{
+    // 1) absolute speed benchmark
+    if(s.peak){
+      const lvl = s.peak >= 9 ? ["good","出色——接近職業選手參考水平（>9 m/s）"]
+              : s.peak >= 6 ? ["good","良好——業餘拳手常見範圍（6–9 m/s）"]
+              : s.peak >= 4 ? ["warning","初階（4–6 m/s）——多練髖部發力同放鬆出拳"]
+              : ["serious","偏慢（<4 m/s）——亦可能係拍攝距離／角度令數值偏低，建議側面重拍確認"];
+      items.push({ sev:lvl[0], t:`最快出拳 ${fmt(s.peak)} m/s（${fmt(s.peak*3.6,0)} km/h）`, d:`參考等級：${lvl[1]}。` });
+    }
+    // 2) left/right asymmetry
+    const avg = hand => { const a = punches.filter(p=>p.hand===hand).map(p=>p.v); return a.length ? a.reduce((x,y)=>x+y,0)/a.length : null; };
+    const aL = avg("L"), aR = avg("R");
+    if(aL != null && aR != null){
+      const diff = Math.abs(aL-aR)/Math.max(aL,aR);
+      if(diff > 0.2) items.push({ sev:"serious", t:`左右手速唔平均：左 ${fmt(aL)} / 右 ${fmt(aR)} m/s`,
+        d:`弱側平均慢 ${(diff*100).toFixed(0)}%。建議：弱側加練速度球／單手空擊 2 組，注意由轉髖帶動出拳而唔係淨靠手臂。` });
+      else items.push({ sev:"good", t:`左右手速平均（左 ${fmt(aL)} / 右 ${fmt(aR)} m/s）`, d:"" });
+    }else if(aL == null || aR == null){
+      const missing = aL == null ? "左" : "右";
+      items.push({ sev:"warning", t:`${missing}手未有出拳紀錄`, d:"組合拳練習記得兩手都要出，或者檢查該側手腕有冇被遮擋。" });
+    }
+    // 3) hip–shoulder separation
+    if(s.sepMax){
+      if(s.sepMax < 15) items.push({ sev:"serious", t:`髖肩分離不足（峰值 ${fmt(s.sepMax,0)}°）`,
+        d:"出拳主要靠手臂，軀幹旋轉未用盡。建議：藥球側拋、「定髖轉肩」分離式空擊、慢動作重拳練軀幹先行。" });
+      else if(s.sepMax < 25) items.push({ sev:"warning", t:`髖肩分離一般（峰值 ${fmt(s.sepMax,0)}°）`,
+        d:"重拳前嘅蓄勁可以更明顯——試下刻意將髖先轉、膊頭遲少少跟上。" });
+      else items.push({ sev:"good", t:`髖肩分離良好（峰值 ${fmt(s.sepMax,0)}°）`, d:"軀幹旋轉參與充足。" });
+    }
+    // 4) punch extension
+    const exts = punches.map(p=>p.elbowExt).filter(v=>v>0);
+    if(exts.length){
+      const maxExt = Math.max(...exts);
+      if(maxExt < 150) items.push({ sev:"warning", t:`出拳伸展未盡（手肘峰值 ${fmt(maxExt,0)}°）`,
+        d:"直拳完成時手肘應接近伸直（>160°）。如果本節以鈎拳／上擊為主可以忽略；否則留意距離感同膊頭前送。" });
+      else items.push({ sev:"good", t:`出拳伸展充分（手肘峰值 ${fmt(maxExt,0)}°）`, d:"" });
+    }
+    // 5) guard height
+    if(s.guard.total > 30){
+      const frac = s.guard.low / s.guard.total;
+      if(frac > 0.4) items.push({ sev:"serious", t:`防守手偏低（${(frac*100).toFixed(0)}% 時間喺下巴以下）`,
+        d:"非出拳時雙手應貼近面頰。建議：空擊全程「手掌摸面頰」提示、出拳後即刻收返，疲勞回合特別留意。" });
+      else if(frac > 0.2) items.push({ sev:"warning", t:`防守手間中放低（${(frac*100).toFixed(0)}% 時間）`,
+        d:"大致 OK，但注意組合拳尾同疲勞時嘅收手。" });
+      else items.push({ sev:"good", t:"防守手位置保持良好", d:"" });
+    }
+    // 6) stance width
+    if(s.stanceN > 30){
+      const st = s.stanceSum / s.stanceN;
+      if(st < 0.9) items.push({ sev:"warning", t:`站距偏窄（平均 ${fmt(st)}× 肩寬）`,
+        d:"重心易被逼失衡。目標約 1.0–1.6× 肩寬，前後腳約 45°。" });
+      else if(st > 1.8) items.push({ sev:"warning", t:`站距偏闊（平均 ${fmt(st)}× 肩寬）`,
+        d:"步法進退會偏慢，留意能唔能夠快速埋位同撤出。" });
+      else items.push({ sev:"good", t:`站距合適（平均 ${fmt(st)}× 肩寬）`, d:"" });
+    }
+    // session volume summary
+    items.push({ sev:"good", t:`本節：${s.counts.L + s.counts.R} 記出拳（左 ${s.counts.L}／右 ${s.counts.R}）· 時長 ${fmt(dur,0)} 秒`, d:"" });
+  }
+
+  $("techList").innerHTML = items.map(i=>`
+    <div class="muscle-item">
+      <span class="dot" style="background:${STATUS_COLOR[i.sev]}"></span>
+      <span><b>${i.t}</b>${i.d ? `<br><span style="color:var(--ink-muted)">${i.d}</span>` : ""}</span>
+    </div>`).join("");
+  $("techCard").style.display = "";
+  $("techCard").scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
 
 function motionLoop(){
   if(!mRun.on) return;
   mRun.raf = requestAnimationFrame(motionLoop);
   if(mVideo.readyState < 2 || currentMode !== "VIDEO") return;
   if(mRun.source === "file" && (mVideo.paused || mVideo.ended)){
-    if(mVideo.ended){ toast("影片分析完成 ✔"); stopMotion(); }
+    if(mVideo.ended){
+      toast(`影片分析完成 ✔（用時 ${((performance.now()-mRun.startedAt)/1000).toFixed(0)} 秒）`);
+      stopMotion();
+      renderTechAnalysis();            // auto weakness summary when the clip finishes
+    }
     return;
+  }
+  if(mRun.source === "file" && isFinite(mVideo.duration) && mVideo.duration > 0){
+    const pct = mVideo.currentTime / mVideo.duration * 100;
+    $("mProgFill").style.width = pct + "%";
+    $("mProgLabel").textContent =
+      `分析中 ${Math.round(pct)}% · 剩餘約 ${Math.max(0, mVideo.duration - mVideo.currentTime).toFixed(0)} 秒`;
   }
   const ts = performance.now();
   if(ts <= mRun.lastTs) return;
@@ -1247,6 +1466,8 @@ function processMotion(wl, lm, W, H, t){
   const torsoPx = (Math.hypot((lm[LM.L_SHOULDER].x-lm[LM.L_HIP].x)*W, (lm[LM.L_SHOULDER].y-lm[LM.L_HIP].y)*H)
                  + Math.hypot((lm[LM.R_SHOULDER].x-lm[LM.R_HIP].x)*W, (lm[LM.R_SHOULDER].y-lm[LM.R_HIP].y)*H))/2;
   const mPerPx = torsoPx > 1 ? torsoM/torsoPx : 0;
+  mState.startT ??= t;
+  mState.lastT = t;
 
   // per-hand speed via displacement over an ~80ms window
   for(const [hand, wristIdx] of [["L",LM.L_WRIST],["R",LM.R_WRIST]]){
@@ -1277,23 +1498,39 @@ function processMotion(wl, lm, W, H, t){
       h.v = h.v ?? 0;
     }
     const sp = h.v || 0;
+    // elbow extension of this arm (for technique review of punch reach)
+    const sIdx = hand==="L"?LM.L_SHOULDER:LM.R_SHOULDER, eIdx = hand==="L"?LM.L_ELBOW:LM.R_ELBOW;
+    const elbowNow = angle3D(wl[sIdx], wl[eIdx], wl[wristIdx]);
     // punch state machine
     if(!h.active && sp > 3.0 && t - h.lastEnd > 0.25){
-      h.active = true; h.peak = sp; h.start = t;
+      h.active = true; h.peak = sp; h.start = t; h.maxElbow = elbowNow;
     }else if(h.active){
       h.peak = Math.max(h.peak, sp);
+      h.maxElbow = Math.max(h.maxElbow || 0, elbowNow);
       if(sp < 1.2){
         h.active = false; h.lastEnd = t;
         if(h.peak > 3.5 && t - h.start > 0.05){
           mState.counts[hand]++;
           mState.punches.push({t, v:h.peak});
+          mState.punchLog.push({ t, hand, v:h.peak, elbowExt:h.maxElbow, sep:mState.sep || 0 });
           mState.peak = Math.max(mState.peak, h.peak);
           const w = parseFloat($("weightInput").value) || 70;
           mState.lastKE = 0.5 * (0.05*w) * h.peak*h.peak;
         }
-        h.peak = 0;
+        h.peak = 0; h.maxElbow = 0;
       }
+    }else{
+      // not punching — sample guard position (wrist should stay near the chin)
+      const mouthY = ((lm[9]?.y ?? lm[LM.NOSE].y) + (lm[10]?.y ?? lm[LM.NOSE].y))/2;
+      mState.guard.total++;
+      if(lm[wristIdx].y > mouthY + 0.06) mState.guard.low++;
     }
+  }
+  // stance width sample (for technique review)
+  {
+    const shoulderW = Math.hypot(wl[LM.L_SHOULDER].x-wl[LM.R_SHOULDER].x, wl[LM.L_SHOULDER].z-wl[LM.R_SHOULDER].z);
+    const stanceW = Math.hypot(wl[LM.L_ANKLE].x-wl[LM.R_ANKLE].x, wl[LM.L_ANKLE].z-wl[LM.R_ANKLE].z);
+    if(shoulderW > 0.05){ mState.stanceSum += stanceW/shoulderW; mState.stanceN++; }
   }
   const vNow = Math.max(mState.hands.L.v||0, mState.hands.R.v||0);
   mState.trace.push({t, v:vNow});
@@ -1366,7 +1603,7 @@ window.addEventListener("resize", drawSpark);
 /* stop cameras when page hidden (uploaded-video sessions survive — rAF pauses on its own) */
 document.addEventListener("visibilitychange", ()=>{
   if(document.hidden){
-    stopPostureCam();
+    if(pState.source === "cam") stopPostureSource();
     if(mRun.on && mRun.source === "cam") stopMotion();
   }
 });
