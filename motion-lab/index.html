@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kuafuor Motion Lab｜AI 體態檢查・搏擊動作分析</title>
+<meta name="description" content="Kuafuor HK Motion Lab — 瀏覽器內 AI 體態評估（肩膊/骨盆/頭頸對齊）與搏擊動作分析（出拳速度、髖肩分離、關節角度）。結合運動科學、物理治療與職業治療視角的教練篩查工具。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥊</text></svg>">
+<style>
+/* ============ Design tokens (dark lab theme) ============ */
+:root{
+  --page:#0d0d0d;
+  --surface:#1a1a19;
+  --surface-2:#232322;
+  --ink:#ffffff;
+  --ink-2:#c3c2b7;
+  --ink-muted:#898781;
+  --hairline:#2c2c2a;
+  --border:rgba(255,255,255,0.10);
+  --brand:#d32f2f;           /* Kuafuor HK red — branding only, not data */
+  --series-1:#3987e5;        /* skeleton / trend line */
+  --series-2:#199e70;
+  --good:#0ca30c;
+  --warning:#fab219;
+  --serious:#ec835a;
+  --critical:#d03b3b;
+  --radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang HK","PingFang TC","Microsoft JhengHei",sans-serif;
+  background:var(--page);color:var(--ink-2);line-height:1.6;
+}
+h1,h2,h3,h4{color:var(--ink);line-height:1.3}
+a{color:var(--series-1)}
+button{font-family:inherit}
+
+/* ============ Header ============ */
+header{
+  position:sticky;top:0;z-index:50;
+  background:rgba(13,13,13,0.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--hairline);
+}
+.hd-in{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--ink);font-size:1.05rem;text-decoration:none}
+.logo b{color:var(--brand)}
+.hd-sub{font-size:.8rem;color:var(--ink-muted)}
+.hd-spacer{flex:1}
+.backlink{font-size:.85rem;color:var(--ink-muted);text-decoration:none}
+.backlink:hover{color:var(--ink)}
+
+/* ============ Tabs ============ */
+.tabs{max-width:1100px;margin:14px auto 0;padding:0 16px;display:flex;gap:8px;flex-wrap:wrap}
+.tab-btn{
+  border:1px solid var(--border);background:var(--surface);color:var(--ink-2);
+  padding:10px 18px;border-radius:999px;cursor:pointer;font-size:.95rem;font-weight:600;
+}
+.tab-btn.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.tab-btn:not(.active):hover{background:var(--surface-2)}
+
+main{max-width:1100px;margin:0 auto;padding:16px}
+section.tab-panel{display:none}
+section.tab-panel.active{display:block}
+
+/* ============ Cards & layout ============ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.card h3{font-size:1rem;margin-bottom:10px}
+.grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+@media (max-width:860px){.grid-2{grid-template-columns:1fr}}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{
+  border:none;border-radius:8px;padding:10px 16px;font-weight:700;font-size:.92rem;cursor:pointer;
+  background:var(--surface-2);color:var(--ink);border:1px solid var(--border);
+}
+.btn:hover{filter:brightness(1.15)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{display:flex;align-items:center;gap:6px;font-size:.88rem;color:var(--ink-2)}
+.field input[type=number],.field input[type=text]{
+  width:86px;background:var(--page);border:1px solid var(--border);color:var(--ink);
+  border-radius:8px;padding:8px 10px;font-size:.92rem;
+}
+.field input[type=text]{width:140px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg button{background:var(--surface);color:var(--ink-2);border:none;padding:9px 14px;cursor:pointer;font-size:.88rem;font-weight:600}
+.seg button.active{background:var(--series-1);color:#fff}
+.hint{font-size:.82rem;color:var(--ink-muted);margin-top:8px}
+.note-strip{
+  border-left:3px solid var(--warning);background:var(--surface-2);
+  padding:10px 12px;border-radius:0 8px 8px 0;font-size:.84rem;margin-top:10px;color:var(--ink-2);
+}
+
+/* ============ Stage (video / canvas) ============ */
+.stage{
+  position:relative;background:#000;border-radius:var(--radius);overflow:hidden;
+  border:1px solid var(--border);min-height:280px;
+  display:flex;align-items:center;justify-content:center;
+}
+.stage video,.stage canvas{display:block;max-width:100%;height:auto}
+.stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.stage canvas{position:relative;z-index:2;width:100%}
+.stage.mirrored video{transform:scaleX(-1)}
+.stage-msg{
+  position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:10px;
+  align-items:center;justify-content:center;text-align:center;padding:24px;
+  color:var(--ink-2);font-size:.95rem;background:rgba(13,13,13,.55);
+}
+.stage-msg.hidden{display:none}
+.spinner{width:34px;height:34px;border:3px solid var(--hairline);border-top-color:var(--series-1);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.countdown{
+  position:absolute;inset:0;z-index:6;display:none;align-items:center;justify-content:center;
+  font-size:6rem;font-weight:800;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.8);
+}
+
+/* ============ Stat tiles ============ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.tile .lb{font-size:.76rem;color:var(--ink-muted);letter-spacing:.02em}
+.tile .val{font-size:1.5rem;font-weight:600;color:var(--ink);margin-top:2px}
+.tile .val small{font-size:.85rem;font-weight:500;color:var(--ink-muted);margin-left:2px}
+.tile .sub{font-size:.76rem;color:var(--ink-muted);margin-top:2px}
+.tile.hero{grid-column:span 2;background:linear-gradient(135deg,var(--surface-2),#20242c)}
+.tile.hero .val{font-size:2.6rem}
+@media (max-width:480px){.tile.hero .val{font-size:2rem}}
+.sparkwrap{margin-top:10px}
+#speedSpark{width:100%;height:64px;display:block}
+
+/* ============ Metric result list ============ */
+.metric-row{
+  display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--hairline);
+}
+.metric-row:last-child{border-bottom:none}
+.metric-name{flex:1;font-size:.9rem;color:var(--ink)}
+.metric-name small{display:block;color:var(--ink-muted);font-size:.74rem}
+.metric-val{font-weight:600;color:var(--ink);font-size:.95rem;text-align:right}
+.metric-val small{display:block;font-weight:400;color:var(--ink-muted);font-size:.72rem}
+.status{
+  display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:700;
+  padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid;
+}
+.status .dot{width:8px;height:8px;border-radius:50%}
+.status.s-good{color:var(--good);border-color:var(--good)}
+.status.s-good .dot{background:var(--good)}
+.status.s-warning{color:var(--warning);border-color:var(--warning)}
+.status.s-warning .dot{background:var(--warning)}
+.status.s-serious{color:var(--serious);border-color:var(--serious)}
+.status.s-serious .dot{background:var(--serious)}
+
+/* ============ Muscle map ============ */
+.muscle-flex{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.muscle-fig{flex:0 0 170px}
+.muscle-fig svg{width:100%;height:auto;display:block}
+.muscle-list{flex:1;min-width:200px}
+.muscle-item{display:flex;gap:8px;align-items:baseline;padding:6px 0;font-size:.86rem;border-bottom:1px solid var(--hairline)}
+.muscle-item:last-child{border-bottom:none}
+.muscle-item .dot{width:9px;height:9px;border-radius:50%;flex:none;position:relative;top:0}
+.m-region{fill:#3a3a38;stroke:var(--hairline);stroke-width:1}
+.m-body{fill:#242424;stroke:#3d3d3b;stroke-width:1.5}
+
+/* ============ Exercises ============ */
+.ex-item{padding:10px 0;border-bottom:1px solid var(--hairline);font-size:.88rem}
+.ex-item:last-child{border-bottom:none}
+.ex-item b{color:var(--ink)}
+.ex-item .ex-dose{color:var(--series-1);font-size:.8rem;font-weight:600;margin-left:6px}
+.ex-item p{color:var(--ink-muted);font-size:.8rem;margin-top:2px}
+
+/* ============ Guide / footer ============ */
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.guide-grid .card{margin:0}
+ol.steps{padding-left:20px;font-size:.88rem}
+ol.steps li{margin-bottom:6px}
+footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;text-align:center;font-size:.8rem;color:var(--ink-muted)}
+.disclaimer{
+  max-width:1100px;margin:0 auto 14px;padding:12px 14px;border:1px dashed var(--border);
+  border-radius:10px;font-size:.8rem;color:var(--ink-muted);text-align:left;
+}
+
+/* ============ Report (print) ============ */
+#report{display:none}
+@media print{
+  body *{visibility:hidden}
+  #report,#report *{visibility:visible}
+  #report{display:block;position:absolute;left:0;top:0;width:100%;background:#fff;color:#111;padding:24px;font-size:12px}
+  #report h2{color:#111}
+  #report .rp-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #d32f2f;padding-bottom:8px;margin-bottom:12px}
+  #report .rp-brand{font-weight:800;letter-spacing:2px;font-size:16px}
+  #report .rp-brand b{color:#d32f2f}
+  #report table{width:100%;border-collapse:collapse;margin:10px 0}
+  #report th,#report td{border:1px solid #ccc;padding:6px 8px;text-align:left;font-variant-numeric:tabular-nums}
+  #report th{background:#f2f2f2}
+  #report img{max-width:46%;border:1px solid #ddd}
+  #report .rp-note{font-size:10px;color:#666;margin-top:14px;border-top:1px solid #ddd;padding-top:8px}
+  #report .rp-two{display:flex;gap:12px;align-items:flex-start}
+}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:99;
+  background:var(--surface-2);color:var(--ink);border:1px solid var(--border);
+  border-radius:10px;padding:12px 18px;font-size:.9rem;box-shadow:0 8px 30px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-in">
+    <a class="logo" href="../">Kuafuor <b>HK</b></a>
+    <span class="hd-sub">MOTION LAB · AI 體態與搏擊動作分析</span>
+    <span class="hd-spacer"></span>
+    <a class="backlink" href="../">← 返回主頁</a>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="功能">
+  <button class="tab-btn active" data-tab="posture">🧍 體態評估 <small>Posture</small></button>
+  <button class="tab-btn" data-tab="motion">🥊 動作分析 <small>Motion</small></button>
+  <button class="tab-btn" data-tab="guide">📋 使用說明 <small>Guide</small></button>
+</nav>
+
+<main>
+
+<!-- ==================== POSTURE TAB ==================== -->
+<section class="tab-panel active" id="tab-posture">
+  <div class="card">
+    <div class="controls">
+      <div class="seg" id="viewSeg">
+        <button data-view="front" class="active">正面 Front</button>
+        <button data-view="side">側面 Side</button>
+      </div>
+      <label class="field">身高 <input type="number" id="heightInput" value="170" min="100" max="220" step="1"> cm</label>
+      <label class="field">姓名 <input type="text" id="nameInput" placeholder="（報告用）"></label>
+      <span class="hd-spacer"></span>
+      <button class="btn" id="pCamBtn">📷 開啟鏡頭</button>
+      <button class="btn" id="pFlipBtn" style="display:none">🔄 切換鏡頭</button>
+      <button class="btn primary" id="pShotBtn" style="display:none">拍攝</button>
+      <button class="btn" id="pTimerBtn" style="display:none">⏱ 5 秒倒數</button>
+      <button class="btn" id="pUploadBtn">🖼 上載相片</button>
+      <input type="file" id="pFile" accept="image/*" hidden>
+    </div>
+    <p class="hint">受測者請除鞋、穿貼身衣物，雙腳與肩同寬自然企直，望向正前方。鏡頭放胸口高度、距離 2–3 米，全身入鏡。</p>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="stage" id="pStage">
+        <video id="pVideo" playsinline muted></video>
+        <canvas id="pCanvas"></canvas>
+        <div class="stage-msg" id="pMsg"><div class="spinner"></div><div>載入 AI 模型中…</div></div>
+        <div class="countdown" id="pCount"></div>
+      </div>
+      <p class="hint" id="pStageHint">開啟鏡頭或上載相片後，系統會自動偵測 33 個身體關節點並計算對齊度。所有分析在你的裝置本地進行，影像不會上傳。</p>
+    </div>
+
+    <div>
+      <div class="card" id="pResultCard" style="display:none">
+        <h3>量度結果 <small style="color:var(--ink-muted);font-weight:400">Measurements</small></h3>
+        <div id="metricList"></div>
+        <div class="note-strip">閾值為一般姿勢篩查參考，並非醫療診斷標準。左右以<b>受測者本人</b>方向為準。</div>
+        <div class="controls" style="margin-top:12px">
+          <button class="btn primary" id="reportBtn">🖨 生成報告 / 儲存 PDF</button>
+          <button class="btn ghost" id="clearBtn">清除結果</button>
+        </div>
+      </div>
+      <div class="card" id="pEmptyCard">
+        <h3>等待分析</h3>
+        <p style="font-size:.88rem">完成拍攝或上載相片後，右邊會顯示：</p>
+        <ul style="font-size:.86rem;padding-left:20px;margin-top:6px;color:var(--ink-2)">
+          <li>頭部側傾・肩膊/骨盆/膝水平（角度＋公分差）</li>
+          <li>身體中線偏移（鉛垂線）</li>
+          <li>側面：頭頸前傾角（CVA 估算）、肩/骨盆前移</li>
+          <li>需關注肌群示意圖＋矯正訓練建議</li>
+          <li>可列印報告，方便與物理治療師／職業治療師溝通</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" id="pFindings" style="display:none">
+    <div class="card">
+      <h3>需關注部位（示意） <small style="color:var(--ink-muted);font-weight:400">Focus areas</small></h3>
+      <div class="muscle-flex">
+        <div class="muscle-fig" aria-hidden="true">
+          <svg id="muscleSvg" viewBox="0 0 200 420">
+            <!-- simplified back-view figure -->
+            <circle class="m-body" cx="100" cy="38" r="24"/>
+            <rect class="m-body" x="90" y="60" width="20" height="16" rx="6"/>
+            <path class="m-body" d="M60 80 Q100 68 140 80 L146 170 Q100 184 54 170 Z"/>
+            <path class="m-body" d="M54 170 Q100 186 146 170 L142 226 Q100 238 58 226 Z"/>
+            <path class="m-body" d="M60 82 Q46 90 42 118 L36 178 L50 180 L58 128 Z"/>
+            <path class="m-body" d="M140 82 Q154 90 158 118 L164 178 L150 180 L142 128 Z"/>
+            <path class="m-body" d="M62 228 L58 330 L74 332 L84 240 Z"/>
+            <path class="m-body" d="M138 228 L142 330 L126 332 L116 240 Z"/>
+            <path class="m-body" d="M60 332 L58 400 L76 400 L76 334 Z"/>
+            <path class="m-body" d="M140 332 L142 400 L124 400 L124 334 Z"/>
+            <!-- regions: note SVG left = subject's RIGHT (back view) -->
+            <ellipse class="m-region" id="mr-neck_r" cx="88" cy="70" rx="10" ry="12"/>
+            <ellipse class="m-region" id="mr-neck_l" cx="112" cy="70" rx="10" ry="12"/>
+            <ellipse class="m-region" id="mr-trap_r" cx="74" cy="92" rx="18" ry="12"/>
+            <ellipse class="m-region" id="mr-trap_l" cx="126" cy="92" rx="18" ry="12"/>
+            <ellipse class="m-region" id="mr-midback_r" cx="80" cy="140" rx="16" ry="24"/>
+            <ellipse class="m-region" id="mr-midback_l" cx="120" cy="140" rx="16" ry="24"/>
+            <ellipse class="m-region" id="mr-ql_r" cx="82" cy="180" rx="14" ry="16"/>
+            <ellipse class="m-region" id="mr-ql_l" cx="118" cy="180" rx="14" ry="16"/>
+            <ellipse class="m-region" id="mr-glute_r" cx="78" cy="216" rx="17" ry="15"/>
+            <ellipse class="m-region" id="mr-glute_l" cx="122" cy="216" rx="17" ry="15"/>
+            <ellipse class="m-region" id="mr-chest" cx="100" cy="108" rx="30" ry="14"/>
+            <ellipse class="m-region" id="mr-hipflexor" cx="100" cy="200" rx="24" ry="12"/>
+            <!-- L/R tags (subject's own left/right) -->
+            <text x="30" y="20" fill="#898781" font-size="12">右 R</text>
+            <text x="150" y="20" fill="#898781" font-size="12">左 L</text>
+          </svg>
+        </div>
+        <div class="muscle-list" id="muscleList"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>矯正訓練建議 <small style="color:var(--ink-muted);font-weight:400">Corrective exercises</small></h3>
+      <div id="exList"></div>
+      <div class="note-strip">建議屬一般運動訓練參考。如有痛症、麻痺或舊患，請先諮詢物理治療師、職業治療師或醫生。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== MOTION TAB ==================== -->
+<section class="tab-panel" id="tab-motion">
+  <div class="card">
+    <div class="controls">
+      <button class="btn primary" id="mCamBtn">📷 開啟鏡頭</button>
+      <button class="btn" id="mFlipBtn" style="display:none">🔄 切換鏡頭</button>
+      <button class="btn" id="mUploadBtn">🎞 上載影片</button>
+      <input type="file" id="mFile" accept="video/*" hidden>
+      <label class="field">體重 <input type="number" id="weightInput" value="70" min="30" max="150" step="1"> kg</label>
+      <span class="hd-spacer"></span>
+      <button class="btn" id="mResetBtn">↺ 重設數據</button>
+      <button class="btn" id="mStopBtn" style="display:none">⏹ 停止</button>
+    </div>
+    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。</p>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="stage" id="mStage">
+        <video id="mVideo" playsinline muted></video>
+        <canvas id="mCanvas"></canvas>
+        <div class="stage-msg" id="mMsg"><div>開啟鏡頭或上載影片開始分析</div></div>
+      </div>
+      <div class="card sparkwrap" style="margin-top:10px">
+        <div class="tile-lb" style="font-size:.78rem;color:var(--ink-muted)">手部速度（最近 6 秒）·<span style="color:var(--series-1)"> ─ 速度</span> ·<span style="color:var(--critical)"> ● 出拳峰值</span></div>
+        <canvas id="speedSpark"></canvas>
+      </div>
+    </div>
+
+    <div>
+      <div class="tiles">
+        <div class="tile hero">
+          <div class="lb">最快出拳（本節）Peak hand speed</div>
+          <div class="val" id="tPeak">–<small>m/s</small></div>
+          <div class="sub" id="tPeakKmh">= – km/h</div>
+        </div>
+        <div class="tile">
+          <div class="lb">即時手速</div>
+          <div class="val" id="tSpeed">–<small>m/s</small></div>
+        </div>
+        <div class="tile">
+          <div class="lb">出拳次數 左/右</div>
+          <div class="val" id="tCount">0 / 0</div>
+        </div>
+        <div class="tile">
+          <div class="lb">上一拳動能（估算）</div>
+          <div class="val" id="tKE">–<small>J</small></div>
+          <div class="sub">按體重 × 有效質量估算</div>
+        </div>
+        <div class="tile">
+          <div class="lb">髖肩分離角</div>
+          <div class="val" id="tSep">–<small>°</small></div>
+          <div class="sub" id="tSepMax">峰值 –°</div>
+        </div>
+        <div class="tile">
+          <div class="lb">手肘角 左/右</div>
+          <div class="val" id="tElbow" style="font-size:1.15rem">– / –°</div>
+        </div>
+        <div class="tile">
+          <div class="lb">膝關節角 左/右</div>
+          <div class="val" id="tKnee" style="font-size:1.15rem">– / –°</div>
+        </div>
+        <div class="tile">
+          <div class="lb">站距 / 肩寬</div>
+          <div class="val" id="tStance">–<small>×</small></div>
+          <div class="sub">拳擊常見 1.0–1.6×</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <h3>教練提示</h3>
+        <ul style="font-size:.84rem;padding-left:18px;color:var(--ink-2)">
+          <li><b>髖肩分離角</b>：出拳前軀幹「上下分離」越大，越能利用彈性勢能——業餘選手常見不足 20°。</li>
+          <li><b>手速</b>：業餘拳手刺拳峰值約 5–8 m/s；速度基於 AI 骨架估算（已補償橫向步法，向鏡頭方向嘅移動會略被低估），適合比較趨勢，不能當精確儀器。</li>
+          <li><b>動能</b>：以有效質量 ≈ 體重 5% 估算（前手直拳量級），僅供對比參考。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== GUIDE TAB ==================== -->
+<section class="tab-panel" id="tab-guide">
+  <div class="guide-grid">
+    <div class="card">
+      <h3>🧍 體態評估點做？</h3>
+      <ol class="steps">
+        <li>受測者除鞋、穿貼身衣物</li>
+        <li>手機／平板放胸口高度，距離 2–3 米</li>
+        <li>正面：雙腳與肩同寬，雙手自然垂下，望正前方</li>
+        <li>側面：身體轉 90°，維持平時慣常站姿（唔好刻意企直）</li>
+        <li>輸入身高（用作換算公分），影相或上載相片</li>
+        <li>撳「生成報告」可列印或儲存 PDF</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>🥊 動作分析點做？</h3>
+      <ol class="steps">
+        <li>鏡頭放側面 45°–90°，全身入鏡</li>
+        <li>輸入體重（用作估算出拳動能）</li>
+        <li>開鏡頭即時分析，或上載訓練影片</li>
+        <li>觀察出拳速度、髖肩分離角、關節角度</li>
+        <li>「重設數據」開始新一節統計</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>🔬 技術與私隱</h3>
+      <p style="font-size:.86rem">本工具使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點。影像唔會上傳到任何伺服器。首次使用需要下載約 9MB 模型（之後會快取）。</p>
+      <p style="font-size:.86rem;margin-top:8px">公分數值由身高比例換算，屬<b>估算</b>；適合追蹤變化趨勢及作教練篩查，唔可以取代 X 光、臨床姿勢評估或醫療診斷。</p>
+    </div>
+    <div class="card">
+      <h3>🤝 跨專業協作</h3>
+      <p style="font-size:.86rem">呢個工具設計畀搏擊教練配合<b>運動科學、物理治療、職業治療</b>團隊使用：</p>
+      <ul style="font-size:.86rem;padding-left:18px;margin-top:6px">
+        <li>教練：訓練前後篩查、動作質素監測</li>
+        <li>物理治療師：以報告作轉介參考、跟進矯正進度</li>
+        <li>職業治療師：日常姿勢／工效學習慣分析</li>
+        <li>運動科學：出拳速度、分離角等表現數據追蹤</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="disclaimer">
+  ⚠️ 免責聲明：Kuafuor Motion Lab 是訓練篩查與教育工具，所有數據均為 AI 估算，並非醫療器材，亦不構成醫療診斷或治療建議。如有痛症、受傷或健康疑慮，請諮詢註冊物理治療師、職業治療師或醫生。
+</div>
+
+<footer>
+  © 2026 Kuafuorhk.com · Kuafuor Motion Lab · Powered by MediaPipe Pose（裝置本地運算）
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<!-- ==================== PRINT REPORT ==================== -->
+<div id="report">
+  <div class="rp-head">
+    <div class="rp-brand">KUAFUOR <b>HK</b> · MOTION LAB 體態評估報告</div>
+    <div id="rpDate"></div>
+  </div>
+  <div>受測者：<b id="rpName">—</b>　身高：<span id="rpHeight">—</span> cm　視角：<span id="rpView">—</span></div>
+  <div class="rp-two" style="margin-top:10px">
+    <img id="rpImg" alt="姿勢分析截圖">
+    <div style="flex:1">
+      <table id="rpTable"></table>
+      <div><b>需關注部位：</b><span id="rpMuscles">—</span></div>
+      <div style="margin-top:6px"><b>訓練建議：</b><span id="rpEx">—</span></div>
+    </div>
+  </div>
+  <div class="rp-note">
+    本報告由 Kuafuor Motion Lab（AI 姿勢估計）產生，數值為估算，屬訓練篩查用途，非醫療診斷。左右以受測者本人方向為準。<br>
+    如有痛症或健康疑慮，請諮詢註冊物理治療師／職業治療師／醫生。 © Kuafuorhk.com
+  </div>
+</div>
+
+<script type="module">
+import { FilesetResolver, PoseLandmarker, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+/* ============================================================
+   Landmarks reference (MediaPipe Pose, 33 points)
+   ============================================================ */
+const LM = {
+  NOSE:0, L_EYE:2, R_EYE:5, L_EAR:7, R_EAR:8,
+  L_SHOULDER:11, R_SHOULDER:12, L_ELBOW:13, R_ELBOW:14, L_WRIST:15, R_WRIST:16,
+  L_HIP:23, R_HIP:24, L_KNEE:25, R_KNEE:26, L_ANKLE:27, R_ANKLE:28,
+  L_HEEL:29, R_HEEL:30, L_FOOT:31, R_FOOT:32
+};
+const STATUS_LABEL = { good:"✓ 正常", warning:"△ 輕微", serious:"✗ 注意" };
+const STATUS_COLOR = { good:"#0ca30c", warning:"#fab219", serious:"#ec835a" };
+const SKELETON_COLOR = "#3987e5";
+
+const $ = id => document.getElementById(id);
+const toast = (msg, ms=3200) => {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), ms);
+};
+const deg = r => r*180/Math.PI;
+const fmt = (n,d=1) => (n==null||!isFinite(n)) ? "–" : n.toFixed(d);
+const round1 = v => Math.round(v*10)/10;   // grade what the user sees (1-decimal display)
+
+/* ============================================================
+   Model loading (single landmarker, mode-switched)
+   ============================================================ */
+let landmarker = null, currentMode = null, modeLock = Promise.resolve();
+async function initModel(){
+  $("pMsg").classList.remove("hidden");
+  try{
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    const make = delegate => PoseLandmarker.createFromOptions(vision, {
+      baseOptions:{
+        modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+        delegate
+      },
+      runningMode:"VIDEO", numPoses:1,
+      minPoseDetectionConfidence:0.5, minPosePresenceConfidence:0.5, minTrackingConfidence:0.5
+    });
+    try{ landmarker = await make("GPU"); }
+    catch(e){ console.warn("GPU delegate failed, falling back to CPU", e); landmarker = await make("CPU"); }
+    currentMode = "VIDEO";
+    // warm-up: compile the inference graph now so the first real analysis isn't seconds late
+    try{
+      const c = document.createElement("canvas"); c.width = 64; c.height = 64;
+      c.getContext("2d").fillRect(0,0,64,64);
+      landmarker.detectForVideo(c, performance.now());
+    }catch(e){ console.warn("warm-up skipped", e); }
+    $("pMsg").classList.add("hidden");
+    $("pMsg").innerHTML = "";
+  }catch(err){
+    console.error(err);
+    $("pMsg").innerHTML = "<div>⚠️ AI 模型載入失敗，請檢查網絡後重新整理頁面。</div>";
+    toast("模型載入失敗：" + (err?.message || err));
+  }
+}
+function setMode(mode){
+  // serialize setOptions calls so IMAGE/VIDEO switches never race;
+  // swallow rejections so one failure can never poison the chain forever
+  modeLock = modeLock.then(async ()=>{
+    if(landmarker && currentMode !== mode){
+      await landmarker.setOptions({ runningMode: mode });
+      currentMode = mode;
+    }
+  }).catch(err=>{
+    console.error("setOptions failed", err);
+    toast("AI 模式切換失敗，請再試一次");
+  });
+  return modeLock;
+}
+initModel();
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+document.querySelectorAll(".tab-btn").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active", x===b));
+    document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("active", p.id === "tab-"+b.dataset.tab));
+    if(b.dataset.tab !== "posture") stopPostureCam();
+    if(b.dataset.tab !== "motion") stopMotion();
+  });
+});
+
+/* ============================================================
+   Shared camera helpers
+   ============================================================ */
+async function openCam(videoEl, facing){
+  const constraints = { audio:false, video:{ facingMode:facing, width:{ideal:1280}, height:{ideal:720} } };
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  videoEl.srcObject = stream;
+  await videoEl.play();
+  return stream;
+}
+function stopStream(videoEl){
+  const s = videoEl.srcObject;
+  if(s){ s.getTracks().forEach(t=>t.stop()); videoEl.srcObject = null; }
+}
+
+/* ============================================================
+   POSTURE TAB
+   ============================================================ */
+const pVideo = $("pVideo"), pCanvas = $("pCanvas"), pCtx = pCanvas.getContext("2d");
+let pState = { camOn:false, facing:"environment", raf:0, lastTs:-1, analyzed:null };
+
+$("viewSeg").querySelectorAll("button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    $("viewSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("active", x===b));
+    pState.view = b.dataset.view;
+  });
+});
+pState.view = "front";
+
+let pCamBusy = false;
+$("pCamBtn").addEventListener("click", async ()=>{
+  if(pCamBusy) return;                      // ignore clicks while getUserMedia is pending
+  if(pState.camOn){ stopPostureCam(); return; }
+  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  pCamBusy = true; $("pCamBtn").disabled = true;
+  try{
+    try{
+      await openCam(pVideo, pState.facing);
+    }catch(e){
+      // fall back to any camera
+      try{ await openCam(pVideo, undefined); }
+      catch(e2){ toast("無法開啟鏡頭：" + (e2?.message||e2)); return; }
+    }
+    pState.camOn = true;
+    $("pCamBtn").textContent = "⏹ 關閉鏡頭";
+    $("pShotBtn").style.display = $("pTimerBtn").style.display = $("pFlipBtn").style.display = "";
+    $("pMsg").classList.add("hidden");
+    $("pStage").classList.toggle("mirrored", isFrontFacing(pVideo));
+    await setMode("VIDEO");
+    pState.lastTs = -1;
+    cancelAnimationFrame(pState.raf);
+    postureLiveLoop();
+  }finally{
+    pCamBusy = false; $("pCamBtn").disabled = false;
+  }
+});
+$("pFlipBtn").addEventListener("click", async ()=>{
+  if(pCamBusy || !pState.camOn) return;
+  pCamBusy = true;
+  try{
+    pState.facing = pState.facing === "user" ? "environment" : "user";
+    stopStream(pVideo);
+    try{ await openCam(pVideo, pState.facing); }
+    catch(e){ toast("切換失敗"); }
+    $("pStage").classList.toggle("mirrored", isFrontFacing(pVideo));
+  }finally{ pCamBusy = false; }
+});
+function isFrontFacing(videoEl){
+  const track = videoEl.srcObject?.getVideoTracks?.()[0];
+  const fm = track?.getSettings?.().facingMode;
+  return fm ? fm === "user" : true; // laptops: single user-facing cam
+}
+function stopPostureCam(){
+  countdownToken++;                        // cancel any pending 5s countdown
+  $("pCount").style.display = "none";
+  if(!pState.camOn) return;
+  cancelAnimationFrame(pState.raf);
+  stopStream(pVideo);
+  pState.camOn = false;
+  $("pCamBtn").textContent = "📷 開啟鏡頭";
+  $("pShotBtn").style.display = $("pTimerBtn").style.display = $("pFlipBtn").style.display = "none";
+  $("pStage").classList.remove("mirrored");
+}
+
+function postureLiveLoop(){
+  if(!pState.camOn) return;
+  pState.raf = requestAnimationFrame(postureLiveLoop);
+  if(pVideo.readyState < 2 || currentMode !== "VIDEO") return;
+  const ts = performance.now();
+  if(ts <= pState.lastTs) return;
+  pState.lastTs = ts;
+  const res = landmarker.detectForVideo(pVideo, ts);
+  const W = pVideo.videoWidth, H = pVideo.videoHeight;
+  if(!W) return;
+  if(pCanvas.width !== W || pCanvas.height !== H){ pCanvas.width = W; pCanvas.height = H; }
+  pCtx.clearRect(0,0,W,H);
+  const mirrored = $("pStage").classList.contains("mirrored");
+  if(res.landmarks?.[0]) drawSkeleton(pCtx, res.landmarks[0], W, H, mirrored, 0.55);
+}
+
+/* --- capture / upload --- */
+let countdownToken = 0;
+$("pShotBtn").addEventListener("click", ()=>capturePhoto());
+$("pTimerBtn").addEventListener("click", async ()=>{
+  const tok = ++countdownToken;
+  const cd = $("pCount"); cd.style.display = "flex";
+  for(let i=5;i>=1;i--){
+    if(tok !== countdownToken || !pState.camOn){ cd.style.display = "none"; return; }
+    cd.textContent = i;
+    await new Promise(r=>setTimeout(r,1000));
+  }
+  cd.style.display = "none";
+  if(tok !== countdownToken || !pState.camOn) return;   // cancelled while counting
+  capturePhoto();
+});
+function capturePhoto(){
+  if(!pState.camOn || pVideo.readyState < 2){ toast("鏡頭未就緒"); return; }
+  const c = document.createElement("canvas");
+  c.width = pVideo.videoWidth; c.height = pVideo.videoHeight;
+  c.getContext("2d").drawImage(pVideo, 0, 0);   // capture un-mirrored frame (subject-true left/right)
+  stopPostureCam();
+  analyzePosture(c);
+}
+$("pUploadBtn").addEventListener("click", ()=>$("pFile").click());
+$("pFile").addEventListener("change", e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const MAXW = 1600;
+    const sc = Math.min(1, MAXW/img.naturalWidth);
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth*sc); c.height = Math.round(img.naturalHeight*sc);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src);
+    stopPostureCam();
+    analyzePosture(c);
+  };
+  img.onerror = ()=>toast("讀取相片失敗");
+  img.src = URL.createObjectURL(f);
+  e.target.value = "";
+});
+
+/* --- analysis core --- */
+async function analyzePosture(srcCanvas){
+  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  $("pMsg").innerHTML = '<div class="spinner"></div><div>分析中…</div>';
+  $("pMsg").classList.remove("hidden");
+  try{
+    await setMode("IMAGE");
+    if(currentMode !== "IMAGE"){ toast("AI 未就緒，請再試一次"); return; }
+    let res;
+    try{ res = landmarker.detect(srcCanvas); }
+    catch(e){ console.error(e); toast("偵測失敗：" + (e?.message||e)); return; }
+    const lm = res.landmarks?.[0];
+    if(!lm){ toast("偵測唔到人體，請確保全身清晰入鏡、光線充足"); return; }
+
+    const W = srcCanvas.width, H = srcCanvas.height;
+    const P = i => ({ x: lm[i].x*W, y: lm[i].y*H, v: lm[i].visibility ?? 1 });
+    const heightCm = Math.max(100, Math.min(220, parseFloat($("heightInput").value) || 170));
+
+    // pixel scale: nose→ankle span ≈ 89% of stature (anthropometric estimate)
+    const ankleY = (P(LM.L_ANKLE).y + P(LM.R_ANKLE).y)/2;
+    const noseY = P(LM.NOSE).y;
+    const span = ankleY - noseY;
+    if(span < H*0.2){ toast("人體太細或唔完整，請靠近啲／全身入鏡再試"); return; }
+    const cmPerPx = (0.891*heightCm)/span;
+
+    const view = pState.view;
+    let result;
+    if(view === "front"){
+      const need = [LM.NOSE,LM.L_SHOULDER,LM.R_SHOULDER,LM.L_HIP,LM.R_HIP,LM.L_ANKLE,LM.R_ANKLE];
+      if(need.some(i=>P(i).v < 0.5)){ toast("關節點唔清晰（被遮擋？），結果可能唔準"); }
+      result = analyzeFront(P, cmPerPx);
+    }else{
+      result = analyzeSide(P, cmPerPx, W);
+      if(result.lowVis){ toast("側面關節點唔清晰（被遮擋？），結果可能唔準"); }
+    }
+    const {metrics, findings} = result;
+
+    // render annotated image, then snapshot it for the report
+    // (pCanvas is shared with the live camera preview, so the report must not read it later)
+    renderPostureOverlay(srcCanvas, lm, metrics, view, result.side);
+    const snapshot = pCanvas.toDataURL("image/jpeg", 0.85);
+    pState.analyzed = { metrics, findings, view, heightCm, snapshot };
+    renderMetricList(metrics);
+    renderFindings(findings);
+    $("pResultCard").style.display = "";
+    $("pEmptyCard").style.display = "none";
+    $("pFindings").style.display = "";
+  }finally{
+    $("pMsg").classList.add("hidden");
+  }
+}
+
+/* tilt of the line joining subject-left & subject-right points.
+   Positive angle ⇒ subject-LEFT side lower (image y grows downward). */
+function pairTilt(Pl, Pr, cmPerPx){
+  const a = deg(Math.atan2(Pl.y - Pr.y, Math.abs(Pl.x - Pr.x) || 1));
+  const dcm = Math.abs(Pl.y - Pr.y) * cmPerPx;
+  const higher = dcm < 0.15 ? null : (a > 0 ? "右" : "左"); // lower left ⇒ higher right; ~level ⇒ no side
+  return { angle:a, absAngle:Math.abs(a), dcm, higher };
+}
+// grade the ROUNDED value so the display can never contradict the status label
+const grade3 = (val, ok, warn) => round1(val) < ok ? "good" : (round1(val) < warn ? "warning" : "serious");
+
+function analyzeFront(P, cmPerPx){
+  const head = pairTilt(P(LM.L_EAR), P(LM.R_EAR), cmPerPx);
+  const sho  = pairTilt(P(LM.L_SHOULDER), P(LM.R_SHOULDER), cmPerPx);
+  const hip  = pairTilt(P(LM.L_HIP), P(LM.R_HIP), cmPerPx);
+  const knee = pairTilt(P(LM.L_KNEE), P(LM.R_KNEE), cmPerPx);
+  const midAnkleX = (P(LM.L_ANKLE).x + P(LM.R_ANKLE).x)/2;
+  // subject-left appears at larger image x in an un-mirrored front photo
+  const shift = (P(LM.NOSE).x - midAnkleX) * cmPerPx;
+  const shiftSide = Math.abs(shift) < 0.15 ? null : (shift > 0 ? "左" : "右");
+
+  const metrics = [
+    { key:"head", name:"頭部側傾", sub:"耳線 Ear line", value:`${fmt(head.absAngle)}°`,
+      extra: head.higher?`${head.higher}側較高 · ${fmt(head.dcm)} cm`:"水平",
+      ref:"< 2°", status: grade3(head.absAngle, 2, 4), raw:head },
+    { key:"shoulder", name:"肩膊水平", sub:"Shoulder alignment", value:`${fmt(sho.dcm)} cm`,
+      extra: (sho.higher?`${sho.higher}肩較高 · `:"") + `${fmt(sho.absAngle)}°`,
+      ref:"< 1 cm", status: grade3(sho.dcm, 1, 2), raw:sho },
+    { key:"pelvis", name:"骨盆水平", sub:"Pelvic alignment", value:`${fmt(hip.dcm)} cm`,
+      extra: (hip.higher?`${hip.higher}側較高 · `:"") + `${fmt(hip.absAngle)}°`,
+      ref:"< 0.8 cm", status: grade3(hip.dcm, 0.8, 1.6), raw:hip },
+    { key:"knee", name:"膝關節水平", sub:"Knee level", value:`${fmt(knee.dcm)} cm`,
+      extra: knee.higher?`${knee.higher}側較高`:"水平",
+      ref:"< 0.8 cm", status: grade3(knee.dcm, 0.8, 1.6), raw:knee },
+    { key:"midline", name:"身體中線偏移", sub:"鼻尖對足踝中點鉛垂線", value:`${fmt(Math.abs(shift))} cm`,
+      extra: shiftSide?`偏向${shiftSide}側`:"置中",
+      ref:"< 1.5 cm", status: grade3(Math.abs(shift), 1.5, 3), raw:{shift} },
+  ];
+
+  const findings = [];
+  const sev = m => m.status;
+  const m = Object.fromEntries(metrics.map(x=>[x.key,x]));
+  if(m.head.status !== "good" && head.higher){
+    const low = head.higher === "左" ? "右" : "左";
+    findings.push({ regions:[`neck_${low==="左"?"l":"r"}`], sev:sev(m.head),
+      text:`${low}側頸側屈肌群（上斜方肌／胸鎖乳突肌）可能偏緊 — 頭傾向${low}側` });
+  }
+  if(m.shoulder.status !== "good" && sho.higher){
+    const hi = sho.higher, lo = hi === "左" ? "右" : "左";
+    findings.push({ regions:[`trap_${hi==="左"?"l":"r"}`], sev:sev(m.shoulder),
+      text:`${hi}側上斜方肌／提肩胛肌可能偏緊（${hi}肩較高）` });
+    findings.push({ regions:[`midback_${lo==="左"?"l":"r"}`], sev:"warning",
+      text:`${lo}側中下斜方肌／前鋸肌可能偏弱` });
+  }
+  if(m.pelvis.status !== "good" && hip.higher){
+    const hi = hip.higher, lo = hi === "左" ? "右" : "左";
+    findings.push({ regions:[`ql_${hi==="左"?"l":"r"}`], sev:sev(m.pelvis),
+      text:`${hi}側腰方肌可能偏緊（骨盆${hi}高）` });
+    findings.push({ regions:[`glute_${lo==="左"?"l":"r"}`], sev:"warning",
+      text:`${lo}側臀中肌可能偏弱（站立側穩定不足）` });
+  }
+  if(m.midline.status !== "good" && shiftSide){
+    findings.push({ regions:[`glute_${shiftSide==="左"?"l":"r"}`], sev:sev(m.midline),
+      text:`重心偏向${shiftSide}側 — 核心側向穩定／單腳承重能力需加強` });
+  }
+  return { metrics, findings };
+}
+
+function analyzeSide(P, cmPerPx, W){
+  // decide which side faces the camera by landmark visibility
+  const lVis = [LM.L_EAR,LM.L_SHOULDER,LM.L_HIP,LM.L_KNEE,LM.L_ANKLE].reduce((s,i)=>s+P(i).v,0);
+  const rVis = [LM.R_EAR,LM.R_SHOULDER,LM.R_HIP,LM.R_KNEE,LM.R_ANKLE].reduce((s,i)=>s+P(i).v,0);
+  const L = lVis >= rVis;
+  const ear = P(L?LM.L_EAR:LM.R_EAR), sho = P(L?LM.L_SHOULDER:LM.R_SHOULDER),
+        hip = P(L?LM.L_HIP:LM.R_HIP), knee = P(L?LM.L_KNEE:LM.R_KNEE),
+        ank = P(L?LM.L_ANKLE:LM.R_ANKLE), nose = P(LM.NOSE);
+
+  // low-visibility gate: warn when the chosen side's landmarks are unreliable
+  const lowVis = [ear,sho,hip,knee,ank,nose].some(pt=>pt.v < 0.5);
+
+  // CVA estimate: angle between horizontal (through shoulder) and shoulder→ear line
+  const cva = deg(Math.atan2(sho.y - ear.y, Math.abs(ear.x - sho.x) || 1));
+  // facing direction: nose is ahead of the ear
+  const fw = Math.sign(nose.x - ear.x) || 1;      // +1 ⇒ facing image-right
+  const off = pt => (pt.x - ank.x) * cmPerPx * fw; // + ⇒ anterior of ankle plumb line
+  const earOff = off(ear), shoOff = off(sho), hipOff = off(hip);
+  const shoVsHip = shoOff - hipOff;                // + ⇒ shoulder anterior of hip
+  // knee extension angle (hip–knee–ankle), signed so hyperextension reads > 180°:
+  // knee anterior of the hip→ankle chord ⇒ flexion (<180°), posterior ⇒ hyperextension (>180°)
+  const rawKnee = angle2D(hip, knee, ank);
+  const kneeCross = (ank.x - hip.x)*(knee.y - hip.y) - (ank.y - hip.y)*(knee.x - hip.x);
+  const kneeAng = (fw * kneeCross < 0) ? rawKnee : 360 - rawKnee;
+
+  const metrics = [
+    { key:"cva", name:"頭頸前傾角（CVA 估算）", sub:"肩→耳連線 vs 水平", value:`${fmt(cva)}°`,
+      extra: round1(cva) < 52 ? "有頭部前傾傾向" : "正常範圍",
+      ref:"≥ 52°", status: round1(cva) >= 52 ? "good" : (round1(cva) >= 46 ? "warning" : "serious"), raw:{cva} },
+    { key:"shoFwd", name:"肩膊前移", sub:"相對骨盆（圓肩指標）", value:`${fmt(Math.abs(shoVsHip))} cm`,
+      extra: shoVsHip > 0 ? "肩在骨盆前方" : "肩在骨盆後方",
+      ref:"< 2.5 cm", status: grade3(Math.abs(shoVsHip), 2.5, 5), raw:{shoVsHip} },
+    { key:"hipFwd", name:"骨盆前移", sub:"相對足踝鉛垂線", value:`${fmt(Math.abs(hipOff))} cm`,
+      extra: hipOff > 0 ? "骨盆偏前（sway 傾向）" : "骨盆偏後",
+      ref:"< 2.5 cm", status: grade3(Math.abs(hipOff), 2.5, 5), raw:{hipOff} },
+    { key:"earFwd", name:"耳距鉛垂線", sub:"頭部相對足踝", value:`${fmt(Math.abs(earOff))} cm`,
+      extra: earOff > 0 ? "頭部偏前" : "頭部偏後",
+      ref:"< 4 cm", status: grade3(Math.abs(earOff), 4, 7), raw:{earOff} },
+    { key:"kneeExt", name:"膝關節伸展角", sub:"髖–膝–踝（>180° = 過伸）", value:`${fmt(kneeAng)}°`,
+      extra: round1(kneeAng) > 186 ? "有膝過伸傾向" : (round1(kneeAng) < 170 ? "站立時膝微屈" : "正常範圍"),
+      ref:"170–186°", status: (round1(kneeAng) >= 170 && round1(kneeAng) <= 186) ? "good" : "warning", raw:{kneeAng} },
+  ];
+
+  const findings = [];
+  const m = Object.fromEntries(metrics.map(x=>[x.key,x]));
+  if(m.cva.status !== "good"){
+    findings.push({ regions:["neck_l","neck_r"], sev:m.cva.status,
+      text:"枕下肌群／胸鎖乳突肌可能偏緊；深層頸屈肌可能偏弱（頭部前傾）" });
+  }
+  if(m.shoFwd.status !== "good" && m.shoFwd.raw.shoVsHip > 0){
+    findings.push({ regions:["chest"], sev:m.shoFwd.status,
+      text:"胸大肌／胸小肌可能偏緊；中下斜方肌、菱形肌可能偏弱（圓肩傾向）" });
+  }
+  if(m.hipFwd.status !== "good"){
+    findings.push({ regions:["hipflexor"], sev:m.hipFwd.status,
+      text:"髖屈肌群張力／臀肌參與度需留意（骨盆前後位置偏離鉛垂線）" });
+  }
+  return { metrics, findings, side: L ? "left" : "right", lowVis };
+}
+function angle2D(a,b,c){
+  const v1 = {x:a.x-b.x, y:a.y-b.y}, v2 = {x:c.x-b.x, y:c.y-b.y};
+  const d = (v1.x*v2.x+v1.y*v2.y)/((Math.hypot(v1.x,v1.y)*Math.hypot(v2.x,v2.y))||1);
+  return deg(Math.acos(Math.max(-1,Math.min(1,d))));
+}
+
+/* --- Exbody-style annotated render --- */
+function renderPostureOverlay(srcCanvas, lm, metrics, view, side){
+  const W = srcCanvas.width, H = srcCanvas.height;
+  pCanvas.width = W; pCanvas.height = H;
+  pCtx.drawImage(srcCanvas, 0, 0);
+  drawSkeleton(pCtx, lm, W, H, false, 0.85);
+  const P = i => ({ x: lm[i].x*W, y: lm[i].y*H });
+  const s = Math.max(W,H)/900;                       // scale factor for annotation sizes
+  const font = Math.max(13, 15*s);
+
+  pCtx.save();
+  if(view === "front"){
+    // vertical plumb line at ankle midpoint
+    const mx = (P(LM.L_ANKLE).x + P(LM.R_ANKLE).x)/2;
+    line(pCtx, mx, P(LM.NOSE).y - 40*s, mx, P(LM.L_ANKLE).y + 20*s, "#3987e5", 2*s, [8*s,6*s]);
+    const rows = [
+      [LM.L_EAR, LM.R_EAR, metrics[0]],
+      [LM.L_SHOULDER, LM.R_SHOULDER, metrics[1]],
+      [LM.L_HIP, LM.R_HIP, metrics[2]],
+      [LM.L_KNEE, LM.R_KNEE, metrics[3]],
+      [LM.L_ANKLE, LM.R_ANKLE, null],
+    ];
+    const chips = [];
+    for(const [li,ri,metric] of rows){
+      const a = P(li), b = P(ri);
+      const yRef = Math.max(a.y,b.y);
+      line(pCtx, 10, yRef, W-10, yRef, "rgba(255,255,255,0.55)", 1.2*s, [6*s,6*s]); // dashed reference
+      line(pCtx, a.x, a.y, b.x, b.y, "#e34948", 2.4*s);                              // actual line
+      dot(pCtx, a.x, a.y, 4.5*s, "#e34948"); dot(pCtx, b.x, b.y, 4.5*s, "#e34948");
+      if(metric) chips.push({ y:(a.y+b.y)/2, text:`${metric.value}`, status:metric.status });
+    }
+    // midline chip
+    chips.push({ y: P(LM.NOSE).y, text: metrics[4].value, status: metrics[4].status, label:"中線" });
+    layoutChips(pCtx, chips, W, s, font);
+  }else{
+    // side view: plumb through ankle, ear–shoulder–hip markers
+    // (same side the analysis used, so annotations match the numbers)
+    const L = side !== "right";
+    const ear = P(L?LM.L_EAR:LM.R_EAR), sho = P(L?LM.L_SHOULDER:LM.R_SHOULDER),
+          hip = P(L?LM.L_HIP:LM.R_HIP), ank = P(L?LM.L_ANKLE:LM.R_ANKLE);
+    line(pCtx, ank.x, ear.y - 60*s, ank.x, ank.y + 20*s, "#3987e5", 2*s, [8*s,6*s]);
+    line(pCtx, sho.x, sho.y, ear.x, ear.y, "#e34948", 2.4*s);
+    line(pCtx, sho.x, sho.y, sho.x + (ear.x>=sho.x?90:-90)*s, sho.y, "rgba(255,255,255,0.55)", 1.2*s, [6*s,6*s]);
+    [ear,sho,hip,ank].forEach(pt=>dot(pCtx, pt.x, pt.y, 5*s, "#e34948"));
+    const chips = metrics.slice(0,4).map((mt,i)=>({ y: [ear.y, sho.y, hip.y, ear.y+30*s][i], text:mt.value, status:mt.status }));
+    layoutChips(pCtx, chips, W, s, font);
+  }
+  pCtx.restore();
+}
+function line(ctx,x1,y1,x2,y2,color,w,dash){ ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=w; ctx.setLineDash(dash||[]); ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.restore(); }
+function dot(ctx,x,y,r,color){ ctx.save(); ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); ctx.lineWidth=Math.max(1.5,r*0.4); ctx.strokeStyle="#1a1a19"; ctx.stroke(); ctx.restore(); }
+function layoutChips(ctx, chips, W, s, font){
+  ctx.font = `600 ${font}px system-ui,sans-serif`;
+  chips.sort((a,b)=>a.y-b.y);
+  let lastBottom = -1e9;
+  for(const ch of chips){
+    const label = (ch.label?ch.label+" ":"") + ch.text;
+    const tw = ctx.measureText(label).width;
+    const pad = 8*s, h = font + 12*s;
+    let y = Math.max(ch.y - h/2, lastBottom + 4*s);
+    lastBottom = y + h;
+    const x = W - tw - pad*2 - 12*s;
+    ctx.fillStyle = "rgba(13,13,13,0.82)";
+    roundRect(ctx, x, y, tw + pad*2 + h*0.55, h, 6*s); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = STATUS_COLOR[ch.status] || "#898781";
+    ctx.beginPath(); ctx.arc(x + pad*0.9, y + h/2, 4*s, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, x + pad*0.9 + 8*s, y + h/2 + 1);
+  }
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function drawSkeleton(ctx, lm, W, H, mirrored, alpha){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const X = x => mirrored ? W - x*W : x*W;
+  const lw = Math.max(2, Math.max(W,H)*0.0035);
+  ctx.strokeStyle = SKELETON_COLOR; ctx.lineWidth = lw; ctx.lineCap = "round";
+  for(const c of PoseLandmarker.POSE_CONNECTIONS){
+    const a = lm[c.start], b = lm[c.end];
+    if(!a || !b || (a.visibility??1) < 0.4 || (b.visibility??1) < 0.4) continue;
+    ctx.beginPath(); ctx.moveTo(X(a.x), a.y*H); ctx.lineTo(X(b.x), b.y*H); ctx.stroke();
+  }
+  ctx.fillStyle = "#fff";
+  for(const p of lm){
+    if((p.visibility??1) < 0.4) continue;
+    ctx.beginPath(); ctx.arc(X(p.x), p.y*H, lw*0.9, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* --- results UI --- */
+function renderMetricList(metrics){
+  $("metricList").innerHTML = metrics.map(m=>`
+    <div class="metric-row">
+      <div class="metric-name">${m.name}<small>${m.sub} · 參考 ${m.ref}</small></div>
+      <div class="metric-val">${m.value}<small>${m.extra}</small></div>
+      <span class="status s-${m.status}"><span class="dot"></span>${STATUS_LABEL[m.status]}</span>
+    </div>`).join("");
+}
+function renderFindings(findings){
+  // reset regions
+  document.querySelectorAll(".m-region").forEach(el=>{ el.style.fill=""; el.style.opacity=""; });
+  const listEl = $("muscleList");
+  if(!findings.length){
+    listEl.innerHTML = `<div class="muscle-item"><span class="dot" style="background:var(--good)"></span>整體對齊良好，未見明顯需關注部位 💪</div>`;
+  }else{
+    listEl.innerHTML = findings.map(f=>`
+      <div class="muscle-item"><span class="dot" style="background:${STATUS_COLOR[f.sev]}"></span><span>${f.text}</span></div>`).join("");
+    for(const f of findings){
+      for(const r of f.regions){
+        const el = $("mr-"+r);
+        if(el){ el.style.fill = STATUS_COLOR[f.sev]; el.style.opacity = .8; }
+      }
+    }
+  }
+  renderExercises(findings);
+}
+const EX_LIBRARY = {
+  neck:[
+    { n:"收下巴（Chin tuck）", d:"3 組 × 10 次", p:"仰臥或靠牆，下巴向後收，強化深層頸屈肌。" },
+    { n:"頸側伸展", d:"每側 3 × 30 秒", p:"手輕拉頭向對側，伸展上斜方肌／胸鎖乳突肌。" },
+  ],
+  trap:[
+    { n:"上斜方肌伸展", d:"每側 3 × 30 秒", p:"聳肩側手放背後，頭向對側傾。" },
+    { n:"面拉（Face pull）", d:"3 × 12–15", p:"用彈力帶，強化中下斜方肌，平衡肩帶。" },
+  ],
+  midback:[
+    { n:"YTW 俯臥抬臂", d:"3 × 8（每字母）", p:"啟動中下斜方肌與菱形肌。" },
+    { n:"彈力帶划船", d:"3 × 12", p:"肩胛後收下壓，改善肩帶平衡。" },
+  ],
+  ql:[
+    { n:"腰方肌伸展", d:"每側 3 × 30 秒", p:"側坐體側屈，伸展較緊一側腰方肌。" },
+    { n:"側平板支撐", d:"每側 3 × 20–40 秒", p:"強化側向核心，改善骨盆水平控制。" },
+  ],
+  glute:[
+    { n:"蚌式開合（Clamshell）", d:"每側 3 × 15", p:"啟動臀中肌，改善站立側穩定。" },
+    { n:"單腳站立→單腳硬拉", d:"每側 3 × 8", p:"進階單側承重與骨盆控制。" },
+  ],
+  chest:[
+    { n:"門框胸肌伸展", d:"3 × 30 秒", p:"手肘 90° 靠門框，身體前傾。" },
+    { n:"彈力帶外旋 + 划船", d:"3 × 12", p:"打開胸廓，強化後鏈平衡圓肩。" },
+  ],
+  hipflexor:[
+    { n:"跪姿髖屈肌伸展", d:"每側 3 × 30 秒", p:"後腳跪地，骨盆後傾前推。" },
+    { n:"橋式（Glute bridge）", d:"3 × 12", p:"重建臀肌參與，改善骨盆位置。" },
+  ],
+  balance:[
+    { n:"手提箱走（Suitcase carry）", d:"每側 3 × 20 米", p:"抗側屈核心訓練，矯正重心偏移。" },
+    { n:"Pallof press 抗旋轉", d:"每側 3 × 10", p:"建立軀幹抗旋轉穩定。" },
+  ],
+};
+function renderExercises(findings){
+  const groups = new Set();
+  for(const f of findings){
+    for(const r of f.regions){
+      const g = r.replace(/_(l|r)$/,"");
+      groups.add(g === "neck" ? "neck" : g);
+    }
+    if(f.text.includes("重心")) groups.add("balance");
+  }
+  const items = [...groups].flatMap(g=>EX_LIBRARY[g]||[]);
+  $("exList").innerHTML = items.length
+    ? items.map(x=>`<div class="ex-item"><b>${x.n}</b><span class="ex-dose">${x.d}</span><p>${x.p}</p></div>`).join("")
+    : `<div class="ex-item"><b>維持訓練</b><p>對齊良好——維持核心、單側承重與肩帶平衡訓練即可。</p></div>`;
+}
+$("clearBtn").addEventListener("click", ()=>{
+  pState.analyzed = null;
+  pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+  pCanvas.width = 0; pCanvas.height = 0;
+  $("pResultCard").style.display = "none";
+  $("pEmptyCard").style.display = "";
+  $("pFindings").style.display = "none";
+});
+
+/* --- report --- */
+$("reportBtn").addEventListener("click", async ()=>{
+  const a = pState.analyzed;
+  if(!a){ toast("未有分析結果"); return; }
+  $("rpDate").textContent = new Date().toLocaleString("zh-HK", {dateStyle:"long", timeStyle:"short"});
+  $("rpName").textContent = $("nameInput").value.trim() || "—";
+  $("rpHeight").textContent = a.heightCm;
+  $("rpView").textContent = a.view === "front" ? "正面" : "側面";
+  $("rpImg").src = a.snapshot;   // snapshot stored at analysis time — pCanvas may hold live video by now
+  $("rpTable").innerHTML =
+    `<tr><th>項目</th><th>量度</th><th>備註</th><th>參考</th><th>狀態</th></tr>` +
+    a.metrics.map(m=>`<tr><td>${m.name}</td><td>${m.value}</td><td>${m.extra}</td><td>${m.ref}</td><td>${STATUS_LABEL[m.status]}</td></tr>`).join("");
+  $("rpMuscles").textContent = a.findings.length ? a.findings.map(f=>f.text).join("；") : "未見明顯需關注部位";
+  const groups = new Set();
+  a.findings.forEach(f=>f.regions.forEach(r=>groups.add(r.replace(/_(l|r)$/,""))));
+  const exNames = [...groups].flatMap(g=>(EX_LIBRARY[g]||[]).map(x=>x.n));
+  $("rpEx").textContent = exNames.length ? exNames.join("、") : "維持現有訓練";
+  try{ await $("rpImg").decode(); }catch(e){ /* print anyway */ }
+  window.print();
+});
+
+/* ============================================================
+   MOTION TAB
+   ============================================================ */
+const mVideo = $("mVideo"), mCanvas = $("mCanvas"), mCtx = mCanvas.getContext("2d");
+const spark = $("speedSpark"), sparkCtx = spark.getContext("2d");
+let mState = null;
+function freshSession(){
+  return {
+    peak:0, counts:{L:0,R:0}, lastKE:null, sepMax:0,
+    trace:[],                     // {t, v} for sparkline
+    punches:[],                   // {t, v} punch peaks for sparkline dots
+    hands:{
+      L:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
+      R:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
+    },
+  };
+}
+let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0 };
+mState = freshSession();
+
+let mCamBusy = false;
+$("mCamBtn").addEventListener("click", async ()=>{
+  if(mCamBusy) return;                      // ignore clicks while getUserMedia is pending
+  if(mRun.on && mRun.source === "cam"){ stopMotion(); return; }
+  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  mCamBusy = true; $("mCamBtn").disabled = true;
+  try{
+    stopMotion();
+    try{
+      await openCam(mVideo, mRun.facing);
+    }catch(e){
+      try{ await openCam(mVideo, undefined); }
+      catch(e2){ toast("無法開啟鏡頭：" + (e2?.message||e2)); return; }
+    }
+    await startMotion("cam");
+  }finally{
+    mCamBusy = false; $("mCamBtn").disabled = false;
+  }
+});
+$("mFlipBtn").addEventListener("click", async ()=>{
+  if(mCamBusy || !mRun.on || mRun.source !== "cam") return;
+  mCamBusy = true;
+  try{
+    mRun.facing = mRun.facing === "user" ? "environment" : "user";
+    stopStream(mVideo);
+    try{ await openCam(mVideo, mRun.facing); }catch(e){ toast("切換失敗"); return; }
+    $("mStage").classList.toggle("mirrored", isFrontFacingM());
+  }finally{ mCamBusy = false; }
+});
+function isFrontFacingM(){
+  const track = mVideo.srcObject?.getVideoTracks?.()[0];
+  const fm = track?.getSettings?.().facingMode;
+  return fm ? fm === "user" : true;
+}
+$("mUploadBtn").addEventListener("click", ()=>$("mFile").click());
+$("mFile").addEventListener("change", async e=>{
+  const f = e.target.files[0];
+  e.target.value = "";                 // always reset so re-selecting the same file works
+  if(!f) return;
+  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  stopMotion();
+  mVideo.srcObject = null;
+  const url = URL.createObjectURL(f);
+  mVideo.src = url;
+  mVideo.loop = false;
+  try{
+    await mVideo.play();
+  }catch(err){
+    toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
+    URL.revokeObjectURL(url);
+    mVideo.removeAttribute("src"); mVideo.load();
+    return;
+  }
+  await startMotion("file");
+});
+async function startMotion(source){
+  await setMode("VIDEO");
+  if(currentMode !== "VIDEO"){ toast("AI 未就緒，請再試一次"); return; }
+  cancelAnimationFrame(mRun.raf);      // never let two loops run at once
+  mRun.on = true; mRun.source = source; mRun.lastTs = -1;
+  $("mMsg").classList.add("hidden");
+  $("mStopBtn").style.display = "";
+  $("mFlipBtn").style.display = source === "cam" ? "" : "none";
+  $("mCamBtn").textContent = source === "cam" ? "⏹ 關閉鏡頭" : "📷 開啟鏡頭";
+  $("mStage").classList.toggle("mirrored", source === "cam" && isFrontFacingM());
+  motionLoop();
+}
+function stopMotion(){
+  if(!mRun.on) return;
+  cancelAnimationFrame(mRun.raf);
+  mRun.on = false;
+  stopStream(mVideo);
+  if(mVideo.src){ mVideo.pause(); URL.revokeObjectURL(mVideo.src); mVideo.removeAttribute("src"); mVideo.load(); }
+  $("mCamBtn").textContent = "📷 開啟鏡頭";
+  $("mStopBtn").style.display = "none";
+  $("mFlipBtn").style.display = "none";
+  $("mStage").classList.remove("mirrored");
+  $("mMsg").classList.remove("hidden");
+  updateTiles(null, null, true);       // blank the live tiles; session totals stay
+  drawSpark();
+}
+$("mStopBtn").addEventListener("click", stopMotion);
+$("mResetBtn").addEventListener("click", ()=>{
+  mState = freshSession();
+  updateTiles(null, null, true);
+  drawSpark();
+  toast("已重設本節數據");
+});
+
+function motionLoop(){
+  if(!mRun.on) return;
+  mRun.raf = requestAnimationFrame(motionLoop);
+  if(mVideo.readyState < 2 || currentMode !== "VIDEO") return;
+  if(mRun.source === "file" && (mVideo.paused || mVideo.ended)){
+    if(mVideo.ended){ toast("影片分析完成 ✔"); stopMotion(); }
+    return;
+  }
+  const ts = performance.now();
+  if(ts <= mRun.lastTs) return;
+  mRun.lastTs = ts;
+  let res;
+  try{ res = landmarker.detectForVideo(mVideo, ts); }
+  catch(e){ return; }
+  const W = mVideo.videoWidth, H = mVideo.videoHeight;
+  if(!W) return;
+  if(mCanvas.width !== W || mCanvas.height !== H){ mCanvas.width = W; mCanvas.height = H; }
+  mCtx.clearRect(0,0,W,H);
+  const mirrored = $("mStage").classList.contains("mirrored");
+  const lm = res.landmarks?.[0], wl = res.worldLandmarks?.[0];
+  if(lm) drawSkeleton(mCtx, lm, W, H, mirrored, 0.8);
+  if(wl && lm) processMotion(wl, lm, W, H, ts/1000);
+  if(ts - mRun.lastDom > 100){
+    mRun.lastDom = ts;
+    updateTiles(lm, wl);
+    drawSpark();
+  }
+}
+
+const dist3 = (a,b) => Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z);
+function angle3D(a,b,c){
+  const v1 = {x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}, v2 = {x:c.x-b.x,y:c.y-b.y,z:c.z-b.z};
+  const d = (v1.x*v2.x+v1.y*v2.y+v1.z*v2.z)/((Math.hypot(v1.x,v1.y,v1.z)*Math.hypot(v2.x,v2.y,v2.z))||1);
+  return deg(Math.acos(Math.max(-1,Math.min(1,d))));
+}
+function processMotion(wl, lm, W, H, t){
+  // MediaPipe world landmarks are hip-centred per frame (whole-body translation removed).
+  // Re-anchor with the mid-hip image position × a metres-per-pixel scale from torso length,
+  // so a stepping punch keeps its footwork speed. Depth (towards-camera) motion is still lost.
+  const midHipPx = { x:(lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2 * W, y:(lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2 * H };
+  const torsoM = (Math.hypot(wl[LM.L_SHOULDER].x-wl[LM.L_HIP].x, wl[LM.L_SHOULDER].y-wl[LM.L_HIP].y)
+                + Math.hypot(wl[LM.R_SHOULDER].x-wl[LM.R_HIP].x, wl[LM.R_SHOULDER].y-wl[LM.R_HIP].y))/2;
+  const torsoPx = (Math.hypot((lm[LM.L_SHOULDER].x-lm[LM.L_HIP].x)*W, (lm[LM.L_SHOULDER].y-lm[LM.L_HIP].y)*H)
+                 + Math.hypot((lm[LM.R_SHOULDER].x-lm[LM.R_HIP].x)*W, (lm[LM.R_SHOULDER].y-lm[LM.R_HIP].y)*H))/2;
+  const mPerPx = torsoPx > 1 ? torsoM/torsoPx : 0;
+
+  // per-hand speed via displacement over an ~80ms window
+  for(const [hand, wristIdx] of [["L",LM.L_WRIST],["R",LM.R_WRIST]]){
+    const h = mState.hands[hand];
+    if((lm[wristIdx].visibility ?? 1) < 0.5){
+      // unreliable wrist — reset rather than corrupt speed / punch stats
+      h.buf.length = 0; h.v = 0; h.active = false; h.peak = 0;
+      continue;
+    }
+    const p0 = wl[wristIdx];
+    const p = { t, x: p0.x + midHipPx.x*mPerPx, y: p0.y + midHipPx.y*mPerPx, z: p0.z };
+    h.buf.push(p);
+    while(h.buf.length && t - h.buf[0].t > 0.5) h.buf.shift();
+    let v = 0;
+    const target = t - 0.08;
+    let ref = null;
+    for(let i=h.buf.length-1;i>=0;i--){ if(h.buf[i].t <= target){ ref = h.buf[i]; break; } }
+    if(ref && t - ref.t > 0.02){
+      v = dist3(p, ref)/(t - ref.t);
+      if(v > 16){
+        // tracking glitch (16 m/s is beyond elite hand speed) — drop history, cancel any punch
+        h.buf.length = 0; h.buf.push(p);
+        h.v = 0; h.active = false; h.peak = 0;
+        continue;
+      }
+      h.v = h.v == null ? v : 0.5*h.v + 0.5*v;   // light EMA
+    }else{
+      h.v = h.v ?? 0;
+    }
+    const sp = h.v || 0;
+    // punch state machine
+    if(!h.active && sp > 3.0 && t - h.lastEnd > 0.25){
+      h.active = true; h.peak = sp; h.start = t;
+    }else if(h.active){
+      h.peak = Math.max(h.peak, sp);
+      if(sp < 1.2){
+        h.active = false; h.lastEnd = t;
+        if(h.peak > 3.5 && t - h.start > 0.05){
+          mState.counts[hand]++;
+          mState.punches.push({t, v:h.peak});
+          mState.peak = Math.max(mState.peak, h.peak);
+          const w = parseFloat($("weightInput").value) || 70;
+          mState.lastKE = 0.5 * (0.05*w) * h.peak*h.peak;
+        }
+        h.peak = 0;
+      }
+    }
+  }
+  const vNow = Math.max(mState.hands.L.v||0, mState.hands.R.v||0);
+  mState.trace.push({t, v:vNow});
+  while(mState.trace.length && t - mState.trace[0].t > 6) mState.trace.shift();
+  while(mState.punches.length && t - mState.punches[0].t > 6) mState.punches.shift();
+
+  // hip–shoulder separation (yaw difference in the horizontal plane)
+  const yaw = (l,r) => Math.atan2(wl[l].z - wl[r].z, wl[l].x - wl[r].x);
+  let sep = deg(yaw(LM.L_SHOULDER,LM.R_SHOULDER) - yaw(LM.L_HIP,LM.R_HIP));
+  if(sep > 180) sep -= 360; if(sep < -180) sep += 360;
+  mState.sep = Math.abs(sep);
+  mState.sepMax = Math.max(mState.sepMax, mState.sep);
+}
+function updateTiles(lm, wl, forceClear){
+  const s = mState;
+  $("tPeak").innerHTML = (s.peak? fmt(s.peak):"–") + "<small>m/s</small>";
+  $("tPeakKmh").textContent = s.peak ? `= ${fmt(s.peak*3.6)} km/h` : "= – km/h";
+  const vNow = Math.max(s.hands.L.v||0, s.hands.R.v||0);
+  $("tSpeed").innerHTML = (forceClear||!mRun.on ? "–" : fmt(vNow)) + "<small>m/s</small>";
+  $("tCount").textContent = `${s.counts.L} / ${s.counts.R}`;
+  $("tKE").innerHTML = (s.lastKE? fmt(s.lastKE,0):"–") + "<small>J</small>";
+  $("tSep").innerHTML = (s.sep!=null && mRun.on ? fmt(s.sep,0) : "–") + "<small>°</small>";
+  $("tSepMax").textContent = `峰值 ${s.sepMax?fmt(s.sepMax,0):"–"}°`;
+  if(wl){
+    $("tElbow").textContent = `${fmt(angle3D(wl[LM.L_SHOULDER],wl[LM.L_ELBOW],wl[LM.L_WRIST]),0)} / ${fmt(angle3D(wl[LM.R_SHOULDER],wl[LM.R_ELBOW],wl[LM.R_WRIST]),0)}°`;
+    $("tKnee").textContent = `${fmt(angle3D(wl[LM.L_HIP],wl[LM.L_KNEE],wl[LM.L_ANKLE]),0)} / ${fmt(angle3D(wl[LM.R_HIP],wl[LM.R_KNEE],wl[LM.R_ANKLE]),0)}°`;
+    const shoulderW = Math.hypot(wl[LM.L_SHOULDER].x-wl[LM.R_SHOULDER].x, wl[LM.L_SHOULDER].z-wl[LM.R_SHOULDER].z);
+    const stanceW = Math.hypot(wl[LM.L_ANKLE].x-wl[LM.R_ANKLE].x, wl[LM.L_ANKLE].z-wl[LM.R_ANKLE].z);
+    $("tStance").innerHTML = fmt(shoulderW>0.05 ? stanceW/shoulderW : null) + "<small>×</small>";
+  }else if(forceClear){
+    $("tElbow").textContent = "– / –°";
+    $("tKnee").textContent = "– / –°";
+    $("tStance").innerHTML = "–<small>×</small>";
+  }
+}
+function drawSpark(){
+  const dpr = window.devicePixelRatio || 1;
+  const cw = spark.clientWidth || 300, chh = 64;
+  if(spark.width !== cw*dpr){ spark.width = cw*dpr; spark.height = chh*dpr; }
+  const ctx = sparkCtx;
+  ctx.save(); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,cw,chh);
+  const tr = mState.trace;
+  // baseline
+  ctx.strokeStyle = "#2c2c2a"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0,chh-1); ctx.lineTo(cw,chh-1); ctx.stroke();
+  if(tr.length > 1){
+    const t1 = tr[tr.length-1].t, t0 = t1 - 6;
+    const vmax = Math.max(6, ...tr.map(p=>p.v), ...mState.punches.map(p=>p.v));
+    const X = t => (t - t0)/6 * cw;
+    const Y = v => chh - 4 - (v/vmax)*(chh-10);
+    ctx.strokeStyle = "#3987e5"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    tr.forEach((p,i)=> i ? ctx.lineTo(X(p.t),Y(p.v)) : ctx.moveTo(X(p.t),Y(p.v)));
+    ctx.stroke();
+    // punch peak markers with surface ring
+    for(const p of mState.punches){
+      ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 6, 0, 7); ctx.fillStyle = "#1a1a19"; ctx.fill();
+      ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 4, 0, 7); ctx.fillStyle = "#d03b3b"; ctx.fill();
+    }
+    // y-scale hint
+    ctx.fillStyle = "#898781"; ctx.font = "10px system-ui,sans-serif";
+    ctx.fillText(`${vmax.toFixed(0)} m/s`, 4, 10);
+  }
+  ctx.restore();
+}
+drawSpark();
+window.addEventListener("resize", drawSpark);
+
+/* stop cameras when page hidden (uploaded-video sessions survive — rAF pauses on its own) */
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden){
+    stopPostureCam();
+    if(mRun.on && mRun.source === "cam") stopMotion();
+  }
+});
+</script>
+
+</body>
+</html>
