@@ -275,7 +275,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div class="stage-msg" id="pMsg"><div class="spinner"></div><div>載入 AI 模型中…</div></div>
         <div class="countdown" id="pCount"></div>
       </div>
-      <p class="hint" id="pStageHint">開啟鏡頭或上載相片後，系統會自動偵測 33 個身體關節點並計算對齊度。所有分析在你的裝置本地進行，影像不會上傳。</p>
+      <div class="controls" id="pPicker" style="display:none;margin-top:8px"></div>
+      <p class="hint" id="pStageHint">開啟鏡頭或上載相片後，系統會自動偵測 33 個身體關節點並計算對齊度。相片有多過一個人會叫你揀分析對象。所有分析在你的裝置本地進行，影像不會上傳。</p>
     </div>
 
     <div>
@@ -357,12 +358,13 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <button class="btn" id="mUploadBtn">🎞 上載影片</button>
       <input type="file" id="mFile" accept="video/*" hidden>
       <label class="field">體重 <input type="number" id="weightInput" value="70" min="30" max="150" step="1"> kg</label>
+      <button class="btn" id="mMultiBtn">👥 多人模式：關</button>
       <span class="hd-spacer"></span>
       <button class="btn" id="mTechBtn">📋 技術分析</button>
       <button class="btn" id="mResetBtn">↺ 重設數據</button>
       <button class="btn" id="mStopBtn" style="display:none">⏹ 停止</button>
     </div>
-    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。</p>
+    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。畫面有多人時，<b>撳一下你想分析嘅人物</b>即可切換。</p>
   </div>
 
   <div class="grid-2">
@@ -373,6 +375,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div class="stage-msg" id="mMsg"><div>開啟鏡頭或上載影片開始分析</div></div>
         <div class="progressbar" id="mProg"><div id="mProgFill"></div></div>
         <div class="prog-label" id="mProgLabel"></div>
+        <div class="prog-label" id="mSelLabel" style="top:auto;bottom:10px"></div>
       </div>
       <div class="card sparkwrap" style="margin-top:10px">
         <div class="tile-lb" style="font-size:.78rem;color:var(--ink-muted)">手部速度（最近 6 秒）·<span style="color:var(--series-1)"> ─ 速度</span> ·<span style="color:var(--critical)"> ● 出拳峰值</span></div>
@@ -456,6 +459,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <li>鏡頭放側面 45°–90°，全身入鏡</li>
         <li>輸入體重（用作估算出拳動能）</li>
         <li>開鏡頭即時分析，或上載訓練影片（會顯示分析進度）</li>
+        <li>多人入鏡？開「👥 多人模式」——每人有個號碼牌，撳你想分析嘅人物即可鎖定佢</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
         <li>撳「技術分析」攞弱點總結（影片播完會自動生成）</li>
         <li>「重設數據」開始新一節統計</li>
@@ -537,6 +541,34 @@ const deg = r => r*180/Math.PI;
 const fmt = (n,d=1) => (n==null||!isFinite(n)) ? "–" : n.toFixed(d);
 const round1 = v => Math.round(v*10)/10;   // grade what the user sees (1-decimal display)
 
+/* ---- multi-person helpers ---- */
+const midHipOf = lm => ({ x:(lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2, y:(lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2 });
+function heightOf(lm){          // visible bounding height, normalized 0–1
+  let mn = 1, mx = 0;
+  for(const p of lm){ if((p.visibility ?? 1) > 0.4){ mn = Math.min(mn, p.y); mx = Math.max(mx, p.y); } }
+  return Math.max(0, mx - mn);
+}
+/* order people biggest-first; drop tiny spurious detections unless nothing else remains */
+function rankPeople(people){
+  const order = people.map((lm,i)=>({ lm, i, h: heightOf(lm) })).sort((a,b)=>b.h-a.h);
+  const solid = order.filter(o=>o.h > 0.12);
+  return solid.length ? solid : order.slice(0,1);
+}
+function drawPersonBadge(ctx, lm, W, H, mirrored, num, sel){
+  const nose = lm[LM.NOSE];
+  const x = (mirrored ? 1-nose.x : nose.x)*W, y = Math.max(0.05*H, nose.y*H - 0.08*H);
+  const r = Math.max(14, W*0.022);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7);
+  ctx.fillStyle = sel ? "#d32f2f" : "rgba(13,13,13,0.75)";
+  ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = sel ? "#fff" : "rgba(255,255,255,0.55)"; ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(r*1.1)}px system-ui,sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(num), x, y+1);
+  ctx.restore();
+}
+
 /* ============================================================
    Model loading (single landmarker, mode-switched)
    ============================================================ */
@@ -593,7 +625,7 @@ async function initModel(){
       baseOptions: modelBuf
         ? { modelAssetBuffer: modelBuf.slice(), delegate }
         : { modelAssetPath: MODEL_URL, delegate },
-      runningMode:"VIDEO", numPoses:1,
+      runningMode:"VIDEO", numPoses:4,   // multi-person: user picks who to analyse
       minPoseDetectionConfidence:0.5, minPosePresenceConfidence:0.5, minTrackingConfidence:0.5
     });
     try{ landmarker = await make("GPU"); }
@@ -719,6 +751,7 @@ function isFrontFacing(videoEl){
 function stopPostureSource(){
   countdownToken++;                        // cancel any pending 5s countdown
   $("pCount").style.display = "none";
+  hidePersonPicker();
   cancelAnimationFrame(pState.raf);
   pState.previewOn = false;
   if(pState.source === "cam"){
@@ -749,7 +782,14 @@ function postureLiveLoop(){
   if(pCanvas.width !== W || pCanvas.height !== H){ pCanvas.width = W; pCanvas.height = H; }
   pCtx.clearRect(0,0,W,H);
   const mirrored = $("pStage").classList.contains("mirrored");
-  if(res.landmarks?.[0]) drawSkeleton(pCtx, res.landmarks[0], W, H, mirrored, 0.55);
+  const people = res.landmarks || [];
+  if(people.length){
+    const ranked = rankPeople(people);
+    ranked.forEach((o, rank)=>{
+      drawSkeleton(pCtx, o.lm, W, H, mirrored, rank === 0 ? 0.55 : 0.3, rank === 0 ? SKELETON_COLOR : "#9a9a94");
+      if(ranked.length > 1) drawPersonBadge(pCtx, o.lm, W, H, mirrored, rank+1, false);
+    });
+  }
 }
 
 /* --- capture / upload --- */
@@ -838,9 +878,68 @@ async function analyzePosture(srcCanvas){
     let res;
     try{ res = landmarker.detect(srcCanvas); }
     catch(e){ console.error(e); toast("偵測失敗：" + (e?.message||e)); return; }
-    const lm = res.landmarks?.[0];
-    if(!lm){ toast("偵測唔到人體，請確保全身清晰入鏡、光線充足"); return; }
+    const people = res.landmarks || [];
+    if(!people.length){ toast("偵測唔到人體，請確保全身清晰入鏡、光線充足"); return; }
+    const ranked = rankPeople(people);
+    if(ranked.length > 1){ showPersonPicker(srcCanvas, ranked); return; }
+    analyzePersonPosture(srcCanvas, ranked[0].lm, t0);
+  }finally{
+    $("pMsg").classList.add("hidden");
+  }
+}
 
+/* photo has several people — draw numbered skeletons and let the user choose */
+function showPersonPicker(srcCanvas, ranked){
+  hidePersonPicker();
+  const W = srcCanvas.width, H = srcCanvas.height;
+  pCanvas.width = W; pCanvas.height = H;
+  pCtx.drawImage(srcCanvas, 0, 0);
+  ranked.forEach((o, rank)=>{
+    drawSkeleton(pCtx, o.lm, W, H, false, 0.6, "#9a9a94");
+    drawPersonBadge(pCtx, o.lm, W, H, false, rank+1, false);
+  });
+  pState.pendingSelect = { srcCanvas, ranked };
+  const bar = $("pPicker");
+  bar.innerHTML =
+    `<span class="hint" style="margin:0">偵測到 ${ranked.length} 人，揀分析對象：</span>` +
+    ranked.map((o, rank)=>`<button class="btn primary" data-rank="${rank}">人物 ${rank+1}</button>`).join("") +
+    `<button class="btn ghost" data-rank="-1">取消</button>`;
+  bar.style.display = "";
+  bar.querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>{
+    const rank = +b.dataset.rank;
+    const sel = rank >= 0 ? pState.pendingSelect?.ranked[rank] : null;
+    const src = pState.pendingSelect?.srcCanvas;
+    hidePersonPicker();
+    if(sel && src) analyzePersonPosture(src, sel.lm);
+  }));
+  toast(`偵測到 ${ranked.length} 人 — 撳相入面嘅人物或下面按鈕`, 4500);
+}
+function hidePersonPicker(){
+  $("pPicker").style.display = "none";
+  $("pPicker").innerHTML = "";
+  pState.pendingSelect = null;
+}
+$("pStage").addEventListener("click", e=>{
+  const ps = pState.pendingSelect;
+  if(!ps) return;
+  const rect = pCanvas.getBoundingClientRect();
+  if(!rect.width) return;
+  const x = (e.clientX - rect.left)/rect.width, y = (e.clientY - rect.top)/rect.height;
+  let best = null, bestD = 1e9;
+  ps.ranked.forEach(o=>{
+    const c = midHipOf(o.lm);
+    const d = Math.hypot(c.x - x, c.y - y);
+    if(d < bestD){ bestD = d; best = o; }
+  });
+  if(best && bestD < 0.4){
+    const src = ps.srcCanvas;
+    hidePersonPicker();
+    analyzePersonPosture(src, best.lm);
+  }
+});
+
+function analyzePersonPosture(srcCanvas, lm, t0){
+  {
     const W = srcCanvas.width, H = srcCanvas.height;
     const P = i => ({ x: lm[i].x*W, y: lm[i].y*H, v: lm[i].visibility ?? 1 });
     const heightCm = Math.max(100, Math.min(220, parseFloat($("heightInput").value) || 170));
@@ -874,10 +973,8 @@ async function analyzePosture(srcCanvas){
     $("pResultCard").style.display = "";
     $("pEmptyCard").style.display = "none";
     $("pFindings").style.display = "";
-    toast(`分析完成 ✔（用時 ${((performance.now()-t0)/1000).toFixed(1)} 秒）`);
+    toast(t0 ? `分析完成 ✔（用時 ${((performance.now()-t0)/1000).toFixed(1)} 秒）` : "分析完成 ✔");
     $("pResultCard").scrollIntoView({ behavior:"smooth", block:"nearest" });
-  }finally{
-    $("pMsg").classList.add("hidden");
   }
 }
 
@@ -1088,12 +1185,12 @@ function layoutChips(ctx, chips, W, s, font){
 }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 
-function drawSkeleton(ctx, lm, W, H, mirrored, alpha){
+function drawSkeleton(ctx, lm, W, H, mirrored, alpha, color = SKELETON_COLOR){
   ctx.save();
   ctx.globalAlpha = alpha;
   const X = x => mirrored ? W - x*W : x*W;
   const lw = Math.max(2, Math.max(W,H)*0.0035);
-  ctx.strokeStyle = SKELETON_COLOR; ctx.lineWidth = lw; ctx.lineCap = "round";
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = "round";
   for(const c of PoseLandmarker.POSE_CONNECTIONS){
     const a = lm[c.start], b = lm[c.end];
     if(!a || !b || (a.visibility??1) < 0.4 || (b.visibility??1) < 0.4) continue;
@@ -1184,6 +1281,7 @@ function renderExercises(findings){
 }
 $("clearBtn").addEventListener("click", ()=>{
   pState.analyzed = null;
+  hidePersonPicker();
   pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
   pCanvas.width = 0; pCanvas.height = 0;
   $("pResultCard").style.display = "none";
@@ -1233,8 +1331,48 @@ function freshSession(){
     },
   };
 }
-let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0 };
+let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0,
+             multi:false /* per-frame full detection: finds EVERYONE, slightly less smooth */,
+             targetPos:null /* tracked person's mid-hip (normalized) */, lastRanked:null };
 mState = freshSession();
+
+/* MediaPipe's VIDEO tracking mode reliably follows only ONE person — multi-person
+   needs per-frame IMAGE-mode detection, so it's an explicit toggle */
+$("mMultiBtn").addEventListener("click", async ()=>{
+  mRun.multi = !mRun.multi;
+  $("mMultiBtn").textContent = `👥 多人模式：${mRun.multi ? "開" : "關"}`;
+  mRun.targetPos = null; mRun.lastRanked = null;
+  if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
+  toast(mRun.multi
+    ? "多人模式開：畫面每人有號碼牌，撳人物揀分析對象（速度會略慢）"
+    : "單人模式：自動鎖定畫面中最大嘅人物（最快最順）", 4200);
+});
+
+/* tap a person on the stage to make them the analysis target */
+$("mStage").addEventListener("click", e=>{
+  if(!mRun.on || !mRun.lastRanked?.length) return;
+  const rect = mCanvas.getBoundingClientRect();
+  if(!rect.width) return;
+  let x = (e.clientX - rect.left)/rect.width;
+  const y = (e.clientY - rect.top)/rect.height;
+  if($("mStage").classList.contains("mirrored")) x = 1 - x;
+  let best = null, bestD = 1e9, bestRank = 0;
+  mRun.lastRanked.forEach((o, rank)=>{
+    const c = midHipOf(o.lm);
+    const d = Math.hypot(c.x - x, c.y - y);
+    if(d < bestD){ bestD = d; best = o; bestRank = rank; }
+  });
+  if(!best || bestD > 0.45) return;
+  const c = midHipOf(best.lm);
+  const already = mRun.targetPos && Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y) < 0.08;
+  mRun.targetPos = c;
+  if(!already){
+    mState = freshSession();               // stats describe ONE person — restart on switch
+    $("techCard").style.display = "none";
+    updateTiles(null, null, true);
+    toast(`已切換至人物 ${bestRank+1}，本節數據重新開始`);
+  }
+});
 
 let mCamBusy = false;
 $("mCamBtn").addEventListener("click", async ()=>{
@@ -1292,10 +1430,12 @@ $("mFile").addEventListener("change", async e=>{
   await startMotion("file");
 });
 async function startMotion(source){
-  await setMode("VIDEO");
-  if(currentMode !== "VIDEO"){ toast("AI 未就緒，請再試一次"); return; }
+  const wantMode = mRun.multi ? "IMAGE" : "VIDEO";
+  await setMode(wantMode);
+  if(currentMode !== wantMode){ toast("AI 未就緒，請再試一次"); return; }
   cancelAnimationFrame(mRun.raf);      // never let two loops run at once
   mRun.on = true; mRun.source = source; mRun.lastTs = -1;
+  mRun.targetPos = null; mRun.lastRanked = null;   // re-lock onto the most prominent person
   $("mMsg").classList.add("hidden");
   $("mStopBtn").style.display = "";
   $("mFlipBtn").style.display = source === "cam" ? "" : "none";
@@ -1320,6 +1460,8 @@ function stopMotion(){
   $("mMsg").classList.remove("hidden");
   $("mProg").style.display = "none";
   $("mProgLabel").style.display = "none";
+  $("mSelLabel").style.display = "none";
+  mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);   // no stale skeleton over the idle message
   updateTiles(null, null, true);       // blank the live tiles; session totals stay
   drawSpark();
 }
@@ -1414,7 +1556,7 @@ function renderTechAnalysis(){
 function motionLoop(){
   if(!mRun.on) return;
   mRun.raf = requestAnimationFrame(motionLoop);
-  if(mVideo.readyState < 2 || currentMode !== "VIDEO") return;
+  if(mVideo.readyState < 2 || currentMode !== (mRun.multi ? "IMAGE" : "VIDEO")) return;
   if(mRun.source === "file" && (mVideo.paused || mVideo.ended)){
     if(mVideo.ended){
       toast(`影片分析完成 ✔（用時 ${((performance.now()-mRun.startedAt)/1000).toFixed(0)} 秒）`);
@@ -1433,19 +1575,49 @@ function motionLoop(){
   if(ts <= mRun.lastTs) return;
   mRun.lastTs = ts;
   let res;
-  try{ res = landmarker.detectForVideo(mVideo, ts); }
+  try{ res = mRun.multi ? landmarker.detect(mVideo) : landmarker.detectForVideo(mVideo, ts); }
   catch(e){ return; }
   const W = mVideo.videoWidth, H = mVideo.videoHeight;
   if(!W) return;
   if(mCanvas.width !== W || mCanvas.height !== H){ mCanvas.width = W; mCanvas.height = H; }
   mCtx.clearRect(0,0,W,H);
   const mirrored = $("mStage").classList.contains("mirrored");
-  const lm = res.landmarks?.[0], wl = res.worldLandmarks?.[0];
-  if(lm) drawSkeleton(mCtx, lm, W, H, mirrored, 0.8);
-  if(wl && lm) processMotion(wl, lm, W, H, ts/1000);
+  const people = res.landmarks || [];
+  let selLm = null, selWl = null, tracking = "none";
+  if(people.length){
+    const ranked = rankPeople(people);
+    mRun.lastRanked = ranked;
+    // lock / follow the analysis target by nearest mid-hip
+    let selIdx = -1;
+    if(!mRun.targetPos){
+      selIdx = ranked[0].i;                              // default: most prominent person
+      mRun.targetPos = midHipOf(people[selIdx]);
+    }else{
+      let bestD = 1e9;
+      people.forEach((lm,i)=>{
+        const c = midHipOf(lm);
+        const d = Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y);
+        if(d < bestD){ bestD = d; selIdx = i; }
+      });
+      if(bestD > 0.25) selIdx = -1;                       // target lost — wait or re-tap
+      else mRun.targetPos = midHipOf(people[selIdx]);
+    }
+    ranked.forEach((o, rank)=>{
+      const isSel = o.i === selIdx;
+      drawSkeleton(mCtx, o.lm, W, H, mirrored, isSel ? 0.85 : 0.3, isSel ? SKELETON_COLOR : "#9a9a94");
+      if(ranked.length > 1) drawPersonBadge(mCtx, o.lm, W, H, mirrored, rank+1, isSel);
+    });
+    if(selIdx >= 0){ selLm = people[selIdx]; selWl = res.worldLandmarks?.[selIdx]; tracking = "ok"; }
+    else tracking = "lost";
+    if(selWl && selLm) processMotion(selWl, selLm, W, H, ts/1000);
+  }
   if(ts - mRun.lastDom > 100){
     mRun.lastDom = ts;
-    updateTiles(lm, wl);
+    const lbl = $("mSelLabel");
+    if(tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
+    else if((mRun.lastRanked?.length || 0) > 1){ lbl.textContent = `偵測到 ${mRun.lastRanked.length} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
+    else lbl.style.display = "none";
+    updateTiles(selLm, selWl);
     drawSpark();
   }
 }
