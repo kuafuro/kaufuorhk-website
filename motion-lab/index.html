@@ -422,6 +422,11 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
           <div class="sub">拳擊常見 1.0–1.6×</div>
         </div>
       </div>
+      <div class="card" id="sparCard" style="margin-top:12px;display:none">
+        <h3>🥊 對戰數據 <small style="color:var(--ink-muted);font-weight:400">Sparring（主角 vs 對手）</small></h3>
+        <div id="sparList"></div>
+        <div class="note-strip">命中／防守以 2D 影像重疊估算，唔代表真實接觸力度；力量以主角體重估算。數字用作訓練對比參考。</div>
+      </div>
       <div class="card" id="techCard" style="margin-top:12px;display:none">
         <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small></h3>
         <div id="techList"></div>
@@ -459,7 +464,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <li>鏡頭放側面 45°–90°，全身入鏡</li>
         <li>輸入體重（用作估算出拳動能）</li>
         <li>開鏡頭即時分析，或上載訓練影片（會顯示分析進度）</li>
-        <li>多人入鏡？開「👥 多人模式」——每人有個號碼牌，撳你想分析嘅人物即可鎖定佢</li>
+        <li>多人入鏡？開「👥 多人模式」——每人有個號碼牌，撳你想分析嘅人物即可鎖定做「主角」</li>
+        <li>對打／對練：開多人模式，兩人入鏡——自動計命中率（頭/腹）、防守成功率、閃避、承受重擊</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
         <li>撳「技術分析」攞弱點總結（影片播完會自動生成）</li>
         <li>「重設數據」開始新一節統計</li>
@@ -554,20 +560,106 @@ function rankPeople(people){
   const solid = order.filter(o=>o.h > 0.12);
   return solid.length ? solid : order.slice(0,1);
 }
-function drawPersonBadge(ctx, lm, W, H, mirrored, num, sel){
+function drawPersonBadge(ctx, lm, W, H, mirrored, label, bg){
   const nose = lm[LM.NOSE];
   const x = (mirrored ? 1-nose.x : nose.x)*W, y = Math.max(0.05*H, nose.y*H - 0.08*H);
   const r = Math.max(14, W*0.022);
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7);
-  ctx.fillStyle = sel ? "#d32f2f" : "rgba(13,13,13,0.75)";
+  ctx.fillStyle = bg || "rgba(13,13,13,0.75)";
   ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = sel ? "#fff" : "rgba(255,255,255,0.55)"; ctx.stroke();
-  ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(r*1.1)}px system-ui,sans-serif`;
+  ctx.lineWidth = 2.5; ctx.strokeStyle = bg ? "#fff" : "rgba(255,255,255,0.55)"; ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(r*(String(label).length>1?0.85:1.1))}px system-ui,sans-serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(String(num), x, y+1);
+  ctx.fillText(String(label), x, y+1);
   ctx.restore();
 }
+
+/* strike target zones (pixel space) of a person: head + belly */
+function zonesOf(lm, W, H){
+  const px = i => ({ x: lm[i].x*W, y: lm[i].y*H });
+  const nose = px(LM.NOSE), eL = px(LM.L_EAR), eR = px(LM.R_EAR);
+  const head = { x:(nose.x+eL.x+eR.x)/3, y:(nose.y+eL.y+eR.y)/3 };
+  const headR = Math.max(12, Math.hypot(eL.x-eR.x, eL.y-eR.y)) * 1.25;
+  const shoMid = { x:(px(LM.L_SHOULDER).x+px(LM.R_SHOULDER).x)/2, y:(px(LM.L_SHOULDER).y+px(LM.R_SHOULDER).y)/2 };
+  const hipMid = { x:(px(LM.L_HIP).x+px(LM.R_HIP).x)/2, y:(px(LM.L_HIP).y+px(LM.R_HIP).y)/2 };
+  const torso = Math.hypot(shoMid.x-hipMid.x, shoMid.y-hipMid.y) || 1;
+  const belly = { x: hipMid.x + (shoMid.x-hipMid.x)*0.35, y: hipMid.y + (shoMid.y-hipMid.y)*0.35 };
+  return { head, headR, belly, bodyR: torso*0.5, torso };
+}
+
+/* ---- identity tracker ----
+   Fixes person-confusion between frames: one-to-one matching on
+   predicted position + body size + torso clothing colour. */
+const colorDist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+const tracker = {
+  tracks: new Map(), nextId: 1, _ctx: null, _data: null,
+  reset(){ this.tracks.clear(); this.nextId = 1; },
+  beginFrame(videoEl){
+    try{
+      if(!this._ctx){
+        const c = document.createElement("canvas"); c.width = 96; c.height = 96;
+        this._ctx = c.getContext("2d", { willReadFrequently: true });
+      }
+      this._ctx.drawImage(videoEl, 0, 0, 96, 96);
+      this._data = this._ctx.getImageData(0, 0, 96, 96).data;
+    }catch(e){ this._data = null; }
+  },
+  colorAt(nx, ny){
+    if(!this._data) return [128,128,128];
+    let r=0,g=0,b=0,n=0;
+    const cx = Math.max(1, Math.min(94, Math.round(nx*95))), cy = Math.max(1, Math.min(94, Math.round(ny*95)));
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+      const i = ((cy+dy)*96 + (cx+dx))*4;
+      r += this._data[i]; g += this._data[i+1]; b += this._data[i+2]; n++;
+    }
+    return [r/n, g/n, b/n];
+  },
+  /* dets: [{lm, i, h}] → returns same objects with .trackId and .pos attached */
+  update(dets, t, videoEl){
+    this.beginFrame(videoEl);
+    const cands = dets.map(o=>{
+      const pos = midHipOf(o.lm);
+      const cx = ((o.lm[LM.L_SHOULDER].x+o.lm[LM.R_SHOULDER].x)/2 + (o.lm[LM.L_HIP].x+o.lm[LM.R_HIP].x)/2)/2;
+      const cy = ((o.lm[LM.L_SHOULDER].y+o.lm[LM.R_SHOULDER].y)/2 + (o.lm[LM.L_HIP].y+o.lm[LM.R_HIP].y)/2)/2;
+      o.pos = pos; o.color = this.colorAt(cx, cy); o.trackId = null;
+      return o;
+    });
+    const pairs = [];
+    for(const tr of this.tracks.values()){
+      const dt = Math.min(0.3, Math.max(0.001, t - tr.lastSeen));
+      const pred = { x: tr.pos.x + tr.vel.x*dt, y: tr.pos.y + tr.vel.y*dt };
+      cands.forEach((c, ci)=>{
+        const dPos = Math.hypot(c.pos.x-pred.x, c.pos.y-pred.y);
+        if(dPos > 0.35) return;                                  // gate: impossible jump
+        const dSize = Math.abs(c.h - tr.h)/Math.max(c.h, tr.h, 0.01);
+        const dCol = Math.min(1, colorDist(c.color, tr.color)/120);
+        pairs.push({ id: tr.id, ci, cost: dPos/0.35 + 0.5*dSize + 0.7*dCol });
+      });
+    }
+    pairs.sort((a,b)=>a.cost-b.cost);
+    const usedT = new Set(), usedC = new Set();
+    for(const p of pairs){
+      if(usedT.has(p.id) || usedC.has(p.ci)) continue;
+      usedT.add(p.id); usedC.add(p.ci);
+      const tr = this.tracks.get(p.id), c = cands[p.ci];
+      const dt = Math.max(0.02, t - tr.lastSeen);
+      tr.vel = { x: 0.6*tr.vel.x + 0.4*(c.pos.x-tr.pos.x)/dt, y: 0.6*tr.vel.y + 0.4*(c.pos.y-tr.pos.y)/dt };
+      tr.pos = c.pos; tr.h = c.h; tr.lastSeen = t;
+      tr.color = tr.color.map((v,i)=>0.8*v + 0.2*c.color[i]);
+      c.trackId = p.id;
+    }
+    for(const c of cands){
+      if(c.trackId == null){
+        const id = this.nextId++;
+        this.tracks.set(id, { id, pos:c.pos, vel:{x:0,y:0}, h:c.h, color:c.color, lastSeen:t });
+        c.trackId = id;
+      }
+    }
+    for(const [id, tr] of this.tracks){ if(t - tr.lastSeen > 1.5) this.tracks.delete(id); }
+    return cands;
+  },
+};
 
 /* ============================================================
    Model loading (single landmarker, mode-switched)
@@ -1316,24 +1408,34 @@ $("reportBtn").addEventListener("click", async ()=>{
 const mVideo = $("mVideo"), mCanvas = $("mCanvas"), mCtx = mCanvas.getContext("2d");
 const spark = $("speedSpark"), sparkCtx = spark.getContext("2d");
 let mState = null;
+const freshHands = () => ({
+  L:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
+  R:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
+});
 function freshSession(){
   return {
     peak:0, counts:{L:0,R:0}, lastKE:null, sepMax:0,
     trace:[],                     // {t, v} for sparkline
     punches:[],                   // {t, v} punch peaks for sparkline dots
-    punchLog:[],                  // {t, hand, v, elbowExt, sep} full-session log for technique review
+    punchLog:[],                  // {t, hand, v, ke, elbowExt, sep} full-session log for technique review
     guard:{ low:0, total:0 },     // non-punching wrist-below-chin samples
     stanceSum:0, stanceN:0,
+    travel:0, lastHipPx:null, lastHipT:null,   // footwork distance (metres, image-plane)
     startT:null, lastT:null,
-    hands:{
-      L:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
-      R:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
+    hands: freshHands(),          // subject's punch state machines
+    oppHands: freshHands(),       // opponent's punch state machines (incoming attacks)
+    spar:{
+      atk:[],        // subject's attacks:   {t, hand, v, ke, target:'head'|'body'|null}
+      def:[],        // incoming attacks:    {t, ke, landedZone, dodgeTried, blocked}
+      hitsTaken:[],  // landed heavy hits:   {t, ke, perturb}
+      pending:[],    // post-hit stability measurements in progress
     },
   };
 }
 let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0,
              multi:false /* per-frame full detection: finds EVERYONE, slightly less smooth */,
-             targetPos:null /* tracked person's mid-hip (normalized) */, lastRanked:null };
+             targetPos:null /* single-mode: tracked person's mid-hip (normalized) */, lastRanked:null,
+             subjectId:null, oppId:null, lastSubjectPos:null, lastCands:null };
 mState = freshSession();
 
 /* MediaPipe's VIDEO tracking mode reliably follows only ONE person — multi-person
@@ -1341,36 +1443,56 @@ mState = freshSession();
 $("mMultiBtn").addEventListener("click", async ()=>{
   mRun.multi = !mRun.multi;
   $("mMultiBtn").textContent = `👥 多人模式：${mRun.multi ? "開" : "關"}`;
-  mRun.targetPos = null; mRun.lastRanked = null;
+  mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
+  mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
+  tracker.reset();
   if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
   toast(mRun.multi
-    ? "多人模式開：畫面每人有號碼牌，撳人物揀分析對象（速度會略慢）"
+    ? "多人模式開：撳人物鎖定「主角」；有第二個人會自動當「對手」計對戰數據"
     : "單人模式：自動鎖定畫面中最大嘅人物（最快最順）", 4200);
 });
 
-/* tap a person on the stage to make them the analysis target */
+/* tap a person on the stage to make them the analysis subject (主角) */
 $("mStage").addEventListener("click", e=>{
-  if(!mRun.on || !mRun.lastRanked?.length) return;
+  if(!mRun.on) return;
   const rect = mCanvas.getBoundingClientRect();
   if(!rect.width) return;
   let x = (e.clientX - rect.left)/rect.width;
   const y = (e.clientY - rect.top)/rect.height;
   if($("mStage").classList.contains("mirrored")) x = 1 - x;
-  let best = null, bestD = 1e9, bestRank = 0;
-  mRun.lastRanked.forEach((o, rank)=>{
-    const c = midHipOf(o.lm);
-    const d = Math.hypot(c.x - x, c.y - y);
-    if(d < bestD){ bestD = d; best = o; bestRank = rank; }
-  });
-  if(!best || bestD > 0.45) return;
-  const c = midHipOf(best.lm);
-  const already = mRun.targetPos && Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y) < 0.08;
-  mRun.targetPos = c;
-  if(!already){
-    mState = freshSession();               // stats describe ONE person — restart on switch
+
+  if(mRun.multi && mRun.lastCands?.length){
+    let best = null, bestD = 1e9;
+    for(const c of mRun.lastCands){
+      const d = Math.hypot(c.pos.x - x, c.pos.y - y);
+      if(d < bestD){ bestD = d; best = c; }
+    }
+    if(!best || bestD > 0.45) return;
+    if(best.trackId === mRun.subjectId) return;      // already the subject
+    mRun.subjectId = best.trackId;
+    mRun.lastSubjectPos = best.pos;
+    mRun.oppId = null;                               // opponent re-resolves next frame
+    mState = freshSession();                         // stats describe ONE person — restart on switch
     $("techCard").style.display = "none";
     updateTiles(null, null, true);
-    toast(`已切換至人物 ${bestRank+1}，本節數據重新開始`);
+    toast(`已鎖定人物 ${best.trackId} 做主角，本節數據重新開始`);
+  }else if(mRun.lastRanked?.length){
+    let best = null, bestD = 1e9, bestRank = 0;
+    mRun.lastRanked.forEach((o, rank)=>{
+      const c = midHipOf(o.lm);
+      const d = Math.hypot(c.x - x, c.y - y);
+      if(d < bestD){ bestD = d; best = o; bestRank = rank; }
+    });
+    if(!best || bestD > 0.45) return;
+    const c = midHipOf(best.lm);
+    const already = mRun.targetPos && Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y) < 0.08;
+    mRun.targetPos = c;
+    if(!already){
+      mState = freshSession();
+      $("techCard").style.display = "none";
+      updateTiles(null, null, true);
+      toast(`已切換至人物 ${bestRank+1}，本節數據重新開始`);
+    }
   }
 });
 
@@ -1436,6 +1558,8 @@ async function startMotion(source){
   cancelAnimationFrame(mRun.raf);      // never let two loops run at once
   mRun.on = true; mRun.source = source; mRun.lastTs = -1;
   mRun.targetPos = null; mRun.lastRanked = null;   // re-lock onto the most prominent person
+  mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null; mRun.lastCands = null;
+  tracker.reset();
   $("mMsg").classList.add("hidden");
   $("mStopBtn").style.display = "";
   $("mFlipBtn").style.display = source === "cam" ? "" : "none";
@@ -1471,6 +1595,7 @@ $("mResetBtn").addEventListener("click", ()=>{
   updateTiles(null, null, true);
   drawSpark();
   $("techCard").style.display = "none";
+  $("sparCard").style.display = "none";
   toast("已重設本節數據");
 });
 $("mTechBtn").addEventListener("click", renderTechAnalysis);
@@ -1540,15 +1665,73 @@ function renderTechAnalysis(){
         d:"步法進退會偏慢，留意能唔能夠快速埋位同撤出。" });
       else items.push({ sev:"good", t:`站距合適（平均 ${fmt(st)}× 肩寬）`, d:"" });
     }
+    // 7) sparring: accuracy / defense / durability (needs 多人模式 + opponent)
+    const sp = sparStats();
+    if(sp.atk.length){
+      const accPct = Math.round(sp.landed/sp.atk.length*100);
+      const sevAcc = accPct >= 55 ? "good" : (accPct >= 35 ? "warning" : "serious");
+      items.push({ sev:sevAcc, t:`命中率 ${accPct}%（頭 ${sp.headHits}／腹 ${sp.bodyHits}，共 ${sp.atk.length} 次攻擊）`,
+        d: accPct < 55 ? "空拳多——留意距離感同出拳時機，先用刺拳量距再出組合。" : "命中效率良好。" });
+    }
+    if(sp.inc.length){
+      const defPct = Math.round((sp.inc.length - sp.incLanded)/sp.inc.length*100);
+      const sevDef = defPct >= 75 ? "good" : (defPct >= 50 ? "warning" : "serious");
+      items.push({ sev:sevDef, t:`防守成功率 ${defPct}%（對手攻擊 ${sp.inc.length} 次 · 格擋 ${sp.blocks} · 閃避成功 ${sp.dodgeOk}/${sp.dodges.length}）`,
+        d: defPct < 75 ? "被擊中比例偏高——練「出拳後即收手」同頭部離線（slip/roll）。" : "防守反應良好。" });
+    }
+    if(sp.heavy.length){
+      const sevDur = (sp.stability ?? 0) >= 60 ? "good" : (sp.stability >= 40 ? "warning" : "serious");
+      items.push({ sev:sevDur, t:`承受重擊 ${sp.heavy.length} 次 · 抗打穩定指數 ${sp.stability}/100`,
+        d: (sp.stability < 60 ? "受擊後身體擾動較大——加強頸部訓練、核心抗旋轉，同埋收下巴習慣。" : "受擊後恢復穩定。")
+         + (sp.projected ? `估算一場（3×3 分鐘）可承受重擊約 ${sp.projected} 次（實驗性推算，僅供參考）。` : "") });
+    }
     // session volume summary
     items.push({ sev:"good", t:`本節：${s.counts.L + s.counts.R} 記出拳（左 ${s.counts.L}／右 ${s.counts.R}）· 時長 ${fmt(dur,0)} 秒`, d:"" });
+  }
+
+  /* ---- quantified fighter profile (0–100 axes + style label) ---- */
+  let profileHtml = "";
+  if(dur >= 5 && punches.length){
+    const sp = sparStats();
+    const durMin = Math.max(dur/60, 1/60);
+    const rate = punches.length/durMin;
+    const kes = punches.map(p=>p.ke).filter(Boolean);
+    const avgKE = kes.length ? kes.reduce((a,b)=>a+b,0)/kes.length : null;
+    const c100 = v => Math.max(0, Math.min(100, Math.round(v)));
+    const mpm = s.travel/durMin;
+    const axes = [
+      { n:"力量 Power",      v: avgKE != null ? c100(avgKE/1.2) : null,                       note: avgKE != null ? `平均 ${fmt(avgKE,0)} J` : "未有數據" },
+      { n:"速度 Speed",      v: s.peak ? c100((s.peak-3)*14) : null,                          note: s.peak ? `峰值 ${fmt(s.peak)} m/s` : "未有數據" },
+      { n:"攻擊性 Volume",   v: c100(rate*3.3),                                               note: `${fmt(rate,1)} 拳／分鐘` },
+      { n:"命中 Accuracy",   v: sp.atk.length ? c100(sp.landed/sp.atk.length*100) : null,     note: sp.atk.length ? `${sp.landed}／${sp.atk.length} 中` : "需對戰數據" },
+      { n:"防守 Defense",    v: sp.inc.length ? c100((sp.inc.length-sp.incLanded)/sp.inc.length*100) : null, note: sp.inc.length ? `對手攻擊 ${sp.inc.length} 次` : "需對戰數據" },
+      { n:"抗打 Durability", v: sp.stability,                                                 note: sp.heavy.length ? `受重擊 ${sp.heavy.length} 次` : "未受重擊" },
+      { n:"步法 Footwork",   v: c100(mpm*5),                                                  note: `移動 ${fmt(mpm,1)} 米／分鐘` },
+    ];
+    const A = Object.fromEntries(axes.map(a=>[a.n.split(" ")[0], a.v]));
+    const s1 = (A["攻擊性"] ?? 0) >= 55 ? "進攻型" : ((A["防守"] ?? 0) >= 60 ? "防守反擊型" : "均衡型");
+    const s2 = (A["力量"] ?? 0) >= 65 ? "重炮手" : ((A["速度"] ?? 0) >= 65 ? "快攻手" : ((A["步法"] ?? 0) >= 55 ? "游擊手" : "技術型"));
+    const pref = sp.landed
+      ? `目標偏好：攻頭 ${Math.round(sp.headHits/sp.landed*100)}%／攻腹 ${Math.round(sp.bodyHits/sp.landed*100)}%` : "";
+    profileHtml = `
+      <div style="margin-top:12px;border-top:1px solid var(--hairline);padding-top:10px">
+        <b style="color:var(--ink)">風格檔案（量化）：${s1}・${s2}</b>
+        ${pref ? `<div class="hint" style="margin-top:2px">${pref}</div>` : ""}
+        ${axes.map(a=>`
+          <div class="metric-row" style="padding:6px 0">
+            <div class="metric-name" style="flex:0 0 128px;font-size:.82rem">${a.n}</div>
+            <div class="loadbar" style="flex:1"><div style="width:${a.v ?? 0}%"></div></div>
+            <div class="metric-val" style="flex:0 0 96px;font-size:.85rem">${a.v != null ? a.v+"/100" : "—"}<small>${a.note}</small></div>
+          </div>`).join("")}
+        <div class="hint">評分以業餘訓練水平校準；命中／防守／抗打需「多人模式＋對手入鏡」先有數據。</div>
+      </div>`;
   }
 
   $("techList").innerHTML = items.map(i=>`
     <div class="muscle-item">
       <span class="dot" style="background:${STATUS_COLOR[i.sev]}"></span>
       <span><b>${i.t}</b>${i.d ? `<br><span style="color:var(--ink-muted)">${i.d}</span>` : ""}</span>
-    </div>`).join("");
+    </div>`).join("") + profileHtml;
   $("techCard").style.display = "";
   $("techCard").scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
@@ -1583,14 +1766,57 @@ function motionLoop(){
   mCtx.clearRect(0,0,W,H);
   const mirrored = $("mStage").classList.contains("mirrored");
   const people = res.landmarks || [];
-  let selLm = null, selWl = null, tracking = "none";
-  if(people.length){
+  const tSec = ts/1000;
+  let selLm = null, selWl = null, opp = null, tracking = "none", nPeople = 0;
+
+  if(people.length && mRun.multi){
+    /* ---- multi-person: identity tracker + 主角/對手 roles ---- */
     const ranked = rankPeople(people);
-    mRun.lastRanked = ranked;
-    // lock / follow the analysis target by nearest mid-hip
+    const cands = tracker.update(ranked, tSec, mVideo);
+    mRun.lastCands = cands; mRun.lastRanked = ranked;
+    nPeople = cands.length;
+
+    let subj = cands.find(c=>c.trackId === mRun.subjectId) || null;
+    if(!subj && mRun.lastSubjectPos){
+      // subject's track dropped — re-adopt only someone near their last position
+      subj = cands.filter(c=>Math.hypot(c.pos.x-mRun.lastSubjectPos.x, c.pos.y-mRun.lastSubjectPos.y) < 0.3)
+                  .sort((a,b)=>b.h-a.h)[0] || null;
+      if(subj) mRun.subjectId = subj.trackId;
+    }
+    if(!subj && mRun.subjectId == null && cands.length){
+      subj = cands.slice().sort((a,b)=>b.h-a.h)[0];    // first lock: most prominent
+      mRun.subjectId = subj.trackId;
+    }
+    if(subj) mRun.lastSubjectPos = subj.pos;
+
+    const others = cands.filter(c=>c.trackId !== mRun.subjectId);
+    let oppCand = others.find(c=>c.trackId === mRun.oppId) || others.sort((a,b)=>b.h-a.h)[0] || null;
+    if(oppCand && oppCand.trackId !== mRun.oppId){ mRun.oppId = oppCand.trackId; mState.oppHands = freshHands(); }
+    if(oppCand) opp = { lm: oppCand.lm, wl: res.worldLandmarks?.[oppCand.i] };
+
+    for(const c of cands){
+      const isSubj = c.trackId === mRun.subjectId;
+      const isOpp = oppCand && c.trackId === oppCand.trackId;
+      drawSkeleton(mCtx, c.lm, W, H, mirrored,
+        isSubj ? 0.85 : (isOpp ? 0.6 : 0.3),
+        isSubj ? SKELETON_COLOR : (isOpp ? "#fab219" : "#9a9a94"));
+      drawPersonBadge(mCtx, c.lm, W, H, mirrored,
+        isSubj ? "主" : (isOpp ? "對" : c.trackId),
+        isSubj ? "#d32f2f" : (isOpp ? "rgba(160,110,0,0.9)" : null));
+    }
+    if(subj){ selLm = subj.lm; selWl = res.worldLandmarks?.[subj.i]; tracking = "ok"; }
+    else tracking = "lost";
+    if(selLm && selWl) processMotion(selWl, selLm, W, H, tSec, opp);
+    if(opp?.lm && opp?.wl && selLm) processIncoming(opp.wl, opp.lm, W, H, tSec, selLm);
+
+  }else if(people.length){
+    /* ---- single-person tracking mode ---- */
+    const ranked = rankPeople(people);
+    mRun.lastRanked = ranked; mRun.lastCands = null;
+    nPeople = ranked.length;
     let selIdx = -1;
     if(!mRun.targetPos){
-      selIdx = ranked[0].i;                              // default: most prominent person
+      selIdx = ranked[0].i;
       mRun.targetPos = midHipOf(people[selIdx]);
     }else{
       let bestD = 1e9;
@@ -1599,25 +1825,28 @@ function motionLoop(){
         const d = Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y);
         if(d < bestD){ bestD = d; selIdx = i; }
       });
-      if(bestD > 0.25) selIdx = -1;                       // target lost — wait or re-tap
+      if(bestD > 0.25) selIdx = -1;
       else mRun.targetPos = midHipOf(people[selIdx]);
     }
     ranked.forEach((o, rank)=>{
       const isSel = o.i === selIdx;
       drawSkeleton(mCtx, o.lm, W, H, mirrored, isSel ? 0.85 : 0.3, isSel ? SKELETON_COLOR : "#9a9a94");
-      if(ranked.length > 1) drawPersonBadge(mCtx, o.lm, W, H, mirrored, rank+1, isSel);
+      if(ranked.length > 1) drawPersonBadge(mCtx, o.lm, W, H, mirrored, rank+1, isSel ? "#d32f2f" : null);
     });
     if(selIdx >= 0){ selLm = people[selIdx]; selWl = res.worldLandmarks?.[selIdx]; tracking = "ok"; }
     else tracking = "lost";
-    if(selWl && selLm) processMotion(selWl, selLm, W, H, ts/1000);
+    if(selWl && selLm) processMotion(selWl, selLm, W, H, tSec, null);
   }
+
   if(ts - mRun.lastDom > 100){
     mRun.lastDom = ts;
     const lbl = $("mSelLabel");
     if(tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
-    else if((mRun.lastRanked?.length || 0) > 1){ lbl.textContent = `偵測到 ${mRun.lastRanked.length} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
+    else if(mRun.multi && opp){ lbl.textContent = "對戰模式：主=紅 · 對=橙 · 撳人物換主角"; lbl.style.display = "block"; }
+    else if(nPeople > 1){ lbl.textContent = `偵測到 ${nPeople} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
     else lbl.style.display = "none";
     updateTiles(selLm, selWl);
+    updateSparCard();
     drawSpark();
   }
 }
@@ -1628,7 +1857,7 @@ function angle3D(a,b,c){
   const d = (v1.x*v2.x+v1.y*v2.y+v1.z*v2.z)/((Math.hypot(v1.x,v1.y,v1.z)*Math.hypot(v2.x,v2.y,v2.z))||1);
   return deg(Math.acos(Math.max(-1,Math.min(1,d))));
 }
-function processMotion(wl, lm, W, H, t){
+function processMotion(wl, lm, W, H, t, opp){
   // MediaPipe world landmarks are hip-centred per frame (whole-body translation removed).
   // Re-anchor with the mid-hip image position × a metres-per-pixel scale from torso length,
   // so a stepping punch keeps its footwork speed. Depth (towards-camera) motion is still lost.
@@ -1640,6 +1869,14 @@ function processMotion(wl, lm, W, H, t){
   const mPerPx = torsoPx > 1 ? torsoM/torsoPx : 0;
   mState.startT ??= t;
   mState.lastT = t;
+
+  // footwork travel (metres, image-plane)
+  if(mState.lastHipPx && t - mState.lastHipT < 0.5){
+    mState.travel += Math.hypot(midHipPx.x-mState.lastHipPx.x, midHipPx.y-mState.lastHipPx.y) * mPerPx;
+  }
+  mState.lastHipPx = midHipPx; mState.lastHipT = t;
+
+  const oppZones = opp?.lm ? zonesOf(opp.lm, W, H) : null;
 
   // per-hand speed via displacement over an ~80ms window
   for(const [hand, wristIdx] of [["L",LM.L_WRIST],["R",LM.R_WRIST]]){
@@ -1676,18 +1913,31 @@ function processMotion(wl, lm, W, H, t){
     // punch state machine
     if(!h.active && sp > 3.0 && t - h.lastEnd > 0.25){
       h.active = true; h.peak = sp; h.start = t; h.maxElbow = elbowNow;
+      h.minHeadRatio = 1e9; h.minBodyRatio = 1e9; h.hadOpp = false;
     }else if(h.active){
       h.peak = Math.max(h.peak, sp);
       h.maxElbow = Math.max(h.maxElbow || 0, elbowNow);
+      if(oppZones){
+        // how close this punch gets to the opponent's head / belly zones
+        h.hadOpp = true;
+        const wpx = { x: lm[wristIdx].x*W, y: lm[wristIdx].y*H };
+        h.minHeadRatio = Math.min(h.minHeadRatio, Math.hypot(wpx.x-oppZones.head.x, wpx.y-oppZones.head.y)/oppZones.headR);
+        h.minBodyRatio = Math.min(h.minBodyRatio, Math.hypot(wpx.x-oppZones.belly.x, wpx.y-oppZones.belly.y)/oppZones.bodyR);
+      }
       if(sp < 1.2){
         h.active = false; h.lastEnd = t;
         if(h.peak > 3.5 && t - h.start > 0.05){
           mState.counts[hand]++;
           mState.punches.push({t, v:h.peak});
-          mState.punchLog.push({ t, hand, v:h.peak, elbowExt:h.maxElbow, sep:mState.sep || 0 });
-          mState.peak = Math.max(mState.peak, h.peak);
           const w = parseFloat($("weightInput").value) || 70;
-          mState.lastKE = 0.5 * (0.05*w) * h.peak*h.peak;
+          const ke = 0.5 * (0.05*w) * h.peak*h.peak;
+          mState.lastKE = ke;
+          mState.punchLog.push({ t, hand, v:h.peak, ke, elbowExt:h.maxElbow, sep:mState.sep || 0 });
+          mState.peak = Math.max(mState.peak, h.peak);
+          if(h.hadOpp){
+            const target = h.minHeadRatio < 1 ? "head" : (h.minBodyRatio < 1 ? "body" : null);
+            mState.spar.atk.push({ t, hand, v:h.peak, ke, target });
+          }
         }
         h.peak = 0; h.maxElbow = 0;
       }
@@ -1715,6 +1965,85 @@ function processMotion(wl, lm, W, H, t){
   if(sep > 180) sep -= 360; if(sep < -180) sep += 360;
   mState.sep = Math.abs(sep);
   mState.sepMax = Math.max(mState.sepMax, mState.sep);
+
+  // finish post-hit stability measurements (durability)
+  const pend = mState.spar.pending;
+  if(pend.length){
+    const selfZ = zonesOf(lm, W, H);
+    for(let i=pend.length-1;i>=0;i--){
+      const pd = pend[i];
+      pd.maxDisp = Math.max(pd.maxDisp, Math.hypot(selfZ.head.x-pd.headStart.x, selfZ.head.y-pd.headStart.y));
+      if(t - pd.t0 > 0.8){
+        mState.spar.hitsTaken.push({ t:pd.t0, ke:pd.ke, perturb: pd.maxDisp/(pd.torso||1) });
+        pend.splice(i,1);
+      }
+    }
+  }
+}
+
+/* opponent's attacks toward the subject: incoming hit / block / dodge classification */
+function processIncoming(oppWl, oppLm, W, H, t, subjLm){
+  const midHipPx = { x:(oppLm[LM.L_HIP].x + oppLm[LM.R_HIP].x)/2 * W, y:(oppLm[LM.L_HIP].y + oppLm[LM.R_HIP].y)/2 * H };
+  const torsoM = (Math.hypot(oppWl[LM.L_SHOULDER].x-oppWl[LM.L_HIP].x, oppWl[LM.L_SHOULDER].y-oppWl[LM.L_HIP].y)
+                + Math.hypot(oppWl[LM.R_SHOULDER].x-oppWl[LM.R_HIP].x, oppWl[LM.R_SHOULDER].y-oppWl[LM.R_HIP].y))/2;
+  const torsoPx = (Math.hypot((oppLm[LM.L_SHOULDER].x-oppLm[LM.L_HIP].x)*W, (oppLm[LM.L_SHOULDER].y-oppLm[LM.L_HIP].y)*H)
+                 + Math.hypot((oppLm[LM.R_SHOULDER].x-oppLm[LM.R_HIP].x)*W, (oppLm[LM.R_SHOULDER].y-oppLm[LM.R_HIP].y)*H))/2;
+  const mPerPx = torsoPx > 1 ? torsoM/torsoPx : 0;
+  const subjZ = zonesOf(subjLm, W, H);
+
+  for(const [hand, wristIdx] of [["L",LM.L_WRIST],["R",LM.R_WRIST]]){
+    const h = mState.oppHands[hand];
+    if((oppLm[wristIdx].visibility ?? 1) < 0.5){
+      h.buf.length = 0; h.v = 0; h.active = false; h.peak = 0;
+      continue;
+    }
+    const p0 = oppWl[wristIdx];
+    const p = { t, x: p0.x + midHipPx.x*mPerPx, y: p0.y + midHipPx.y*mPerPx, z: p0.z };
+    h.buf.push(p);
+    while(h.buf.length && t - h.buf[0].t > 0.5) h.buf.shift();
+    let v = 0;
+    const target = t - 0.08;
+    let ref = null;
+    for(let i=h.buf.length-1;i>=0;i--){ if(h.buf[i].t <= target){ ref = h.buf[i]; break; } }
+    if(ref && t - ref.t > 0.02){
+      v = dist3(p, ref)/(t - ref.t);
+      if(v > 16){ h.buf.length = 0; h.buf.push(p); h.v = 0; h.active = false; h.peak = 0; continue; }
+      h.v = h.v == null ? v : 0.5*h.v + 0.5*v;
+    }else{ h.v = h.v ?? 0; }
+    const sp = h.v || 0;
+
+    if(!h.active && sp > 3.0 && t - h.lastEnd > 0.25){
+      h.active = true; h.peak = sp; h.start = t;
+      h.minHeadRatio = 1e9; h.minBodyRatio = 1e9; h.minBlockDist = 1e9;
+      h.defHeadStart = { x: subjZ.head.x, y: subjZ.head.y };
+      h.defMaxDisp = 0;
+    }else if(h.active){
+      h.peak = Math.max(h.peak, sp);
+      const wpx = { x: oppLm[wristIdx].x*W, y: oppLm[wristIdx].y*H };
+      h.minHeadRatio = Math.min(h.minHeadRatio, Math.hypot(wpx.x-subjZ.head.x, wpx.y-subjZ.head.y)/subjZ.headR);
+      h.minBodyRatio = Math.min(h.minBodyRatio, Math.hypot(wpx.x-subjZ.belly.x, wpx.y-subjZ.belly.y)/subjZ.bodyR);
+      for(const wi of [LM.L_WRIST, LM.R_WRIST]){       // subject's guard intercepting the incoming fist
+        const swpx = { x: subjLm[wi].x*W, y: subjLm[wi].y*H };
+        h.minBlockDist = Math.min(h.minBlockDist, Math.hypot(wpx.x-swpx.x, wpx.y-swpx.y));
+      }
+      h.defMaxDisp = Math.max(h.defMaxDisp, Math.hypot(subjZ.head.x-h.defHeadStart.x, subjZ.head.y-h.defHeadStart.y));
+      if(sp < 1.2){
+        h.active = false; h.lastEnd = t;
+        if(h.peak > 3.5 && t - h.start > 0.05){
+          const w = parseFloat($("weightInput").value) || 70;
+          const ke = 0.5 * (0.05*w) * h.peak*h.peak;
+          const landedZone = h.minHeadRatio < 1 ? "head" : (h.minBodyRatio < 1 ? "body" : null);
+          const dodgeTried = h.defMaxDisp > subjZ.torso*0.35;
+          const blocked = !landedZone && h.minBlockDist < subjZ.torso*0.35;
+          mState.spar.def.push({ t, ke, landedZone, dodgeTried, blocked });
+          if(landedZone && ke >= 55){                  // heavy hit → measure post-hit stability
+            mState.spar.pending.push({ t0:t, headStart:{ x:subjZ.head.x, y:subjZ.head.y }, torso:subjZ.torso, ke, maxDisp:0 });
+          }
+        }
+        h.peak = 0;
+      }
+    }
+  }
 }
 function updateTiles(lm, wl, forceClear){
   const s = mState;
@@ -1738,6 +2067,51 @@ function updateTiles(lm, wl, forceClear){
     $("tStance").innerHTML = "–<small>×</small>";
   }
 }
+/* live sparring stats: 命中（頭/腹）、力量、防守/閃避、承受重擊 */
+function sparStats(){
+  const sp = mState.spar;
+  const atk = sp.atk;
+  const headHits = atk.filter(a=>a.target==="head").length;
+  const bodyHits = atk.filter(a=>a.target==="body").length;
+  const landed = headHits + bodyHits;
+  const kes = atk.map(a=>a.ke).filter(Boolean);
+  const inc = sp.def;
+  const incLanded = inc.filter(d=>d.landedZone).length;
+  const dodges = inc.filter(d=>d.dodgeTried);
+  const dodgeOk = dodges.filter(d=>!d.landedZone).length;
+  const blocks = inc.filter(d=>d.blocked).length;
+  const heavy = sp.hitsTaken;
+  const avgPerturb = heavy.length ? heavy.reduce((s,x)=>s+x.perturb,0)/heavy.length : null;
+  const stability = avgPerturb != null ? Math.max(0, Math.min(100, Math.round(100 - avgPerturb*180))) : null;
+  const projected = (avgPerturb && avgPerturb > 0.02) ? Math.max(5, Math.min(60, Math.round(6/avgPerturb))) : null;
+  return { atk, headHits, bodyHits, landed, kes, inc, incLanded, dodges, dodgeOk, blocks, heavy, stability, projected };
+}
+function updateSparCard(){
+  const active = mRun.multi && (mRun.oppId != null || mState.spar.atk.length || mState.spar.def.length);
+  $("sparCard").style.display = active ? "" : "none";
+  if(!active) return;
+  const s = sparStats();
+  const pct = (x,y)=> y ? Math.round(x/y*100)+"%" : "–";
+  const row = (name, val) => `
+    <div class="metric-row">
+      <div class="metric-name">${name}</div>
+      <div class="metric-val">${val}</div>
+    </div>`;
+  $("sparList").innerHTML =
+    row("攻擊次數", s.atk.length) +
+    row("命中頭部", `${s.headHits} 次（${pct(s.headHits, s.atk.length)}）`) +
+    row("命中腹部", `${s.bodyHits} 次（${pct(s.bodyHits, s.atk.length)}）`) +
+    row("整體命中率", pct(s.landed, s.atk.length)) +
+    row("力量（平均／最大）", s.kes.length
+      ? `${fmt(s.kes.reduce((a,b)=>a+b,0)/s.kes.length,0)} / ${fmt(Math.max(...s.kes),0)} J` : "–") +
+    row("對手攻擊次數", s.inc.length) +
+    row("防守成功率", s.inc.length ? pct(s.inc.length - s.incLanded, s.inc.length) : "–") +
+    row("格擋次數", s.blocks) +
+    row("閃避（成功／嘗試）", s.dodges.length ? `${s.dodgeOk} / ${s.dodges.length}（${pct(s.dodgeOk, s.dodges.length)}）` : "0 / 0") +
+    row("承受重擊", `${s.heavy.length} 次`) +
+    row("抗打穩定指數", s.stability != null ? `${s.stability} / 100` : "–");
+}
+
 function drawSpark(){
   const dpr = window.devicePixelRatio || 1;
   const cw = spark.clientWidth || 300, chh = 64;
@@ -1771,6 +2145,13 @@ function drawSpark(){
 }
 drawSpark();
 window.addEventListener("resize", drawSpark);
+
+/* testing hook: lets automated tests inject a session and re-render (no effect on normal use) */
+window.__ml = {
+  get state(){ return mState; }, set state(v){ mState = v; },
+  get run(){ return mRun; },
+  renderTechAnalysis, updateSparCard, freshSession,
+};
 
 /* stop cameras when page hidden (uploaded-video sessions survive — rAF pauses on its own) */
 document.addEventListener("visibilitychange", ()=>{
