@@ -438,7 +438,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <div class="card" id="sparCard" style="margin-top:12px;display:none">
         <h3>🥊 對戰數據 <small style="color:var(--ink-muted);font-weight:400">A（紅）vs B（橙）· 拳踢膝全計</small></h3>
         <div id="sparList"></div>
-        <div class="note-strip">命中／防守以 2D 影像重疊估算，唔代表真實接觸力度；力量以輸入體重估算（兩人同值）。數字用作訓練對比參考。</div>
+        <div class="note-strip">計分準則參考 WAKO K1 規例第 4 條：輕觸／被格擋嘅技術不計分；拳擊腿部、正蹬/側踢/後旋踢踢大腿屬犯規目標。命中／防守以 2D 影像重疊估算，力量以輸入體重估算，數字用作訓練對比參考。</div>
       </div>
       <div class="card" id="techCard" style="margin-top:12px;display:none">
         <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small>
@@ -538,6 +538,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <li>多人模式<b>預設開啟</b>——每人有個號碼牌，撳你想分析嘅人物即可鎖定做 A（單人操練可以較返做單人模式，更快更省電）</li>
         <li><b>身份記憶🔒</b>：AI 會記住 A/B 兩人嘅樣貌＋衣着特徵，成場跟實——就算交叉、纏抱之後調轉咗都會自動糾正（兩人著唔同顏色衫效果最好）</li>
         <li>對打／對練：兩人入鏡自動分 A（紅）/ B（橙），兩邊數據並排——拳、踢、膝全計，命中分頭/腹/腿（low kick）、防守、閃避、承受重擊</li>
+        <li><b>WAKO 計分準則</b>：出擊分「有效命中／輕觸／被格擋／落空」——無效攻擊都計入出擊總數；技法自動分類（直拳/擺拳/上擊/轉身鞭拳/正蹬/迴旋踢/低掃/高踢/斧劈踢/後旋踢/膝擊）；對方落空時你方會計「格擋／閃避／距離防禦」</li>
         <li>「AI 精度」可揀 快／標準／超精細（Heavy 最仔細，下載約 29MB，適合影片批次分析）</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
         <li>撳「技術分析」攞 A/B 各自嘅弱點總結＋風格檔案（影片播完自動生成）；「儲存 A／儲存 B」分別入落唔同拳手檔案</li>
@@ -1588,14 +1589,56 @@ let mState = null;
    minPeak filters slow movements (steps, resets); mass = effective
    striking mass as a fraction of body weight (estimate, disclaimed). */
 const LIMBS = [
-  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:2.5, end:1.0, minPeak:3.0, mass:0.05, vmax:16 },
-  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:2.5, end:1.0, minPeak:3.0, mass:0.05, vmax:16 },
-  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:4.2, end:1.6, minPeak:4.8, mass:0.09, vmax:20 },
-  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:4.2, end:1.6, minPeak:4.8, mass:0.09, vmax:20 },
-  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:3.2, end:1.3, minPeak:3.8, mass:0.07, vmax:16 },
-  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:3.2, end:1.3, minPeak:3.8, mass:0.07, vmax:16 },
+  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:2.2, end:1.0, minPeak:2.6, mass:0.05, vmax:16 },
+  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:2.2, end:1.0, minPeak:2.6, mass:0.05, vmax:16 },
+  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:3.5, end:1.5, minPeak:4.0, mass:0.09, vmax:20 },
+  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:3.5, end:1.5, minPeak:4.0, mass:0.09, vmax:20 },
+  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:2.8, end:1.2, minPeak:3.2, mass:0.07, vmax:16 },
+  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:2.8, end:1.2, minPeak:3.2, mass:0.07, vmax:16 },
 ];
 const TYPE_LABEL = { punch:"拳", kick:"踢", knee:"膝" };
+/* WAKO Art.4: techniques must land with full power — below these peak speeds
+   a landed strike is a 輕觸 (touch/brush) and does not score */
+const EFF_V = { punch:4.2, kick:5.2, knee:4.2 };
+
+/* classify the technique from the limb's image-plane trajectory (WAKO K1 taxonomy):
+   拳 → 前手直拳/後手直拳/擺拳/上擊/轉身鞭拳
+   腿 → 正蹬／側踢/迴旋踢/高踢/低掃/斧劈踢/後旋踢    膝 → 膝擊 */
+function classifyStrike(L, st, torsoN){
+  const path = st.path || [];
+  let tech = TYPE_LABEL[L.type], arc = false, heightClass = null;
+  if(path.length >= 3){
+    const a = path[0], b = path[path.length-1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const chord = Math.hypot(dx, dy) || 1e-4;
+    let dev = 0, peakRise = 0;
+    for(const p of path){
+      const tt = ((p.x-a.x)*dx + (p.y-a.y)*dy)/(chord*chord);
+      const qx = a.x + tt*dx, qy = a.y + tt*dy;
+      dev = Math.max(dev, Math.hypot(p.x-qx, p.y-qy));
+      peakRise = Math.max(peakRise, a.y - p.y);
+    }
+    const curv = dev/chord;
+    arc = curv > 0.3;
+    const rise = -dy/torsoN;
+    if(L.type === "punch"){
+      if((st.maxYawD || 0) > 100 && curv > 0.2) tech = "轉身鞭拳";
+      else if(rise > 0.35 && Math.abs(dy) > Math.abs(dx)*0.8) tech = "上擊";
+      else if(curv > 0.28 || (st.maxElbow || 180) < 125) tech = "擺拳";
+      else tech = st.lead === true ? "前手直拳" : (st.lead === false ? "後手直拳" : "直拳");
+    }else if(L.type === "kick"){
+      heightClass = (st.refShoY != null && b.y < st.refShoY) ? "high"
+                  : (st.refHipY != null && b.y < st.refHipY + 0.12*torsoN) ? "mid" : "low";
+      const axe = peakRise > 0.55*torsoN && dy > 0.18*torsoN && heightClass !== "low";
+      if((st.maxYawD || 0) > 120) tech = "後旋踢";
+      else if(axe) tech = "斧劈踢";
+      else if(heightClass === "low") tech = "低掃";
+      else if(heightClass === "high") tech = "高踢";
+      else tech = arc ? "迴旋踢" : "正蹬／側踢";
+    }else tech = "膝擊";
+  }
+  return { tech, arc, heightClass };
+}
 
 function freshFighter(){
   return {
@@ -2038,19 +2081,28 @@ function renderTechAnalysis(){
         d:"泰拳高保護式：雙手貼面頰、手肘收——出擊後即刻收返。" });
       else if(frac <= 0.2) items.push({ sev:"good", t:"防守手位置保持良好", d:"" });
     }
-    // 7) accuracy by zone
-    if(st.atk.length){
-      const accPct = Math.round(st.landed/st.atk.length*100);
-      const sevAcc = accPct >= 55 ? "good" : (accPct >= 35 ? "warning" : "serious");
-      items.push({ sev:sevAcc, t:`命中率 ${accPct}%（頭 ${st.headHits}／腹 ${st.bodyHits}／腿 ${st.legHits}，共 ${st.atk.length} 次出擊）`,
-        d: accPct < 55 ? "空擊多——用刺拳／前蹬量距，先控制距離再出組合。" : "命中效率良好。" });
+    // 7) technique distribution (WAKO taxonomy)
+    if(Object.keys(st.techCounts).length){
+      const top = Object.entries(st.techCounts).sort((x,y)=>y[1]-x[1]).slice(0,6)
+        .map(([k,v])=>`${k}×${v}`).join("、");
+      items.push({ sev:"good", t:`技法分佈：${top}`, d:"" });
     }
-    // 8) defense
+    // 8) accuracy + strike quality（WAKO：輕觸/被格擋不計分）
+    if(st.vsFoe){
+      const accPct = Math.round(st.landed/st.vsFoe*100);
+      const effPct = Math.round(st.effective/st.vsFoe*100);
+      const sevAcc = effPct >= 40 ? "good" : (effPct >= 22 ? "warning" : "serious");
+      items.push({ sev:sevAcc,
+        t:`命中率 ${accPct}%・有效率 ${effPct}%（有效 ${st.effective}·輕觸 ${st.light}·被格擋 ${st.blockedCnt}·落空 ${st.missedCnt}${st.fouls ? `·犯規目標 ${st.fouls}` : ""}）`,
+        d: "依 WAKO 計分：輕觸／被格擋唔計分。" + (effPct < 40 ? "無效攻擊偏多——揀好時機全力出擊，先用刺拳／前蹬量距。" : "有效輸出良好。") });
+    }
+    // 9) defense（三種有效防禦：格擋／閃避／距離）
     if(st.inc.length){
       const defPct = Math.round((st.inc.length - st.incLanded)/st.inc.length*100);
       const sevDef = defPct >= 75 ? "good" : (defPct >= 50 ? "warning" : "serious");
-      items.push({ sev:sevDef, t:`防守成功率 ${defPct}%（對方出擊 ${st.inc.length} · 格擋 ${st.blocks} · 閃避 ${st.dodgeOk}/${st.dodges.length}）`,
-        d: defPct < 75 ? "被擊中偏多——練提膝擋低掃、手肘防膝擊、頭部離線。" : "防守反應良好。" });
+      items.push({ sev:sevDef,
+        t:`防守成功率 ${defPct}%（對方出擊 ${st.inc.length}：格擋 ${st.defBlock}·閃避 ${st.defDodge}·距離 ${st.defRange}·被擊中 ${st.incLanded}，其中有效 ${st.incEffective}）`,
+        d: defPct < 75 ? "被擊中偏多——練提膝擋低掃、手肘防膝擊、頭部離線。" : "防守反應良好——三種防禦都計入成功。" });
     }
     // 9) durability
     if(st.heavy.length){
@@ -2366,6 +2418,17 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
 
   const foeZ = foe?.lm ? zonesOf(foe.lm, W, H) : null;
   const w = parseFloat($("weightInput").value) || 70;
+  const torsoN = Math.hypot(
+    (lm[LM.L_SHOULDER].x+lm[LM.R_SHOULDER].x)/2 - (lm[LM.L_HIP].x+lm[LM.R_HIP].x)/2,
+    (lm[LM.L_SHOULDER].y+lm[LM.R_SHOULDER].y)/2 - (lm[LM.L_HIP].y+lm[LM.R_HIP].y)/2) || 0.2;
+  // lead (front) side toward the foe — names jab vs cross
+  let leadSide = null;
+  if(foe?.lm){
+    const foeDir = Math.sign(((foe.lm[LM.L_HIP].x+foe.lm[LM.R_HIP].x)/2) - ((lm[LM.L_HIP].x+lm[LM.R_HIP].x)/2)) || 1;
+    leadSide = (lm[LM.L_ANKLE].x - lm[LM.R_ANKLE].x)*foeDir > 0 ? "L" : "R";
+  }
+  // torso yaw — spinning techniques rotate the shoulders 100°+
+  const yawNow = deg(Math.atan2(wl[LM.L_SHOULDER].z - wl[LM.R_SHOULDER].z, wl[LM.L_SHOULDER].x - wl[LM.R_SHOULDER].x));
 
   for(const L of LIMBS){
     const st = F.limbs[L.key];
@@ -2398,10 +2461,26 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
     if(!st.active && sp > L.onset && t - st.lastEnd > 0.25){
       st.active = true; st.peak = sp; st.start = t; st.maxElbow = elbowNow;
       st.minHead = 1e9; st.minBody = 1e9; st.minLeg = 1e9; st.hadFoe = false;
+      st.path = [{ x: lm[L.idx].x, y: lm[L.idx].y }];
+      st.maxLift = 0; st.minKneeGap = 1e9;
+      st.yaw0 = yawNow; st.maxYawD = 0;
+      st.lead = leadSide ? (L.side === leadSide) : null;
       if(foeZ){ st.defHeadStart = { x:foeZ.head.x, y:foeZ.head.y }; st.defMaxDisp = 0; st.minBlock = 1e9; }
     }else if(st.active){
       st.peak = Math.max(st.peak, sp);
       if(L.type === "punch") st.maxElbow = Math.max(st.maxElbow || 0, elbowNow);
+      if(st.path && st.path.length < 90) st.path.push({ x: lm[L.idx].x, y: lm[L.idx].y });
+      let yd = Math.abs(yawNow - st.yaw0); if(yd > 180) yd = 360 - yd;
+      st.maxYawD = Math.max(st.maxYawD || 0, yd);
+      if(L.type === "kick"){
+        const otherY = lm[L.side === "L" ? LM.R_ANKLE : LM.L_ANKLE].y;
+        st.maxLift = Math.max(st.maxLift, (otherY - lm[L.idx].y)/torsoN);
+      }else if(L.type === "knee"){
+        const hipY = lm[L.side === "L" ? LM.L_HIP : LM.R_HIP].y;
+        st.minKneeGap = Math.min(st.minKneeGap, (lm[L.idx].y - hipY)/torsoN);
+      }
+      st.refShoY = (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y)/2;
+      st.refHipY = (lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2;
       if(foeZ){
         st.hadFoe = true;
         const px = { x: lm[L.idx].x*W, y: lm[L.idx].y*H };
@@ -2421,6 +2500,8 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
       if(sp < L.end){
         st.active = false; st.lastEnd = t;
         let count = st.peak > L.minPeak && t - st.start > 0.05;
+        if(count && L.type === "kick" && st.maxLift < 0.22) count = false;      // foot never left the ground — a step, not a kick
+        if(count && L.type === "knee" && st.minKneeGap > -0.15) count = false;  // knee never rose toward hip height
         if(count && L.type === "knee"){
           // a kick swings the knee too — don't double-count it as a knee strike
           const kick = F.limbs["kick"+L.side];
@@ -2431,16 +2512,27 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
           const tgt = st.hadFoe
             ? (st.minHead < 1 ? "head" : (st.minBody < 1 ? "body" : (st.minLeg < 1 ? "leg" : null)))
             : null;
-          F.strikes.push({ t, type:L.type, side:L.side, v:st.peak, ke, target:tgt, elbowExt:st.maxElbow || 0 });
+          const cls = classifyStrike(L, st, torsoN);
+          // WAKO K1 illegal targets: punches to legs; straight/side & spinning-back kicks to the thigh
+          const illegal = tgt === "leg" && (L.type === "punch" || cls.tech === "正蹬／側踢" || cls.tech === "後旋踢");
+          const blockedOut = !tgt && st.hadFoe && st.minBlock < (foeZ?.torso || 1)*0.35;
+          // WAKO Art.4: deviated/blocked or touch/brush strikes do NOT score
+          const quality = !st.hadFoe ? "solo"
+            : illegal ? "foul"
+            : tgt ? (st.peak >= EFF_V[L.type] ? "effective" : "light")
+            : blockedOut ? "blocked" : "missed";
+          F.strikes.push({ t, type:L.type, side:L.side, v:st.peak, ke, target:tgt,
+                           tech:cls.tech, quality, elbowExt:st.maxElbow || 0 });
           F.dots.push({ t, v:st.peak });
           F.peak = Math.max(F.peak, st.peak);
           F.lastKE = ke;
           st.lastPeakVal = st.peak;
           if(st.hadFoe && foeF){
             const dodgeTried = (st.defMaxDisp || 0) > (foeZ?.torso || 1)*0.35;
-            const blocked = !tgt && st.minBlock < (foeZ?.torso || 1)*0.35;
-            foeF.incoming.push({ t, type:L.type, ke, landedZone:tgt, dodgeTried, blocked });
-            if(tgt && tgt !== "leg" && ke >= 55 && foeZ){
+            // classify the foe's successful defense: 格擋 / 閃避 / 距離
+            const defense = tgt ? null : (blockedOut ? "block" : (dodgeTried ? "dodge" : "range"));
+            foeF.incoming.push({ t, type:L.type, ke, landedZone:tgt, quality, defense, dodgeTried, blocked: blockedOut });
+            if(tgt && tgt !== "leg" && quality === "effective" && ke >= 55 && foeZ){
               foeF.pendingHits.push({ t0:t, headStart:{ x:foeZ.head.x, y:foeZ.head.y }, torso:foeZ.torso, ke, maxDisp:0 });
             }
           }
@@ -2489,23 +2581,42 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
 function fStats(F){
   const atk = F.strikes;
   const by = { punch:0, kick:0, knee:0 };
-  for(const s of atk) by[s.type]++;
+  const techCounts = {};
+  let effective = 0, light = 0, blockedCnt = 0, missedCnt = 0, fouls = 0, vsFoe = 0;
+  for(const s of atk){
+    by[s.type]++;
+    if(s.tech) techCounts[s.tech] = (techCounts[s.tech] || 0) + 1;
+    if(s.quality !== "solo"){
+      vsFoe++;
+      if(s.quality === "effective") effective++;
+      else if(s.quality === "light") light++;
+      else if(s.quality === "blocked") blockedCnt++;
+      else if(s.quality === "missed") missedCnt++;
+      else if(s.quality === "foul") fouls++;
+    }
+  }
   const headHits = atk.filter(a=>a.target==="head").length;
   const bodyHits = atk.filter(a=>a.target==="body").length;
   const legHits  = atk.filter(a=>a.target==="leg").length;
   const landed = headHits + bodyHits + legHits;
-  const withFoe = atk.filter(a=>a.target !== undefined);
   const kes = atk.map(a=>a.ke).filter(Boolean);
   const inc = F.incoming;
   const incLanded = inc.filter(d=>d.landedZone).length;
+  const incEffective = inc.filter(d=>d.landedZone && d.quality === "effective").length;
+  const defBlock = inc.filter(d=>d.defense === "block" || (!d.defense && d.blocked && !d.landedZone)).length;
+  const defDodge = inc.filter(d=>d.defense === "dodge").length;
+  const defRange = inc.filter(d=>d.defense === "range").length;
   const dodges = inc.filter(d=>d.dodgeTried);
   const dodgeOk = dodges.filter(d=>!d.landedZone).length;
-  const blocks = inc.filter(d=>d.blocked).length;
+  const blocks = defBlock;
   const heavy = F.hitsTaken;
   const avgPerturb = heavy.length ? heavy.reduce((s,x)=>s+x.perturb,0)/heavy.length : null;
   const stability = avgPerturb != null ? Math.max(0, Math.min(100, Math.round(100 - avgPerturb*180))) : null;
   const projected = (avgPerturb && avgPerturb > 0.02) ? Math.max(5, Math.min(60, Math.round(6/avgPerturb))) : null;
-  return { atk, by, headHits, bodyHits, legHits, landed, kes, inc, incLanded, dodges, dodgeOk, blocks, heavy, stability, projected };
+  return { atk, by, techCounts, vsFoe, effective, light, blockedCnt, missedCnt, fouls,
+           headHits, bodyHits, legHits, landed, kes,
+           inc, incLanded, incEffective, defBlock, defDodge, defRange,
+           dodges, dodgeOk, blocks, heavy, stability, projected };
 }
 
 function updateTiles(){
@@ -2517,7 +2628,7 @@ function updateTiles(){
   const sA = fStats(A), sB = fStats(B);
   $("tStrA").textContent = `${sA.by.punch}・${sA.by.kick}・${sA.by.knee}`;
   $("tStrB").textContent = `${sB.by.punch}・${sB.by.kick}・${sB.by.knee}`;
-  const rate = s => s.atk.length ? Math.round(s.landed/s.atk.length*100)+"%" : "–";
+  const rate = s => s.vsFoe ? Math.round(s.landed/s.vsFoe*100)+"%" : "–";
   $("tHit").textContent = pair(rate(sA), rate(sB));
   const defR = s => s.inc.length ? Math.round((s.inc.length-s.incLanded)/s.inc.length*100)+"%" : "–";
   $("tDef").textContent = pair(defR(sA), defR(sB));
@@ -2542,32 +2653,46 @@ function updateSparCard(){
   const f = (s)=>({
     total: s.atk.length,
     types: `${s.by.punch}拳 ${s.by.kick}踢 ${s.by.knee}膝`,
-    head: `${s.headHits}（${pct(s.headHits, s.atk.length)}）`,
-    body: `${s.bodyHits}（${pct(s.bodyHits, s.atk.length)}）`,
-    leg: `${s.legHits}（${pct(s.legHits, s.atk.length)}）`,
-    hit: pct(s.landed, s.atk.length),
+    eff: `${s.effective}（${pct(s.effective, s.vsFoe)}）`,
+    light: s.light, blk: s.blockedCnt, miss: s.missedCnt, foul: s.fouls,
+    head: `${s.headHits}（${pct(s.headHits, s.vsFoe)}）`,
+    body: `${s.bodyHits}（${pct(s.bodyHits, s.vsFoe)}）`,
+    leg: `${s.legHits}（${pct(s.legHits, s.vsFoe)}）`,
+    hit: pct(s.landed, s.vsFoe),
     pow: s.kes.length ? `${fmt(s.kes.reduce((a,b)=>a+b,0)/s.kes.length,0)}/${fmt(Math.max(...s.kes),0)}J` : "–",
     def: s.inc.length ? pct(s.inc.length - s.incLanded, s.inc.length) : "–",
-    blocks: s.blocks,
-    dodge: s.dodges.length ? `${s.dodgeOk}/${s.dodges.length}（${pct(s.dodgeOk, s.dodges.length)}）` : "0/0",
+    defBlock: s.defBlock, defDodge: s.defDodge, defRange: s.defRange,
+    incEff: s.incEffective,
     heavy: s.heavy.length,
     stab: s.stability != null ? `${s.stability}/100` : "–",
   });
   const a = f(sA), b = f(sB);
+  // technique histogram — union of both fighters' techniques, biggest first
+  const techs = [...new Set([...Object.keys(sA.techCounts), ...Object.keys(sB.techCounts)])]
+    .sort((x,y)=>((sB.techCounts[y]||0)+(sA.techCounts[y]||0)) - ((sB.techCounts[x]||0)+(sA.techCounts[x]||0)));
   $("sparList").innerHTML =
     row("<b style='color:var(--ink)'>拳手</b>", "<b>A（紅）</b>", "<b>B（橙）</b>") +
-    row("出擊總數", a.total, b.total) +
+    row("出擊總數（含無效攻擊）", a.total, b.total) +
     row("拳・踢・膝", a.types, b.types) +
+    row("有效命中（計分）", a.eff, b.eff) +
+    row("輕觸（唔計分）", a.light, b.light) +
+    row("被格擋", a.blk, b.blk) +
+    row("落空", a.miss, b.miss) +
+    (a.foul || b.foul ? row("犯規目標 ⚠", a.foul, b.foul) : "") +
     row("命中頭部", a.head, b.head) +
     row("命中腹部", a.body, b.body) +
     row("命中腿部（low kick）", a.leg, b.leg) +
     row("整體命中率", a.hit, b.hit) +
     row("力量 平均/最大", a.pow, b.pow) +
     row("防守成功率", a.def, b.def) +
-    row("格擋次數", a.blocks, b.blocks) +
-    row("閃避 成功/嘗試", a.dodge, b.dodge) +
+    row("　├ 格擋", a.defBlock, b.defBlock) +
+    row("　├ 閃避（移位）", a.defDodge, b.defDodge) +
+    row("　└ 距離防禦", a.defRange, b.defRange) +
+    row("被有效擊中", a.incEff, b.incEff) +
     row("承受重擊", a.heavy, b.heavy) +
-    row("抗打穩定指數", a.stab, b.stab);
+    row("抗打穩定指數", a.stab, b.stab) +
+    (techs.length ? row("<b style='color:var(--ink)'>技法分佈</b>", "", "") +
+      techs.map(k=>row("　" + k, sA.techCounts[k] || 0, sB.techCounts[k] || 0)).join("") : "");
 }
 
 function drawSpark(){
@@ -2785,7 +2910,10 @@ async function saveFighter(tag){
     sepMax: Math.round(F.sepMax || 0),
     rate: round1(st.atk.length/durMin),
     headHits: st.headHits, bodyHits: st.bodyHits, legHits: st.legHits,
-    hitRate: st.atk.length ? Math.round(st.landed/st.atk.length*100) : null,
+    effective: st.effective, light: st.light, blocked: st.blockedCnt, missed: st.missedCnt, fouls: st.fouls,
+    effRate: st.vsFoe ? Math.round(st.effective/st.vsFoe*100) : null,
+    techs: Object.fromEntries(Object.entries(st.techCounts).sort((x,y)=>y[1]-x[1]).slice(0,8)),
+    hitRate: st.vsFoe ? Math.round(st.landed/st.vsFoe*100) : null,
     defRate: st.inc.length ? Math.round((st.inc.length-st.incLanded)/st.inc.length*100) : null,
     blocks: st.blocks, dodgeOk: st.dodgeOk, dodgeTry: st.dodges.length,
     heavyTaken: st.heavy.length, stability: st.stability,
