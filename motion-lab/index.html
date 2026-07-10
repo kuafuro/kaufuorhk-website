@@ -596,7 +596,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 </div>
 
 <script type="module">
-import { FilesetResolver, PoseLandmarker, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+import { FilesetResolver, PoseLandmarker, ImageEmbedder, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
 /* ============================================================
    Landmarks reference (MediaPipe Pose, 33 points)
@@ -876,6 +876,7 @@ async function initModel(){
     try{ landmarker = await make("GPU"); }
     catch(e){ console.warn("GPU delegate failed, falling back to CPU", e); landmarker = await make("CPU"); }
     currentMode = "VIDEO";
+    loadEmbedder(vision);   // identity-memory model loads in the background
     // warm-up: compile the inference graph now so the first real analysis isn't seconds late
     try{
       const c = document.createElement("canvas"); c.width = 64; c.height = 64;
@@ -889,6 +890,25 @@ async function initModel(){
     toast("模型載入失敗：" + (err?.message || err));
   }
 }
+/* ---- identity memory: an appearance-embedding model fingerprints each
+   fighter's WHOLE look (face + hair + clothing in one crop). A/B stay bound
+   to the right person for the entire session, and silent tracker swaps are
+   detected and auto-corrected. ---- */
+let embedder = null;
+async function loadEmbedder(vision){
+  if(embedder) return;
+  try{
+    const EMB_URL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
+    const buf = await loadModelBuffer(EMB_URL, ()=>{});
+    const make = d => ImageEmbedder.createFromOptions(vision, {
+      baseOptions: buf ? { modelAssetBuffer: buf.slice(), delegate: d } : { modelAssetPath: EMB_URL, delegate: d },
+      runningMode: "IMAGE",
+    });
+    try{ embedder = await make("GPU"); }catch(e){ embedder = await make("CPU"); }
+    console.log("identity embedder ready");
+  }catch(e){ console.warn("identity embedder unavailable — colour signatures only", e); }
+}
+
 function setMode(mode){
   // serialize setOptions calls so IMAGE/VIDEO switches never race;
   // swallow rejections so one failure can never poison the chain forever
@@ -1667,6 +1687,7 @@ $("mStage").addEventListener("click", e=>{
       mRun.subjectSig = mRun.oppSig; mRun.oppSig = oldSig;
       mRun.lastSubjectPos = best.pos;
       const tmp = mState.A; mState.A = mState.B; mState.B = tmp;
+      identity.swap();
       toast("已對調 A↔B（數據跟人走，冇重設）");
       return;
     }
@@ -1675,6 +1696,7 @@ $("mStage").addEventListener("click", e=>{
     mRun.subjectSig = best.sig ? best.sig.slice() : null;
     mRun.oppId = null; mRun.oppSig = null;           // B re-resolves next frame
     mState = freshSession();                         // pairing changed — restart stats
+    identity.reset();
     $("techCard").style.display = "none";
     updateTiles();
     toast(`已鎖定人物 ${best.trackId} 做拳手 A，本節數據重新開始`);
@@ -1759,6 +1781,7 @@ $("mFile").addEventListener("change", async e=>{
   if(!f) return;
   if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
   stopMotion();
+  identity.reset();               // new footage — build fresh A/B identity memory
   const gen = ++mRun.gen;
   mVideo.srcObject = null;
   const url = URL.createObjectURL(f);
@@ -1839,6 +1862,7 @@ async function batchAnalyze(){
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   mRun.subjectSig = null; mRun.oppSig = null;
   tracker.reset();
+  identity.lastCheck = -1; identity.lastFix = -1;
   $("mMsg").classList.add("hidden");
   $("mStopBtn").style.display = "";
   $("mFlipBtn").style.display = "none";
@@ -1910,6 +1934,7 @@ async function startMotion(source){
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null; mRun.lastCands = null;
   mRun.subjectSig = null; mRun.oppSig = null;
   tracker.reset();
+  identity.lastCheck = -1; identity.lastFix = -1;
   acquireWake();
   $("mMsg").classList.add("hidden");
   $("mStopBtn").style.display = "";
@@ -1946,6 +1971,7 @@ function stopMotion(){
 $("mStopBtn").addEventListener("click", stopMotion);
 $("mResetBtn").addEventListener("click", ()=>{
   mState = freshSession();
+  identity.reset();
   updateTiles();
   drawSpark();
   $("techCard").style.display = "none";
@@ -2121,6 +2147,37 @@ function motionLoop(){
 }
 
 /* shared per-frame handling for the live loop AND fast batch analysis */
+/* session-long identity prototypes (appearance embeddings) for A and B */
+const identity = {
+  A: { proto: null }, B: { proto: null }, lastCheck: -1, lastFix: -1,
+  reset(){ this.A.proto = null; this.B.proto = null; this.lastCheck = -1; this.lastFix = -1; },
+  swap(){ const t = this.A.proto; this.A.proto = this.B.proto; this.B.proto = t; },
+};
+let cropCtx = null;
+function embedPerson(box){
+  if(!embedder || !box) return null;
+  try{
+    if(!cropCtx){
+      const c = document.createElement("canvas"); c.width = 160; c.height = 160;
+      cropCtx = c.getContext("2d");
+    }
+    const vw = mVideo.videoWidth, vh = mVideo.videoHeight;
+    if(!vw) return null;
+    const pad = 0.06;
+    cropCtx.drawImage(mVideo,
+      (box.x0-pad)*vw, (box.y0-pad)*vh, (box.x1-box.x0+2*pad)*vw, (box.y1-box.y0+2*pad)*vh,
+      0, 0, 160, 160);
+    return embedder.embed(cropCtx.canvas)?.embeddings?.[0] || null;
+  }catch(e){ return null; }
+}
+const cosSim = (a,b)=> (a && b) ? ImageEmbedder.cosineSimilarity(a,b) : -1;
+function lerpProto(proto, emb, keep){
+  const pf = proto?.floatEmbedding, ef = emb?.floatEmbedding;
+  if(!pf || !ef || pf.length !== ef.length) return emb || proto;
+  for(let i=0;i<pf.length;i++) pf[i] = keep*pf[i] + (1-keep)*ef[i];
+  return proto;
+}
+
 function handleDetections(res, tSec, mirrored, W, H){
   const people = res.landmarks || [];
   let selLm = null, selWl = null, opp = null, tracking = "none", nPeople = 0;
@@ -2139,14 +2196,24 @@ function handleDetections(res, tSec, mirrored, W, H){
       // never by proximity alone if the candidate is the opponent's track;
       // require 2 consecutive frames of agreement so one noisy frame can't switch identity
       let best = null, bestScore = 1e9;
-      for(const c of cands){
+      for(const c of cands.slice(0, 3)){
         const dPos = mRun.lastSubjectPos ? Math.hypot(c.pos.x-mRun.lastSubjectPos.x, c.pos.y-mRun.lastSubjectPos.y) : 999;
         const dSig = tracker.sigDist(c.sig, mRun.subjectSig);
         const isOppTrack = c.trackId === mRun.oppId;
         const near = dPos < 0.3 && !isOppTrack;
         const appear = dSig < 18 && (!mRun.oppSig || dSig + 5 < tracker.sigDist(c.sig, mRun.oppSig));
-        if(near || appear){
-          const score = Math.min(dPos, dSig/60);
+        // strongest signal: appearance-embedding match against A's prototype
+        let embMatch = false, cosA = -1;
+        if(embedder && identity.A.proto){
+          const eC = embedPerson(c.box);
+          if(eC){
+            cosA = cosSim(eC, identity.A.proto);
+            const cosB = identity.B.proto ? cosSim(eC, identity.B.proto) : -1;
+            embMatch = cosA > 0.6 && cosA > cosB + 0.05;
+          }
+        }
+        if(near || appear || embMatch){
+          const score = embMatch ? (1 - cosA) : Math.min(dPos, dSig/60);
           if(score < bestScore){ bestScore = score; best = c; }
         }
       }
@@ -2170,6 +2237,35 @@ function handleDetections(res, tSec, mirrored, W, H){
     if(oppCand && oppCand.trackId !== mRun.oppId){ mRun.oppId = oppCand.trackId; mState.B = freshFighter(); }
     if(oppCand){
       mRun.oppSig = mRun.oppSig ? mRun.oppSig.map((v,i)=>0.9*v + 0.1*oppCand.sig[i]) : oppCand.sig.slice();
+    }
+
+    /* ---- identity memory: verify A/B are still bound to the right PEOPLE.
+       Runs every ~0.25s. If the tracker silently swapped the two fighters
+       (crossing, clinch, occlusion), the embeddings expose it — rebind. ---- */
+    if(embedder && subj && tSec - identity.lastCheck > 0.25){
+      identity.lastCheck = tSec;
+      const overlap = oppCand ? tracker.iou(subj.box, oppCand.box) : 0;
+      const eS = embedPerson(subj.box);
+      const eO = oppCand ? embedPerson(oppCand.box) : null;
+      if(eS && !identity.A.proto) identity.A.proto = eS;
+      if(eO && !identity.B.proto) identity.B.proto = eO;
+      else if(eS && eO && identity.A.proto && identity.B.proto){
+        const sAA = cosSim(eS, identity.A.proto), sAB = cosSim(eS, identity.B.proto);
+        const sBA = cosSim(eO, identity.A.proto), sBB = cosSim(eO, identity.B.proto);
+        if(sAB + sBA > sAA + sBB + 0.10 && tSec - identity.lastFix > 1){
+          identity.lastFix = tSec;
+          // swap bindings AND this frame's local roles so stats keep following the person
+          const tid = mRun.subjectId; mRun.subjectId = mRun.oppId; mRun.oppId = tid;
+          const tsg = mRun.subjectSig; mRun.subjectSig = mRun.oppSig; mRun.oppSig = tsg;
+          const tmp = subj; subj = oppCand; oppCand = tmp;
+          mRun.lastSubjectPos = subj.pos;
+          toast("🔒 身份記憶：偵測到 A/B 被調轉，已自動糾正");
+        }else if(overlap < 0.15){
+          // clean, separated views only — slowly refresh each prototype
+          if(sAA > 0.6) identity.A.proto = lerpProto(identity.A.proto, eS, 0.95);
+          if(sBB > 0.6) identity.B.proto = lerpProto(identity.B.proto, eO, 0.95);
+        }
+      }
     }
 
     // temporal smoothing for the two fighters (body only; wrists stay raw)
@@ -2230,7 +2326,10 @@ function handleDetections(res, tSec, mirrored, W, H){
 function refreshMotionUI(out){
   const lbl = $("mSelLabel");
   if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
-  else if(mRun.multi && out.opp){ lbl.textContent = "對戰模式：A=紅 · B=橙 · 撳人物設為A"; lbl.style.display = "block"; }
+  else if(mRun.multi && out.opp){
+    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 撳B對調";
+    lbl.style.display = "block";
+  }
   else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
   else lbl.style.display = "none";
   updateTiles();
