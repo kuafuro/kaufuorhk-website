@@ -449,6 +449,23 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div id="techList"></div>
         <div class="note-strip">分析基於 AI 骨架估算同拍攝角度，屬教練參考，唔係絕對標準。側面 45°–90° 拍攝結果最準。</div>
       </div>
+      <div class="card" id="reviewCard" style="margin-top:12px;display:none">
+        <h3>🎬 回顧片段 <small style="color:var(--ink-muted);font-weight:400">AI 自動剪輯・俾學生重溫</small>
+          <span style="float:right">
+            <button class="btn" id="revExportBtn" style="padding:6px 12px;font-size:.82rem">⬇︎ 匯出回顧影片</button>
+          </span></h3>
+        <div class="controls" style="margin-bottom:8px">
+          <button class="btn rev-tab active" data-rev="fault" id="revTabFault">⚠️ 技術失誤回顧</button>
+          <button class="btn rev-tab" data-rev="highlight" id="revTabHl">🌟 精彩回顧</button>
+        </div>
+        <div id="revPlayerWrap" style="display:none;position:relative;background:#000;border-radius:10px;overflow:hidden;margin-bottom:10px">
+          <video id="rVideo" playsinline style="width:100%;display:block" muted></video>
+          <div id="revCaption" style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,0.72);color:#fff;font-size:.9rem;padding:8px 12px;line-height:1.45"></div>
+        </div>
+        <div id="revList" style="display:grid;gap:8px"></div>
+        <div id="revExportStat" style="font-size:.82rem;color:var(--ink-muted);margin-top:8px"></div>
+        <div class="note-strip">失誤判斷基於 AI 骨架與運動力學規則（動力鏈、落地發力、轉腰），屬教練輔助參考；每段片可逐段播放，或一鍵匯出成回顧影片。</div>
+      </div>
       <div class="card" style="margin-top:12px">
         <h3>教練提示</h3>
         <ul style="font-size:.84rem;padding-left:18px;color:var(--ink-2)">
@@ -505,6 +522,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
           <canvas class="growth-chart" id="chAcc" height="110"></canvas>
           <div class="hint" style="margin:8px 0 2px">綜合能力（七軸平均 /100）</div>
           <canvas class="growth-chart" id="chOverall" height="110"></canvas>
+          <div class="hint" style="margin:8px 0 2px">技術失誤率（每 10 擊，越低越好）</div>
+          <canvas class="growth-chart" id="chFault" height="110"></canvas>
         </div>
       </div>
       <div class="card">
@@ -1789,10 +1808,11 @@ function classifyStrike(L, st, torsoN){
 function freshFighter(){
   return {
     limbs: Object.fromEntries(LIMBS.map(l=>[l.key, { buf:[], active:false, peak:0, lastEnd:-1e9 }])),
-    strikes: [],     // {t, type, side, v, ke, target:'head'|'body'|'leg'|null, elbowExt}
+    strikes: [],     // {t, type, side, v, ke, target, tech, quality, faults, chain}
     incoming: [],    // strikes RECEIVED: {t, type, ke, landedZone, dodgeTried, blocked}
     hitsTaken: [],   // landed heavy hits: {t, ke, perturb}
     pendingHits: [], // post-hit stability measurements in progress
+    pendingReturns: [], // punches waiting to see the hand return to guard
     guard:{ low:0, total:0 },
     stanceSum:0, stanceN:0,
     travel:0, lastHipPx:null, lastHipT:null,
@@ -1975,6 +1995,11 @@ $("mFile").addEventListener("change", async e=>{
   const gen = ++mRun.gen;
   mVideo.srcObject = null;
   const url = URL.createObjectURL(f);
+  // keep this clip alive after analysis — the 回顧 player and export need it
+  if(mRun.fileURL && mRun.fileURL !== url){ try{ URL.revokeObjectURL(mRun.fileURL); }catch(e){} }
+  mRun.fileURL = url;
+  if(rVideo.src){ rVideo.removeAttribute("src"); rVideo.load(); }
+  review.moments = []; $("reviewCard").style.display = "none"; $("revPlayerWrap").style.display = "none";
   mVideo.src = url;
   mVideo.loop = false;
   const taken = ()=> gen !== mRun.gen || mVideo.src !== url || mVideo.srcObject;
@@ -2118,6 +2143,7 @@ async function batchAnalyze(){
   if(finished && frames > 0){
     toast(`⚡ 快速分析完成 ✔ ${fmt(dur,0)} 秒影片，用時 ${wallSec.toFixed(0)} 秒`);
     renderTechAnalysis();
+    buildReview();               // 自動剪輯：技術失誤回顧＋精彩回顧
   }
 }
 async function startMotion(source){
@@ -2151,7 +2177,11 @@ function stopMotion(){
   mRun.on = false;
   releaseWake();
   stopStream(mVideo);
-  if(mVideo.src){ mVideo.pause(); URL.revokeObjectURL(mVideo.src); mVideo.removeAttribute("src"); mVideo.load(); }
+  if(mVideo.src){
+    mVideo.pause();
+    if(mVideo.src !== mRun.fileURL) URL.revokeObjectURL(mVideo.src);   // review player still needs the uploaded clip
+    mVideo.removeAttribute("src"); mVideo.load();
+  }
   $("mCamBtn").textContent = "📷 開啟鏡頭";
   $("mStopBtn").style.display = "none";
   $("mFlipBtn").style.display = "none";
@@ -2173,6 +2203,9 @@ $("mResetBtn").addEventListener("click", ()=>{
   drawSpark();
   $("techCard").style.display = "none";
   $("sparCard").style.display = "none";
+  review.moments = [];
+  $("reviewCard").style.display = "none";
+  $("revPlayerWrap").style.display = "none";
   toast("已重設本節數據");
 });
 $("mTechBtn").addEventListener("click", renderTechAnalysis);
@@ -2214,6 +2247,20 @@ function renderTechAnalysis(){
       const diff = Math.abs(aL-aR)/Math.max(aL,aR);
       if(diff > 0.2) items.push({ sev:"serious", t:`左右手速唔平均：左 ${fmt(aL)} / 右 ${fmt(aR)} m/s`,
         d:`弱側平均慢 ${(diff*100).toFixed(0)}%——弱側加練速度球／單手組合。` });
+    }
+    // 3b) biomechanics faults from the per-strike rules (動力鏈／落地／轉腰)
+    {
+      const fc = {};
+      for(const s of F.strikes) for(const c of (s.faults || [])) fc[c] = (fc[c] || 0) + 1;
+      const entries = Object.entries(fc).sort((x,y)=>y[1]-x[1]);
+      if(entries.length){
+        const top = entries.slice(0, 3).map(([c,n])=>`${FAULT_DEFS[c]?.name || c}×${n}`).join("、");
+        items.push({ sev: entries[0][1] >= 3 ? "serious" : "warning",
+          t:`技術失誤 ${entries.reduce((a,[,n])=>a+n,0)} 次：${top}`,
+          d:`最常見：${FAULT_DEFS[entries[0][0]]?.fix || ""}（詳細片段喺下面「🎬 回顧片段」逐個重播）` });
+      }else if(st.atk.length >= 5){
+        items.push({ sev:"good", t:"技術動作乾淨——冇偵測到明顯力學失誤", d:"落地、動力鏈、轉腰全部達標。" });
+      }
     }
     // 4) hip–shoulder separation
     if(F.sepMax){
@@ -2663,6 +2710,54 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
   }
   // torso yaw — spinning techniques rotate the shoulders 100°+
   const yawNow = deg(Math.atan2(wl[LM.L_SHOULDER].z - wl[LM.R_SHOULDER].z, wl[LM.L_SHOULDER].x - wl[LM.R_SHOULDER].x));
+  // hip yaw — the kinetic chain starts here: power punches/kicks rotate the
+  // PELVIS, arm-only strikes don't (力學：下半身帶動上半身)
+  const hipYawNow = deg(Math.atan2(wl[LM.L_HIP].z - wl[LM.R_HIP].z, wl[LM.L_HIP].x - wl[LM.R_HIP].x));
+  const ankLY = lm[LM.L_ANKLE].y, ankRY = lm[LM.R_ANKLE].y;
+  const heelLY = lm[LM.L_HEEL].y, heelRY = lm[LM.R_HEEL].y;
+  const hipMidY = (lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2;
+  // stance baselines — learned ONLY between strikes, so "feet left the
+  // ground mid-punch" is measured against this fighter's own stance.
+  // Heels + hip-rise corroboration (研究：淨係腳跟郁可能係雜訊，髖部同時
+  // 升先係真跳) kills landmark-jitter false positives.
+  const anyActive = LIMBS.some(L=>F.limbs[L.key].active);
+  if(!anyActive){
+    if((lm[LM.L_ANKLE].visibility ?? 1) > 0.5) F.baseAnkL = F.baseAnkL == null ? ankLY : 0.9*F.baseAnkL + 0.1*ankLY;
+    if((lm[LM.R_ANKLE].visibility ?? 1) > 0.5) F.baseAnkR = F.baseAnkR == null ? ankRY : 0.9*F.baseAnkR + 0.1*ankRY;
+    if((lm[LM.L_HEEL].visibility ?? 1) > 0.6) F.baseHeelL = F.baseHeelL == null ? heelLY : 0.9*F.baseHeelL + 0.1*heelLY;
+    if((lm[LM.R_HEEL].visibility ?? 1) > 0.6) F.baseHeelR = F.baseHeelR == null ? heelRY : 0.9*F.baseHeelR + 0.1*heelRY;
+    F.baseHipY = F.baseHipY == null ? hipMidY : 0.9*F.baseHipY + 0.1*hipMidY;
+  }
+  // 2D heel→toe direction of each foot (support-foot pivot detection)
+  const footAng = side => {
+    const h = lm[side === "L" ? LM.L_HEEL : LM.R_HEEL], f = lm[side === "L" ? LM.L_FOOT : LM.R_FOOT];
+    if((h.visibility ?? 1) < 0.5 || (f.visibility ?? 1) < 0.5) return null;
+    return deg(Math.atan2(f.y - h.y, f.x - h.x));
+  };
+  // guard-return watchlist: a punch should come BACK to the chin afterwards.
+  // Combination punching is EXEMPT (the hand is legitimately busy), and the
+  // fault needs TWO failed checks (~0.5s and ~0.8s) so one noisy frame can't accuse.
+  if(F.pendingReturns?.length){
+    const shoMidY = (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y)/2;
+    const chin = { x: (lm[LM.NOSE].x + (lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/2)/2,
+                   y: (lm[LM.NOSE].y + shoMidY)/2 };
+    F.pendingReturns = F.pendingReturns.filter(pr=>{
+      if(F.limbs[pr.key]?.active) return false;             // hand is throwing again — combo, not a fault
+      const dtEndR = t - pr.tEnd;
+      const wy = lm[pr.idx];
+      const home = (wy.visibility ?? 1) > 0.6 &&
+        (wy.y < shoMidY || Math.hypot(wy.x - chin.x, wy.y - chin.y) < 0.35*torsoN);
+      if(home) return false;                                // hand is back in guard — ok
+      if(dtEndR > 0.45 && !pr.c1){ pr.c1 = true; if((wy.visibility ?? 1) > 0.6) pr.f1 = true; }
+      if(dtEndR > 0.75){
+        if(pr.f1 && (wy.visibility ?? 1) > 0.6){            // failed BOTH checks while clearly visible
+          if(!pr.strike.faults.includes("noReturn")) pr.strike.faults.push("noReturn");
+        }
+        return false;
+      }
+      return true;
+    });
+  }
 
   /* finalize a limb's strike: gates → classify → WAKO quality → record */
   const endStrike = (st, L) => {
@@ -2691,8 +2786,42 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
         : illegal ? "foul"
         : tgt ? (st.peak >= EFF_V[L.type] ? "effective" : "light")
         : blockedOut ? "blocked" : "missed";
-      F.strikes.push({ t, type:L.type, side:L.side, v:st.peak, ke, target:tgt,
-                       tech:cls.tech, quality, elbowExt:st.maxElbow || 0 });
+      /* ---- biomechanics fault check (教練規則：動力鏈、落地、轉腰) ----
+         Conservative: only judge strikes with enough samples to be meaningful,
+         and only patterns a coach would actually correct. */
+      const faults = [];
+      const enough = (st.nSamples || 0) >= 4;   // sparse windows can't judge form fairly
+      if(L.type === "punch"){
+        if((st.airborneN || 0) >= 2) faults.push("feetAir");
+        // 動力鏈：真正嘅重拳髖轉 60–90°；門檻設喺 12°（研究值）——寧縱勿枉
+        const powerPunch = cls.tech === "後手直拳" || cls.tech === "擺拳" || cls.tech === "上擊"
+          || (cls.tech === "直拳" && st.lead === false);
+        if(enough && powerPunch && (st.maxHipYawD || 0) < 12 && (st.maxYawD || 0) < 18 && st.peak >= 3.2)
+          faults.push("noChain");
+        if(enough && (st.dropN || 0) >= 2 && (st.dropN || 0) >= Math.floor(st.nSamples*0.5))
+          faults.push("guardDrop");
+        if(enough && (st.leanN || 0) >= 2) faults.push("overLean");
+      }else if(L.type === "kick"){
+        const sweeping = cls.tech === "迴旋踢" || cls.tech === "低掃" || cls.tech === "高踢";
+        // 掃踢參考值：骨盆轉 92°±23°；12fps 取樣會低估，門檻收窄到 22°
+        if(enough && sweeping && (st.maxHipYawD || 0) < 22 && (st.maxYawD || 0) < 20)
+          faults.push("noHipKick");
+        else if(enough && sweeping && st.pivot0 != null && (st.maxPivotD || 0) < 15 && (st.maxHipYawD || 0) < 50)
+          faults.push("noPivot");
+        if(enough && (st.backLeanN || 0) >= 2) faults.push("backLean");
+      }
+      const strikeRec = { t, type:L.type, side:L.side, v:st.peak, ke, target:tgt,
+                          tech:cls.tech, quality, elbowExt:st.maxElbow || 0, faults,
+                          chain:{ hip:Math.round(st.maxHipYawD || 0), sho:Math.round(st.maxYawD || 0),
+                                  pivot: st.pivot0 != null ? Math.round(st.maxPivotD || 0) : null,
+                                  air: st.airborneN || 0,
+                                  drop: st.maxOtherDrop > -9 ? round1(st.maxOtherDrop) : null,
+                                  lean: st.maxLean > -9 ? round1(st.maxLean) : null,
+                                  bl: st.maxBackLean ? Math.round(st.maxBackLean) : 0 } };
+      F.strikes.push(strikeRec);
+      // watch whether this hand comes back to the chin (回防) — 拳出咗要收返
+      if(L.type === "punch" && enough)
+        F.pendingReturns.push({ idx: L.idx, key: L.key, tEnd: t, strike: strikeRec });
       F.dots.push({ t, v:st.peak });
       F.peak = Math.max(F.peak, st.peak);
       F.lastKE = ke;
@@ -2767,6 +2896,12 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
       st.lead = leadSide ? (L.side === leadSide) : null;
       st.defMaxDisp = 0; st.minBlock = 1e9;
       st.defHeadStart = foeZ ? { x:foeZ.head.x, y:foeZ.head.y } : null;
+      // biomechanics capture: kinetic chain / grounding / pivot / guard
+      st.hipYaw0 = hipYawNow; st.maxHipYawD = 0;
+      st.airborneN = 0; st.maxOtherDrop = -9; st.maxLean = -9;
+      st.dropN = 0; st.leanN = 0; st.backLeanN = 0; st.tilt0 = null; st.maxBackLean = 0;
+      st.pivot0 = L.type === "kick" ? footAng(L.side === "L" ? "R" : "L") : null;
+      st.maxPivotD = 0;
     }else if(st.active){
       st.peak = Math.max(st.peak, sp);
       st.nSamples = (st.nSamples || 0) + 1;
@@ -2774,6 +2909,54 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
       if(st.path && st.path.length < 90) st.path.push({ x: lm[L.idx].x, y: lm[L.idx].y });
       let yd = Math.abs(yawNow - st.yaw0); if(yd > 180) yd = 360 - yd;
       st.maxYawD = Math.max(st.maxYawD || 0, yd);
+      let hyd = Math.abs(hipYawNow - st.hipYaw0); if(hyd > 180) hyd = 360 - hyd;
+      st.maxHipYawD = Math.max(st.maxHipYawD || 0, hyd);
+      if(L.type === "punch"){
+        // grounding: BOTH heels clearly above the stance line AND the hips rise
+        // with them — 真跳 (an airborne punch), not landmark jitter. The rear
+        // heel alone lifting is CORRECT form (ball-of-foot pivot on the cross).
+        if((lm[LM.L_HEEL].visibility ?? 1) > 0.6 && (lm[LM.R_HEEL].visibility ?? 1) > 0.6){
+          const hlL = (F.baseHeelL ?? heelLY) - heelLY, hlR = (F.baseHeelR ?? heelRY) - heelRY;
+          const hipRise = (F.baseHipY ?? hipMidY) - hipMidY;
+          if(hlL > 0.12*torsoN && hlR > 0.12*torsoN && hipRise > 0.06*torsoN)
+            st.airborneN = (st.airborneN || 0) + 1;
+        }
+        // the OTHER hand must stay at the chin while this one punches —
+        // unless it's throwing its own punch (combination is exempt)
+        const oSide = L.side === "L" ? "R" : "L";
+        const oIdx = oSide === "L" ? LM.L_WRIST : LM.R_WRIST;
+        if((lm[oIdx].visibility ?? 1) > 0.6 && !F.limbs["fist"+oSide].active){
+          const shoMidY2 = (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y)/2;
+          if(lm[oIdx].y > shoMidY2 + 0.15*torsoN) st.dropN = (st.dropN || 0) + 1;
+          st.maxOtherDrop = Math.max(st.maxOtherDrop, (lm[oIdx].y - shoMidY2)/torsoN);
+        }
+        // balance: head lunging past the lead toe toward the foe (撲拳)
+        if(foeZ && (lm[L.side === "L" ? LM.R_FOOT : LM.L_FOOT].visibility ?? 1) > 0.6){
+          const dir = Math.sign(((foe.lm[LM.L_HIP].x + foe.lm[LM.R_HIP].x)/2) - ((lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2)) || 1;
+          const toeX = dir > 0 ? Math.max(lm[LM.L_FOOT].x, lm[LM.R_FOOT].x) : Math.min(lm[LM.L_FOOT].x, lm[LM.R_FOOT].x);
+          const lean = (lm[LM.NOSE].x - toeX)*dir/torsoN;
+          st.maxLean = Math.max(st.maxLean, lean);
+          if(lean > 0.1) st.leanN = (st.leanN || 0) + 1;
+        }
+      }else if(L.type === "kick"){
+        if(st.pivot0 != null){
+          const pa = footAng(L.side === "L" ? "R" : "L");
+          if(pa != null){
+            let pd = Math.abs(pa - st.pivot0); if(pd > 180) pd = 360 - pd;
+            st.maxPivotD = Math.max(st.maxPivotD, pd);
+          }
+        }
+        // excessive backlean: torso tipping far away from the kick direction
+        const shoMid2 = { x:(lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/2, y:(lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y)/2 };
+        const tilt = deg(Math.atan2(shoMid2.x - (lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2, -(shoMid2.y - hipMidY)));
+        if(st.tilt0 == null) st.tilt0 = tilt;
+        if(foeZ){
+          const dirK = Math.sign(((foe.lm[LM.L_HIP].x + foe.lm[LM.R_HIP].x)/2) - ((lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2)) || 1;
+          const away = (st.tilt0 - tilt)*dirK;   // positive = leaning away from the foe beyond stance tilt
+          if(away > 30) st.backLeanN = (st.backLeanN || 0) + 1;
+          st.maxBackLean = Math.max(st.maxBackLean || 0, away);
+        }
+      }
       if(L.type === "kick"){
         const otherY = lm[L.side === "L" ? LM.R_ANKLE : LM.L_ANKLE].y;
         st.maxLift = Math.max(st.maxLift, (otherY - lm[L.idx].y)/torsoN);
@@ -3095,6 +3278,7 @@ function renderSessions(){
     const info = s.kind === "motion"
       ? `🥊 ${sum.strikes ?? sum.punches ?? 0} 擊（拳${sum.punches ?? 0}·踢${sum.kicks ?? 0}·膝${sum.knees ?? 0}）· 峰值 ${fmt(sum.peak)} m/s`
         + (sum.hitRate != null ? ` · 命中 ${sum.hitRate}%` : "")
+        + (sum.faults != null ? ` · 失誤 ${sum.faults}` : "")
         + (sum.overall != null ? ` · 綜合 ${sum.overall}` : "")
       : `🧍 體態評估（${sum.view === "side" ? "側面" : "正面"}）`;
     return `<div class="sess-item"><span style="color:var(--ink-muted)">${d}</span><span>${info}</span><button class="del" data-id="${s.id}" title="刪除">🗑</button></div>`;
@@ -3115,6 +3299,7 @@ function drawGrowthCharts(){
   lineChart($("chSpeed"),   motion.map(s=>({ d:s.session_date, v:s.summary?.peak })), 1);
   lineChart($("chAcc"),     motion.map(s=>({ d:s.session_date, v:s.summary?.hitRate })), 0);
   lineChart($("chOverall"), motion.map(s=>({ d:s.session_date, v:s.summary?.overall })), 0);
+  lineChart($("chFault"),   motion.map(s=>({ d:s.session_date, v:s.summary?.faultRate })), 1);
 }
 function lineChart(canvas, pts, dec){
   pts = pts.filter(p=>p.v != null && isFinite(p.v));
@@ -3148,6 +3333,254 @@ function lineChart(canvas, pts, dec){
   ctx.fillStyle = "#ffffff"; ctx.font = "600 11px system-ui,sans-serif";
   ctx.fillText(pts[pts.length-1].v.toFixed(dec), Math.min(cw-30, X(pts.length-1)+8), Math.max(12, Y(pts[pts.length-1].v)-8));
 }
+
+/* ============================================================
+   🎬 回顧片段 — AI 剪輯：技術失誤回顧 + 精彩回顧
+   ============================================================ */
+const FAULT_DEFS = {
+  feetAir:  { name:"出拳時腳離地", sev:3,
+    why:"力量嚟自地面反作用力——雙腳離地嗰一刻，下肢同軀幹嘅力冇路傳上拳頭，出拳變咗『飄』，仲容易失平衡食反擊。",
+    fix:"出拳嗰下前腳掌捉實地面（後腳踭可以轉但唔好跳起）；感覺係『推地』，唔係『跳向前』。" },
+  noChain:  { name:"淨係用手出拳（下半身冇發力）", sev:3,
+    why:"重拳七成力量嚟自腿同軀幹旋轉；髖同肩都冇轉，即係下半身嘅力冇傳到上半身，得返手臂嘅重量。",
+    fix:"後手拳口訣：後腳踭外轉 → 髖先行 → 膊頭跟 → 拳最後到。成條動力鏈係 腳→髖→肩→拳。" },
+  guardDrop:{ name:"出拳時另一隻手離開下巴", sev:3,
+    why:"單手進攻時另一隻手係唯一防線；隻手跌低咗，頭部就係空門，最易被 counter。",
+    fix:"出拳時另一隻手黐實下巴／面頰，手踭收埋護肋。" },
+  overLean: { name:"重心衝前過龍", sev:2,
+    why:"個頭衝過前腳太多，重心出咗底盤，打完收唔返身位，容易被拉打或掃跌。",
+    fix:"用轉髖同步法迫近，唔好用上身撲——頭盡量唔好超過前膝。" },
+  noReturn: { name:"出拳後冇收返防守", sev:2,
+    why:"拳打完留喺半空，回防慢一拍，對手最鍾意呢個時間差反擊。",
+    fix:"諗住『彈返嚟』：出幾快收幾快，打完即刻返防守位。" },
+  noHipKick:{ name:"掃踢冇轉腰", sev:3,
+    why:"迴旋踢嘅力量嚟自髖部翻轉＋軀幹旋轉；淨係揈小腿，又輕又慢，仲好易被接腳。",
+    fix:"起腳同時支撐腳轉、髖部『反過去』——想像用盆骨帶住成條腿掃穿目標，唔係用腳掌拍。" },
+  noPivot:  { name:"支撐腳冇轉（掃踢）", sev:2,
+    why:"支撐腳唔轉，髖部鎖死轉唔盡，力量傳唔出之餘仲會扭傷膝頭。",
+    fix:"起腳同時支撐腳以前腳掌為軸外轉 60–90°，腳踭指向目標。九成 pivot 問題屈少少支撐膝就解決。" },
+  backLean: { name:"踢腳時上身過度後仰", sev:2,
+    why:"輕微側傾做平衡係啱，但大幅後仰會令髖部離開重心之下——力量流失、易被掃低或者接腳摔。",
+    fix:"上身保持相對挺直，只輕微向支撐腳側傾；要踢高靠翻胯同支撐腳轉，唔係靠仰後補高度。" },
+};
+const HL_DEFS = {
+  headShot:    { name:"頭部有效命中", icon:"🎯" },
+  cleanHit:    { name:"有效命中（計分）", icon:"✅" },
+  fastest:     { name:"最快出擊", icon:"⚡" },
+  power:       { name:"最重一擊", icon:"💥" },
+  counter:     { name:"防守後即時反擊", icon:"🔄" },
+  combo:       { name:"連擊組合", icon:"🔗" },
+  chainPerfect:{ name:"教科書式全身發力", icon:"🏆" },
+  perfectKick: { name:"完美掃踢示範", icon:"🦵" },
+};
+const review = { moments: [], tab: "fault", playing: null };
+const fmtClock = t => { const m = Math.floor(t/60), s = Math.floor(t%60); return `${m}:${String(s).padStart(2,"0")}`; };
+
+function buildReview(){
+  const moments = [];
+  for(const [tag, F] of [["A", mState.A], ["B", mState.B]]){
+    for(const s of F.strikes){
+      for(const code of (s.faults || [])) moments.push({ t:s.t, tag, kind:"fault", code, s });
+      if(s.quality === "effective")
+        moments.push({ t:s.t, tag, kind:"highlight", code: s.target === "head" ? "headShot" : "cleanHit", s });
+    }
+    const solid = F.strikes.filter(s=>s.v >= EFF_V[s.type]*0.85);
+    const fastest = solid.slice().sort((a,b)=>b.v-a.v)[0];
+    if(fastest) moments.push({ t:fastest.t, tag, kind:"highlight", code:"fastest", s:fastest });
+    const power = solid.slice().sort((a,b)=>b.ke-a.ke)[0];
+    if(power && power !== fastest) moments.push({ t:power.t, tag, kind:"highlight", code:"power", s:power });
+    // 教科書式全身發力：髖轉大、雙腳落地、零失誤嘅重拳（研究準則）
+    const perfect = F.strikes.filter(s=>s.type === "punch" && !(s.faults||[]).length
+      && (s.chain?.hip||0) >= 25 && (s.chain?.air||0) === 0)
+      .sort((a,b)=>(b.chain.hip*b.v) - (a.chain.hip*a.v))[0];
+    if(perfect) moments.push({ t:perfect.t, tag, kind:"highlight", code:"chainPerfect", s:perfect });
+    // 完美掃踢：翻胯充分＋支撐腳有轉＋零失誤
+    const perfectKick = F.strikes.filter(s=>s.type === "kick" && !(s.faults||[]).length
+      && (s.chain?.hip||0) >= 40 && (s.chain?.pivot ?? 99) >= 25)
+      .sort((a,b)=>b.v-a.v)[0];
+    if(perfectKick) moments.push({ t:perfectKick.t, tag, kind:"highlight", code:"perfectKick", s:perfectKick });
+    for(let i = 0; i + 2 < F.strikes.length; i++){
+      if(F.strikes[i+2].t - F.strikes[i].t < 1.6){
+        moments.push({ t:F.strikes[i+1].t, tag, kind:"highlight", code:"combo", s:F.strikes[i+1], n:3 });
+        i += 2;
+      }
+    }
+    for(const inc of F.incoming){
+      if(inc.defense && !inc.landedZone){
+        const cnt = F.strikes.find(s=>s.t > inc.t && s.t < inc.t + 1.2 && s.target);
+        if(cnt) moments.push({ t:cnt.t, tag, kind:"highlight", code:"counter", s:cnt });
+      }
+    }
+  }
+  // dedupe: per (tag,kind,code) keep the strongest examples; nearby duplicates merge
+  const seen = new Map();
+  const strength = m => m.kind === "fault" ? (FAULT_DEFS[m.code]?.sev || 1)*10 + (m.s?.v || 0) : (m.s?.v || 0);
+  const picked = [];
+  for(const m of moments.sort((a,b)=>strength(b)-strength(a))){
+    const key = `${m.tag}|${m.kind}|${m.code}`;
+    const cnt = seen.get(key) || 0;
+    if(cnt >= (m.kind === "fault" ? 2 : 2)) continue;
+    if(picked.some(p=>p.tag === m.tag && Math.abs(p.t - m.t) < 0.8)) continue;
+    seen.set(key, cnt + 1);
+    picked.push(m);
+  }
+  review.moments = picked.sort((a,b)=>a.t - b.t);
+  renderReview();
+}
+
+function momentTitle(m){
+  if(m.kind === "fault"){
+    const d = FAULT_DEFS[m.code];
+    return `⚠️ ${d?.name || m.code}`;
+  }
+  const d = HL_DEFS[m.code];
+  return `${d?.icon || "🌟"} ${d?.name || m.code}`;
+}
+function momentDetail(m){
+  const s = m.s;
+  const base = `${s.tech}（${fmt(s.v)} m/s${s.target ? "・命中" + ({head:"頭",body:"腹",leg:"腿"}[s.target]||"") : ""}）`;
+  if(m.kind === "fault"){
+    const d = FAULT_DEFS[m.code];
+    return `${base}<br><span style="color:var(--ink-muted)">${d?.why || ""}</span><br><b style="color:#7bd88a">✔ 改正：</b>${d?.fix || ""}`;
+  }
+  return base;
+}
+function renderReview(){
+  const card = $("reviewCard");
+  const has = review.moments.length && mRun.fileURL;
+  card.style.display = has ? "" : "none";
+  if(!has) return;
+  const nF = review.moments.filter(m=>m.kind === "fault").length;
+  const nH = review.moments.filter(m=>m.kind === "highlight").length;
+  $("revTabFault").textContent = `⚠️ 技術失誤回顧（${nF}）`;
+  $("revTabHl").textContent = `🌟 精彩回顧（${nH}）`;
+  document.querySelectorAll(".rev-tab").forEach(b=>{
+    b.style.background = b.dataset.rev === review.tab ? "var(--brand)" : "";
+    b.style.color = b.dataset.rev === review.tab ? "#fff" : "";
+  });
+  const list = review.moments.filter(m=>m.kind === review.tab);
+  $("revList").innerHTML = list.length ? list.map((m,i)=>{
+    const gi = review.moments.indexOf(m);
+    return `<div style="display:flex;gap:10px;align-items:flex-start;background:var(--page);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+      <button class="btn primary rev-play" data-i="${gi}" style="padding:6px 10px;white-space:nowrap">▶ ${fmtClock(m.t)}</button>
+      <div style="font-size:.86rem;line-height:1.5"><b>${m.tag === "A" ? "🔴 拳手A" : "🟠 拳手B"}</b> · <b>${momentTitle(m)}</b><br>${momentDetail(m)}</div>
+    </div>`;
+  }).join("") : `<div style="color:var(--ink-muted);font-size:.86rem">呢個分類未有片段</div>`;
+  $("revList").querySelectorAll(".rev-play").forEach(b=>b.addEventListener("click", ()=>playMoment(+b.dataset.i)));
+}
+document.querySelectorAll(".rev-tab").forEach(b=>b.addEventListener("click", ()=>{ review.tab = b.dataset.rev; renderReview(); }));
+
+const rVideo = $("rVideo");
+function playMoment(i){
+  const m = review.moments[i];
+  if(!m || !mRun.fileURL) return;
+  $("revPlayerWrap").style.display = "";
+  if(rVideo.src !== mRun.fileURL) rVideo.src = mRun.fileURL;
+  review.playing = m;
+  const t0 = Math.max(0, m.t - 1.6), t1 = m.t + 1.5;
+  $("revCaption").innerHTML = `<b>${m.tag === "A" ? "🔴 A" : "🟠 B"} · ${momentTitle(m)}</b> — ${m.s.tech} ${fmt(m.s.v)} m/s（慢速重播）`;
+  rVideo.currentTime = t0;
+  rVideo.playbackRate = 0.5;
+  rVideo.play().catch(()=>{});
+  rVideo.ontimeupdate = ()=>{ if(rVideo.currentTime >= t1){ rVideo.pause(); rVideo.ontimeupdate = null; } };
+  rVideo.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+
+/* 匯出回顧影片：canvas + MediaRecorder → webm 下載 */
+let exporting = false;
+$("revExportBtn").addEventListener("click", async ()=>{
+  if(exporting) return;
+  if(!review.moments.length || !mRun.fileURL){ toast("未有回顧片段"); return; }
+  exporting = true;
+  const stat = $("revExportStat");
+  try{
+    const ev = document.createElement("video");
+    ev.src = mRun.fileURL; ev.muted = true; ev.playsInline = true;
+    await new Promise((res, rej)=>{ ev.addEventListener("loadeddata", res, { once:true }); ev.addEventListener("error", rej, { once:true }); ev.load(); });
+    const W = ev.videoWidth || 848, H = ev.videoHeight || 478;
+    const cnv = document.createElement("canvas"); cnv.width = W; cnv.height = H;
+    const ctx = cnv.getContext("2d");
+    const mime = ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t)) || "";
+    const stream = cnv.captureStream(30);
+    const rec = new MediaRecorder(stream, mime ? { mimeType:mime, videoBitsPerSecond: 3500000 } : undefined);
+    const chunks = [];
+    rec.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
+    rec.start(500);
+
+    const drawTitle = (lines, sub, ms)=>new Promise(res=>{
+      const t0 = performance.now();
+      const step = ()=>{
+        ctx.fillStyle = "#111110"; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#e33e2b"; ctx.font = `700 ${Math.round(H*0.045)}px system-ui,sans-serif`;
+        ctx.fillText("KUAFUOR MOTION LAB", W*0.06, H*0.14);
+        ctx.fillStyle = "#fff"; ctx.font = `800 ${Math.round(H*0.085)}px system-ui,sans-serif`;
+        lines.forEach((ln, i)=>ctx.fillText(ln, W*0.06, H*0.34 + i*H*0.12));
+        if(sub){ ctx.fillStyle = "#b7b5ae"; ctx.font = `400 ${Math.round(H*0.05)}px system-ui,sans-serif`;
+          wrapText(ctx, sub, W*0.06, H*0.62, W*0.88, H*0.075); }
+        if(performance.now() - t0 < ms) requestAnimationFrame(step); else res();
+      };
+      step();
+    });
+    const wrapText = (c, text, x, y, maxW, lh)=>{
+      let line = "", yy = y;
+      for(const ch of text){
+        if(c.measureText(line + ch).width > maxW){ c.fillText(line, x, yy); line = ch; yy += lh; if(yy > H*0.95) break; }
+        else line += ch;
+      }
+      if(line && yy <= H*0.95) c.fillText(line, x, yy);
+    };
+    const playSeg = (m)=>new Promise(res=>{
+      const t0 = Math.max(0, m.t - 1.6), t1 = m.t + 1.5;
+      ev.currentTime = t0; ev.playbackRate = 0.5;
+      const cap1 = `${m.tag === "A" ? "🔴 拳手A" : "🟠 拳手B"} · ${momentTitle(m)}`;
+      const cap2 = m.kind === "fault" ? (FAULT_DEFS[m.code]?.fix || "") : `${m.s.tech}・${fmt(m.s.v)} m/s`;
+      let raf;
+      const draw = ()=>{
+        ctx.drawImage(ev, 0, 0, W, H);
+        const bh = H*0.17;
+        ctx.fillStyle = "rgba(0,0,0,0.68)"; ctx.fillRect(0, H-bh, W, bh);
+        ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(H*0.052)}px system-ui,sans-serif`;
+        ctx.fillText(cap1, W*0.03, H - bh*0.58);
+        ctx.fillStyle = m.kind === "fault" ? "#7bd88a" : "#ffd166"; ctx.font = `400 ${Math.round(H*0.042)}px system-ui,sans-serif`;
+        ctx.fillText((m.kind === "fault" ? "✔ 改正：" : "") + cap2, W*0.03, H - bh*0.18);
+        if(ev.currentTime >= t1 || ev.ended){ ev.pause(); cancelAnimationFrame(raf); res(); return; }
+        raf = requestAnimationFrame(draw);
+      };
+      ev.addEventListener("seeked", ()=>{ ev.play().then(()=>draw()).catch(()=>res()); }, { once:true });
+      setTimeout(()=>{ try{ ev.pause(); }catch(e){} cancelAnimationFrame(raf); res(); }, 14000);  // safety: no segment may hang the export
+    });
+
+    const chapters = [
+      ["fault", "技術失誤回顧", "每個片段配教練改正建議，慢速重播"],
+      ["highlight", "精彩回顧", "有效命中・最快出擊・完美動力鏈"],
+    ];
+    let done = 0;
+    const total = review.moments.length;
+    for(const [kind, title, sub] of chapters){
+      const list = review.moments.filter(m=>m.kind === kind);
+      if(!list.length) continue;
+      await drawTitle([kind === "fault" ? "⚠️ 技術失誤回顧" : "🌟 精彩回顧"], sub, 1600);
+      for(const m of list){
+        stat.textContent = `匯出中… ${++done}/${total} 段（請保持呢個分頁喺前景）`;
+        await drawTitle([momentTitle(m)], `${m.tag === "A" ? "拳手A" : "拳手B"}・${fmtClock(m.t)}${m.kind === "fault" ? "・" + (FAULT_DEFS[m.code]?.fix || "") : ""}`, 1300);
+        await playSeg(m);
+      }
+    }
+    await drawTitle(["完"], "Kuafuor Motion Lab・AI 回顧剪輯", 1200);
+    rec.stop();
+    await new Promise(res=>{ rec.onstop = res; });
+    const blob = new Blob(chunks, { type: mime || "video/webm" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `kuafuor-review-${new Date().toISOString().slice(0,10)}.webm`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 30000);
+    stat.textContent = `✅ 已匯出 ${done} 段回顧（webm 格式，可直接分享俾學生）`;
+  }catch(err){
+    console.error(err);
+    stat.textContent = "匯出失敗：" + (err?.message || err);
+  }finally{ exporting = false; }
+});
 
 /* ---- save buttons ---- */
 function requireRecordsReady(){
@@ -3191,7 +3624,28 @@ async function saveFighter(tag){
   if(summary.stability != null) ax.push(summary.stability);
   ax.push(c100((F.travel/durMin)*5));
   summary.overall = Math.round(ax.reduce((a,b)=>a+b,0)/ax.length);
-  const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"motion", summary });
+  // fault totals feed the summary (growth charts) …
+  const faultCounts = {};
+  for(const s of F.strikes) for(const c of (s.faults || [])) faultCounts[c] = (faultCounts[c] || 0) + 1;
+  summary.faults = Object.values(faultCounts).reduce((a,b)=>a+b, 0);
+  summary.faultRate = st.atk.length ? round1(summary.faults/st.atk.length*10) : null;   // 每 10 擊失誤次數
+  // … and EVERYTHING goes into detail: full strike log, incoming log, faults, highlights
+  const t0 = mState.startT ?? 0;
+  const detail = {
+    strikes: F.strikes.map(s=>({ t: round1(s.t - t0), type:s.type, side:s.side, v: round1(s.v),
+      ke: Math.round(s.ke), target: s.target, tech: s.tech, quality: s.quality,
+      elbow: Math.round(s.elbowExt || 0), faults: s.faults || [], chain: s.chain || null })),
+    incoming: F.incoming.map(i=>({ t: round1(i.t - t0), type:i.type, ke: Math.round(i.ke),
+      zone: i.landedZone, quality: i.quality, defense: i.defense })),
+    hitsTaken: F.hitsTaken.map(h=>({ t: round1(h.t - t0), ke: Math.round(h.ke), perturb: round1(h.perturb ?? 0) })),
+    faultCounts,
+    moments: review.moments.filter(m=>m.tag === tag).map(m=>({ t: round1(m.t - t0), kind:m.kind, code:m.code,
+      tech: m.s?.tech, v: m.s?.v != null ? round1(m.s.v) : null })),
+    guard: F.guard, travelM: Math.round(F.travel || 0),
+    stance: F.stanceN ? round1(F.stanceSum/F.stanceN) : null,
+    sepMax: Math.round(F.sepMax || 0),
+  };
+  const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"motion", summary, detail });
   if(error){ toast("儲存失敗：" + error.message); return; }
   toast(`已儲存拳手 ${tag} → ${$("athleteSel").selectedOptions[0]?.textContent || ""} ✔`);
   loadSessions();
@@ -3214,7 +3668,7 @@ $("savePostureBtn").addEventListener("click", async ()=>{
 window.__ml = {
   get state(){ return mState; }, set state(v){ mState = v; },
   get run(){ return mRun; },
-  tracker, identity,
+  tracker, identity, review, buildReview,
   renderTechAnalysis, updateSparCard, freshSession, freshFighter, processFighter,
 };
 
