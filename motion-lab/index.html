@@ -2569,7 +2569,7 @@ $("signupBtn").addEventListener("click", async ()=>{
   if(!sb){ toast("雲端服務未載入，請檢查網絡後重新整理"); return; }
   const email = $("authEmail").value.trim(), password = $("authPass").value;
   if(!email || password.length < 6){ toast("請輸入電郵，密碼至少 6 位"); return; }
-  const { error } = await sb.auth.signUp({ email, password });
+  const { error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + "/motion-lab/" } });
   if(error){ toast("註冊失敗：" + error.message, 4500); return; }
   toast("註冊成功 ✔ 請去電郵撳確認連結，然後返嚟登入", 6000);
 });
