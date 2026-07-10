@@ -6,6 +6,8 @@
 <title>Kuafuor Motion Lab｜AI 體態檢查・搏擊動作分析</title>
 <meta name="description" content="Kuafuor HK Motion Lab — 瀏覽器內 AI 體態評估（肩膊/骨盆/頭頸對齊）與搏擊動作分析（出拳速度、髖肩分離、關節角度）。結合運動科學、物理治療與職業治療視角的教練篩查工具。">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥊</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0d0d">
 <style>
 /* ============ Design tokens (dark lab theme) ============ */
 :root{
@@ -122,6 +124,11 @@ section.tab-panel.active{display:block}
 }
 .loadbar{width:min(240px,70%);height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
 .loadbar>div{height:100%;width:0;background:var(--series-1);transition:width .2s}
+.growth-chart{width:100%;display:block}
+.sess-item{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hairline);font-size:.85rem}
+.sess-item:last-child{border-bottom:none}
+.sess-item .del{margin-left:auto;background:none;border:none;color:var(--ink-muted);cursor:pointer;font-size:1rem}
+.sess-item .del:hover{color:var(--critical)}
 
 /* ============ Stat tiles ============ */
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -239,6 +246,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 <nav class="tabs" aria-label="功能">
   <button class="tab-btn active" data-tab="posture">🧍 體態評估 <small>Posture</small></button>
   <button class="tab-btn" data-tab="motion">🥊 動作分析 <small>Motion</small></button>
+  <button class="tab-btn" data-tab="records">📊 紀錄 <small>Records</small></button>
   <button class="tab-btn" data-tab="guide">📋 使用說明 <small>Guide</small></button>
 </nav>
 
@@ -286,6 +294,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div class="note-strip">閾值為一般姿勢篩查參考，並非醫療診斷標準。左右以<b>受測者本人</b>方向為準。</div>
         <div class="controls" style="margin-top:12px">
           <button class="btn primary" id="reportBtn">🖨 生成報告 / 儲存 PDF</button>
+          <button class="btn" id="savePostureBtn">💾 儲存紀錄</button>
           <button class="btn ghost" id="clearBtn">清除結果</button>
         </div>
       </div>
@@ -357,6 +366,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <button class="btn" id="mFlipBtn" style="display:none">🔄 切換鏡頭</button>
       <button class="btn" id="mUploadBtn">🎞 上載影片</button>
       <input type="file" id="mFile" accept="video/*" hidden>
+      <button class="btn" id="mBatchBtn">⚡ 快速分析：開</button>
       <label class="field">體重 <input type="number" id="weightInput" value="70" min="30" max="150" step="1"> kg</label>
       <button class="btn" id="mMultiBtn">👥 多人模式：關</button>
       <span class="hd-spacer"></span>
@@ -428,7 +438,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div class="note-strip">命中／防守以 2D 影像重疊估算，唔代表真實接觸力度；力量以主角體重估算。數字用作訓練對比參考。</div>
       </div>
       <div class="card" id="techCard" style="margin-top:12px;display:none">
-        <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small></h3>
+        <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small>
+          <button class="btn" id="saveMotionBtn" style="float:right;padding:6px 12px;font-size:.82rem">💾 儲存本節紀錄</button></h3>
         <div id="techList"></div>
         <div class="note-strip">分析基於 AI 骨架估算同拍攝角度，屬教練參考，唔係絕對標準。側面 45°–90° 拍攝結果最準。</div>
       </div>
@@ -439,6 +450,60 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
           <li><b>手速</b>：業餘拳手刺拳峰值約 5–8 m/s；速度基於 AI 骨架估算（已補償橫向步法，向鏡頭方向嘅移動會略被低估），適合比較趨勢，不能當精確儀器。</li>
           <li><b>動能</b>：以有效質量 ≈ 體重 5% 估算（前手直拳量級），僅供對比參考。</li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== RECORDS TAB ==================== -->
+<section class="tab-panel" id="tab-records">
+  <div class="card" id="authCard">
+    <h3>👤 教練帳戶 <small style="color:var(--ink-muted);font-weight:400">拳手檔案・訓練紀錄・成長曲線（雲端同步）</small></h3>
+    <div id="authOut">
+      <div class="controls">
+        <label class="field">電郵 <input type="text" id="authEmail" style="width:220px" placeholder="coach@example.com" autocomplete="email"></label>
+        <label class="field">密碼 <input type="password" id="authPass" style="width:140px;background:var(--page);border:1px solid var(--border);color:var(--ink);border-radius:8px;padding:8px 10px" autocomplete="current-password"></label>
+        <button class="btn primary" id="loginBtn">登入</button>
+        <button class="btn" id="signupBtn">註冊新帳戶</button>
+      </div>
+      <p class="hint">首次註冊後請去電郵撳確認連結先可以登入。資料存喺你嘅雲端資料庫（Supabase），只有你登入先睇到。</p>
+    </div>
+    <div id="authIn" style="display:none">
+      <div class="controls">
+        <span style="font-size:.9rem">✅ 已登入：<b id="authWho" style="color:var(--ink)"></b></span>
+        <span class="hd-spacer"></span>
+        <button class="btn ghost" id="logoutBtn">登出</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="recArea" style="display:none">
+    <div class="card">
+      <div class="controls">
+        <label class="field">拳手 <select id="athleteSel" style="background:var(--page);border:1px solid var(--border);color:var(--ink);border-radius:8px;padding:8px 10px;min-width:140px"></select></label>
+        <span class="hd-spacer"></span>
+        <label class="field">新拳手 <input type="text" id="newAthName" placeholder="姓名"></label>
+        <label class="field">身高 <input type="number" id="newAthH" placeholder="170" style="width:70px"> cm</label>
+        <label class="field">體重 <input type="number" id="newAthW" placeholder="70" style="width:70px"> kg</label>
+        <button class="btn" id="addAthBtn">＋ 新增</button>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>📈 成長曲線 <small style="color:var(--ink-muted);font-weight:400">Growth（動作分析場次）</small></h3>
+        <div id="chartsEmpty" class="hint">未有紀錄——完成一節動作分析後撳「儲存本節紀錄」。</div>
+        <div id="chartsWrap" style="display:none">
+          <div class="hint" style="margin:0 0 2px">最快出拳 m/s</div>
+          <canvas class="growth-chart" id="chSpeed" height="110"></canvas>
+          <div class="hint" style="margin:8px 0 2px">命中率 %</div>
+          <canvas class="growth-chart" id="chAcc" height="110"></canvas>
+          <div class="hint" style="margin:8px 0 2px">綜合能力（七軸平均 /100）</div>
+          <canvas class="growth-chart" id="chOverall" height="110"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🗂 訓練紀錄 <small style="color:var(--ink-muted);font-weight:400">Sessions</small></h3>
+        <div id="sessList" class="hint">—</div>
       </div>
     </div>
   </div>
@@ -463,11 +528,12 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <ol class="steps">
         <li>鏡頭放側面 45°–90°，全身入鏡</li>
         <li>輸入體重（用作估算出拳動能）</li>
-        <li>開鏡頭即時分析，或上載訓練影片（會顯示分析進度）</li>
+        <li>開鏡頭即時分析，或上載訓練影片——「⚡ 快速分析」會全速逐格處理，唔使睇住佢播</li>
         <li>多人入鏡？開「👥 多人模式」——每人有個號碼牌，撳你想分析嘅人物即可鎖定做「主角」</li>
         <li>對打／對練：開多人模式，兩人入鏡——自動計命中率（頭/腹）、防守成功率、閃避、承受重擊</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
         <li>撳「技術分析」攞弱點總結（影片播完會自動生成）</li>
+        <li>登入「📊 紀錄」後可以撳「儲存本節紀錄」——建立拳手檔案、追蹤成長曲線</li>
         <li>「重設數據」開始新一節統計</li>
       </ol>
     </div>
@@ -588,10 +654,15 @@ function zonesOf(lm, W, H){
   return { head, headR, belly, bodyR: torso*0.5, torso };
 }
 
-/* ---- identity tracker ----
-   Fixes person-confusion between frames: one-to-one matching on
-   predicted position + body size + torso clothing colour. */
-const colorDist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+/* ---- identity tracker v2 ----
+   Fixes person-confusion between frames:
+   · one-to-one greedy assignment (a person can never claim two tracks)
+   · constant-velocity position prediction with a size-relative gate that
+     widens the longer someone is occluded
+   · 3-point clothing signature (chest / waist / thigh colours) so people
+     in different gear re-identify even after fully crossing each other
+   · per-track landmark smoothing (body only — wrists stay raw so punch
+     speed isn't damped) */
 const tracker = {
   tracks: new Map(), nextId: 1, _ctx: null, _data: null,
   reset(){ this.tracks.clear(); this.nextId = 1; },
@@ -615,26 +686,40 @@ const tracker = {
     }
     return [r/n, g/n, b/n];
   },
-  /* dets: [{lm, i, h}] → returns same objects with .trackId and .pos attached */
+  sigOf(lm){
+    const mid = (a,b)=>({ x:(lm[a].x+lm[b].x)/2, y:(lm[a].y+lm[b].y)/2 });
+    const mix = (a,b,f)=>({ x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f });
+    const sho = mid(LM.L_SHOULDER, LM.R_SHOULDER), hip = mid(LM.L_HIP, LM.R_HIP), knee = mid(LM.L_KNEE, LM.R_KNEE);
+    const chest = mix(sho, hip, 0.3), waist = mix(sho, hip, 0.85), thigh = mix(hip, knee, 0.45);
+    return [ ...this.colorAt(chest.x, chest.y), ...this.colorAt(waist.x, waist.y), ...this.colorAt(thigh.x, thigh.y) ];
+  },
+  sigDist(a, b){
+    if(!a || !b) return 999;
+    let s = 0;
+    for(let i=0;i<9;i+=3) s += Math.hypot(a[i]-b[i], a[i+1]-b[i+1], a[i+2]-b[i+2]);
+    return s/3;
+  },
+  /* dets: [{lm, i, h}] → same objects with .trackId/.pos/.sig attached */
   update(dets, t, videoEl){
     this.beginFrame(videoEl);
     const cands = dets.map(o=>{
-      const pos = midHipOf(o.lm);
-      const cx = ((o.lm[LM.L_SHOULDER].x+o.lm[LM.R_SHOULDER].x)/2 + (o.lm[LM.L_HIP].x+o.lm[LM.R_HIP].x)/2)/2;
-      const cy = ((o.lm[LM.L_SHOULDER].y+o.lm[LM.R_SHOULDER].y)/2 + (o.lm[LM.L_HIP].y+o.lm[LM.R_HIP].y)/2)/2;
-      o.pos = pos; o.color = this.colorAt(cx, cy); o.trackId = null;
+      o.pos = midHipOf(o.lm);
+      o.sig = this.sigOf(o.lm);
+      o.trackId = null;
       return o;
     });
     const pairs = [];
     for(const tr of this.tracks.values()){
-      const dt = Math.min(0.3, Math.max(0.001, t - tr.lastSeen));
+      const missed = Math.max(0, t - tr.lastSeen);
+      const dt = Math.min(0.3, Math.max(0.001, missed));
       const pred = { x: tr.pos.x + tr.vel.x*dt, y: tr.pos.y + tr.vel.y*dt };
+      const gate = Math.max(0.18, tr.h*0.45) * (1 + Math.min(1.4, missed*0.9));
       cands.forEach((c, ci)=>{
         const dPos = Math.hypot(c.pos.x-pred.x, c.pos.y-pred.y);
-        if(dPos > 0.35) return;                                  // gate: impossible jump
+        if(dPos > gate) return;                                  // impossible jump
         const dSize = Math.abs(c.h - tr.h)/Math.max(c.h, tr.h, 0.01);
-        const dCol = Math.min(1, colorDist(c.color, tr.color)/120);
-        pairs.push({ id: tr.id, ci, cost: dPos/0.35 + 0.5*dSize + 0.7*dCol });
+        const dSig = Math.min(1, this.sigDist(c.sig, tr.sig)/110);
+        pairs.push({ id: tr.id, ci, cost: dPos/gate + 0.5*dSize + 0.9*dSig });
       });
     }
     pairs.sort((a,b)=>a.cost-b.cost);
@@ -646,18 +731,37 @@ const tracker = {
       const dt = Math.max(0.02, t - tr.lastSeen);
       tr.vel = { x: 0.6*tr.vel.x + 0.4*(c.pos.x-tr.pos.x)/dt, y: 0.6*tr.vel.y + 0.4*(c.pos.y-tr.pos.y)/dt };
       tr.pos = c.pos; tr.h = c.h; tr.lastSeen = t;
-      tr.color = tr.color.map((v,i)=>0.8*v + 0.2*c.color[i]);
+      tr.sig = tr.sig.map((v,i)=>0.85*v + 0.15*c.sig[i]);
       c.trackId = p.id;
     }
     for(const c of cands){
       if(c.trackId == null){
         const id = this.nextId++;
-        this.tracks.set(id, { id, pos:c.pos, vel:{x:0,y:0}, h:c.h, color:c.color, lastSeen:t });
+        this.tracks.set(id, { id, pos:c.pos, vel:{x:0,y:0}, h:c.h, sig:c.sig, lastSeen:t });
         c.trackId = id;
       }
     }
-    for(const [id, tr] of this.tracks){ if(t - tr.lastSeen > 1.5) this.tracks.delete(id); }
+    for(const [id, tr] of this.tracks){ if(t - tr.lastSeen > 2.5) this.tracks.delete(id); }
     return cands;
+  },
+  /* temporal smoothing of a track's landmarks (skip wrists so punch speed stays true) */
+  smooth(trackId, lm, wl, t){
+    const tr = this.tracks.get(trackId);
+    if(!tr) return { lm, wl };
+    const A = 0.55;
+    if(tr.prevLm && tr.smT != null && t - tr.smT < 0.25 && tr.prevLm.length === lm.length){
+      const keepRaw = i => i === LM.L_WRIST || i === LM.R_WRIST;
+      lm = lm.map((p,i)=> keepRaw(i) ? p :
+        { x: A*tr.prevLm[i].x + (1-A)*p.x, y: A*tr.prevLm[i].y + (1-A)*p.y,
+          z: A*(tr.prevLm[i].z ?? 0) + (1-A)*(p.z ?? 0), visibility: p.visibility });
+      if(wl && tr.prevWl && tr.prevWl.length === wl.length){
+        wl = wl.map((p,i)=> keepRaw(i) ? p :
+          { x: A*tr.prevWl[i].x + (1-A)*p.x, y: A*tr.prevWl[i].y + (1-A)*p.y,
+            z: A*tr.prevWl[i].z + (1-A)*p.z, visibility: p.visibility });
+      }
+    }
+    tr.prevLm = lm; tr.prevWl = wl; tr.smT = t;
+    return { lm, wl };
   },
 };
 
@@ -761,6 +865,7 @@ document.querySelectorAll(".tab-btn").forEach(b=>{
     document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("active", p.id === "tab-"+b.dataset.tab));
     if(b.dataset.tab !== "posture") stopPostureSource();
     if(b.dataset.tab !== "motion") stopMotion();
+    if(b.dataset.tab === "records") setTimeout(()=>{ if(sessions.length) drawGrowthCharts(); }, 60);
   });
 });
 
@@ -1435,9 +1540,24 @@ function freshSession(){
 let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0,
              gen:0 /* generation token: any start/stop invalidates suspended async handlers */,
              multi:false /* per-frame full detection: finds EVERYONE, slightly less smooth */,
+             batch:true /* uploaded videos: analyse frame-by-frame at full speed, unattended */,
              targetPos:null /* single-mode: tracked person's mid-hip (normalized) */, lastRanked:null,
-             subjectId:null, oppId:null, lastSubjectPos:null, lastCands:null };
+             subjectId:null, oppId:null, lastSubjectPos:null, lastCands:null,
+             subjectSig:null, oppSig:null };
 mState = freshSession();
+
+/* keep the screen awake while a session runs (phones dim → analysis dies) */
+let wakeLock = null;
+async function acquireWake(){ try{ wakeLock = await navigator.wakeLock?.request("screen") || null; }catch(e){ wakeLock = null; } }
+function releaseWake(){ try{ wakeLock?.release(); }catch(e){} wakeLock = null; }
+
+$("mBatchBtn").addEventListener("click", ()=>{
+  mRun.batch = !mRun.batch;
+  $("mBatchBtn").textContent = `⚡ 快速分析：${mRun.batch ? "開" : "關"}`;
+  toast(mRun.batch
+    ? "快速分析開：上載影片會全速逐格處理，唔使睇住佢播完"
+    : "快速分析關：上載影片會以正常速度即時播放分析", 4000);
+});
 
 /* MediaPipe's VIDEO tracking mode reliably follows only ONE person — multi-person
    needs per-frame IMAGE-mode detection, so it's an explicit toggle */
@@ -1446,6 +1566,7 @@ $("mMultiBtn").addEventListener("click", async ()=>{
   $("mMultiBtn").textContent = `👥 多人模式：${mRun.multi ? "開" : "關"}`;
   mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
+  mRun.subjectSig = null; mRun.oppSig = null;
   tracker.reset();
   if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
   updateSparCard();
@@ -1473,7 +1594,8 @@ $("mStage").addEventListener("click", e=>{
     if(best.trackId === mRun.subjectId) return;      // already the subject
     mRun.subjectId = best.trackId;
     mRun.lastSubjectPos = best.pos;
-    mRun.oppId = null;                               // opponent re-resolves next frame
+    mRun.subjectSig = best.sig ? best.sig.slice() : null;
+    mRun.oppId = null; mRun.oppSig = null;           // opponent re-resolves next frame
     mState = freshSession();                         // stats describe ONE person — restart on switch
     $("techCard").style.display = "none";
     updateTiles(null, null, true);
@@ -1565,6 +1687,27 @@ $("mFile").addEventListener("change", async e=>{
   mVideo.src = url;
   mVideo.loop = false;
   const taken = ()=> gen !== mRun.gen || mVideo.src !== url || mVideo.srcObject;
+
+  if(mRun.batch){
+    /* fast, unattended frame-by-frame analysis */
+    const ok = await new Promise(res=>{
+      const good = ()=>{ cleanup(); res(true); }, bad = ()=>{ cleanup(); res(false); };
+      const cleanup = ()=>{ mVideo.removeEventListener("loadeddata", good); mVideo.removeEventListener("error", bad); };
+      mVideo.addEventListener("loadeddata", good); mVideo.addEventListener("error", bad);
+      mVideo.load();
+    });
+    if(taken()){ URL.revokeObjectURL(url); return; }
+    if(!ok || !isFinite(mVideo.duration) || mVideo.duration <= 0){
+      toast("影片讀取失敗——可能係唔支援嘅格式（建議 MP4/WebM）");
+      URL.revokeObjectURL(url); mVideo.removeAttribute("src"); mVideo.load();
+      return;
+    }
+    await autoDetectMulti();          // probe the first frame: 2+ people → sparring mode
+    if(taken()){ URL.revokeObjectURL(url); return; }
+    await batchAnalyze();
+    return;
+  }
+
   try{
     await mVideo.play();
   }catch(err){
@@ -1596,12 +1739,87 @@ async function autoDetectMulti(){
     if(n >= 2){
       mRun.multi = true;
       $("mMultiBtn").textContent = "👥 多人模式：開";
+      mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
+      mRun.subjectSig = null; mRun.oppSig = null;
+      tracker.reset();
       toast(`偵測到 ${n} 人 — 已自動開啟多人模式，計算對戰數據`, 4200);
     }
   }catch(e){ console.warn("multi probe skipped", e); }
   finally{
     // a running single-person session needs VIDEO mode back, or its loop stalls
     if(mRun.on && !mRun.multi) await setMode("VIDEO");
+  }
+}
+
+/* fast unattended analysis of an uploaded clip */
+async function batchAnalyze(){
+  await setMode("IMAGE");
+  if(currentMode !== "IMAGE"){ toast("AI 未就緒，請再試一次"); return; }
+  cancelAnimationFrame(mRun.raf);
+  mRun.on = true; mRun.source = "file"; mRun.lastTs = -1;
+  mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
+  mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
+  mRun.subjectSig = null; mRun.oppSig = null;
+  tracker.reset();
+  $("mMsg").classList.add("hidden");
+  $("mStopBtn").style.display = "";
+  $("mFlipBtn").style.display = "none";
+  $("mCamBtn").textContent = "📷 開啟鏡頭";
+  $("mStage").classList.remove("mirrored");
+  $("mProg").style.display = "block"; $("mProgLabel").style.display = "block";
+  $("mProgLabel").textContent = "⚡ 快速分析 0%";
+  acquireWake();
+
+  // adaptive fast playback: speed up as far as inference keeps ~15 samples
+  // per media second (no seeking — seeks decode from the last keyframe and
+  // can be quadratically slow on long-GOP videos)
+  const dur = mVideo.duration;
+  let inferEMA = 0.06, lastMedia = -1, frames = 0;
+  mVideo.playbackRate = 2;
+  try{ await mVideo.play(); }
+  catch(err){
+    releaseWake(); stopMotion();
+    toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
+    return;
+  }
+  const t0wall = performance.now();
+  await new Promise(done=>{
+    const tick = ()=>{
+      if(!mRun.on || mRun.source !== "file" || mVideo.ended){ done(); return; }
+      const mt = mVideo.currentTime;
+      if(mt > lastMedia + 0.03){
+        lastMedia = mt;
+        const s0 = performance.now();
+        let res2 = null;
+        try{ res2 = landmarker.detect(mVideo); }catch(e){}
+        inferEMA = 0.8*inferEMA + 0.2*(performance.now()-s0)/1000;
+        try{ mVideo.playbackRate = Math.max(1, Math.min(6, 1/(inferEMA*15))); }catch(e){}
+        const W = mVideo.videoWidth, H = mVideo.videoHeight;
+        if(res2 && W){
+          if(mCanvas.width !== W || mCanvas.height !== H){ mCanvas.width = W; mCanvas.height = H; }
+          mCtx.clearRect(0,0,W,H);
+          const out = handleDetections(res2, mt, false, W, H);
+          frames++;
+          if(frames % 4 === 0){
+            const pct = mt/dur*100;
+            $("mProgFill").style.width = pct + "%";
+            const rate = mt / Math.max(0.001, (performance.now()-t0wall)/1000);
+            $("mProgLabel").textContent = `⚡ 快速分析 ${Math.round(pct)}%（${fmt(rate,1)}× 速度）· 剩餘約 ${rate>0 ? ((dur-mt)/rate).toFixed(0) : "–"} 秒`;
+            refreshMotionUI(out);
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  const wallSec = (performance.now()-t0wall)/1000;
+  releaseWake();
+  const finished = mRun.on;
+  stopMotion();
+  if(finished && frames > 0){
+    toast(`⚡ 快速分析完成 ✔ ${fmt(dur,0)} 秒影片，用時 ${wallSec.toFixed(0)} 秒`);
+    renderTechAnalysis();
   }
 }
 async function startMotion(source){
@@ -1612,7 +1830,9 @@ async function startMotion(source){
   mRun.on = true; mRun.source = source; mRun.lastTs = -1;
   mRun.targetPos = null; mRun.lastRanked = null;   // re-lock onto the most prominent person
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null; mRun.lastCands = null;
+  mRun.subjectSig = null; mRun.oppSig = null;
   tracker.reset();
+  acquireWake();
   $("mMsg").classList.add("hidden");
   $("mStopBtn").style.display = "";
   $("mFlipBtn").style.display = source === "cam" ? "" : "none";
@@ -1629,6 +1849,7 @@ function stopMotion(){
   if(!mRun.on) return;
   cancelAnimationFrame(mRun.raf);
   mRun.on = false;
+  releaseWake();
   stopStream(mVideo);
   if(mVideo.src){ mVideo.pause(); URL.revokeObjectURL(mVideo.src); mVideo.removeAttribute("src"); mVideo.load(); }
   $("mCamBtn").textContent = "📷 開啟鏡頭";
@@ -1820,8 +2041,16 @@ function motionLoop(){
   if(mCanvas.width !== W || mCanvas.height !== H){ mCanvas.width = W; mCanvas.height = H; }
   mCtx.clearRect(0,0,W,H);
   const mirrored = $("mStage").classList.contains("mirrored");
+  const out = handleDetections(res, ts/1000, mirrored, W, H);
+  if(ts - mRun.lastDom > 100){
+    mRun.lastDom = ts;
+    refreshMotionUI(out);
+  }
+}
+
+/* shared per-frame handling for the live loop AND fast batch analysis */
+function handleDetections(res, tSec, mirrored, W, H){
   const people = res.landmarks || [];
-  const tSec = ts/1000;
   let selLm = null, selWl = null, opp = null, tracking = "none", nPeople = 0;
 
   if(people.length && mRun.multi){
@@ -1832,35 +2061,60 @@ function motionLoop(){
     nPeople = cands.length;
 
     let subj = cands.find(c=>c.trackId === mRun.subjectId) || null;
-    if(!subj && mRun.lastSubjectPos){
-      // subject's track dropped — re-adopt only someone near their last position
-      subj = cands.filter(c=>Math.hypot(c.pos.x-mRun.lastSubjectPos.x, c.pos.y-mRun.lastSubjectPos.y) < 0.3)
-                  .sort((a,b)=>b.h-a.h)[0] || null;
-      if(subj) mRun.subjectId = subj.trackId;
+    if(!subj && (mRun.lastSubjectPos || mRun.subjectSig)){
+      // subject's track dropped — re-adopt by position OR clothing signature,
+      // never by proximity alone if the candidate is the opponent's track
+      let best = null, bestScore = 1e9;
+      for(const c of cands){
+        const dPos = mRun.lastSubjectPos ? Math.hypot(c.pos.x-mRun.lastSubjectPos.x, c.pos.y-mRun.lastSubjectPos.y) : 999;
+        const dSig = tracker.sigDist(c.sig, mRun.subjectSig);
+        const isOppTrack = c.trackId === mRun.oppId;
+        const near = dPos < 0.3 && !isOppTrack;
+        const appear = dSig < 42 && (!mRun.oppSig || dSig + 8 < tracker.sigDist(c.sig, mRun.oppSig));
+        if(near || appear){
+          const score = Math.min(dPos, dSig/140);
+          if(score < bestScore){ bestScore = score; best = c; }
+        }
+      }
+      if(best){ mRun.subjectId = best.trackId; subj = best; }
     }
     if(!subj && mRun.subjectId == null && cands.length){
       subj = cands.slice().sort((a,b)=>b.h-a.h)[0];    // first lock: most prominent
       mRun.subjectId = subj.trackId;
     }
-    if(subj) mRun.lastSubjectPos = subj.pos;
+    if(subj){
+      mRun.lastSubjectPos = subj.pos;
+      mRun.subjectSig = mRun.subjectSig ? mRun.subjectSig.map((v,i)=>0.9*v + 0.1*subj.sig[i]) : subj.sig.slice();
+    }
 
     const others = cands.filter(c=>c.trackId !== mRun.subjectId);
     let oppCand = others.find(c=>c.trackId === mRun.oppId) || others.sort((a,b)=>b.h-a.h)[0] || null;
     if(oppCand && oppCand.trackId !== mRun.oppId){ mRun.oppId = oppCand.trackId; mState.oppHands = freshHands(); }
-    if(oppCand) opp = { lm: oppCand.lm, wl: res.worldLandmarks?.[oppCand.i] };
+    if(oppCand){
+      mRun.oppSig = mRun.oppSig ? mRun.oppSig.map((v,i)=>0.9*v + 0.1*oppCand.sig[i]) : oppCand.sig.slice();
+    }
+
+    // temporal smoothing for the two fighters (body only; wrists stay raw)
+    if(subj){
+      const sm = tracker.smooth(subj.trackId, subj.lm, res.worldLandmarks?.[subj.i], tSec);
+      selLm = sm.lm; selWl = sm.wl; tracking = "ok";
+    }else tracking = "lost";
+    if(oppCand){
+      const smO = tracker.smooth(oppCand.trackId, oppCand.lm, res.worldLandmarks?.[oppCand.i], tSec);
+      opp = { lm: smO.lm, wl: smO.wl };
+    }
 
     for(const c of cands){
-      const isSubj = c.trackId === mRun.subjectId;
+      const isSubj = subj && c.trackId === subj.trackId;
       const isOpp = oppCand && c.trackId === oppCand.trackId;
-      drawSkeleton(mCtx, c.lm, W, H, mirrored,
+      const lmDraw = isSubj ? selLm : (isOpp ? opp.lm : c.lm);
+      drawSkeleton(mCtx, lmDraw, W, H, mirrored,
         isSubj ? 0.85 : (isOpp ? 0.6 : 0.3),
         isSubj ? SKELETON_COLOR : (isOpp ? "#fab219" : "#9a9a94"));
-      drawPersonBadge(mCtx, c.lm, W, H, mirrored,
+      drawPersonBadge(mCtx, lmDraw, W, H, mirrored,
         isSubj ? "主" : (isOpp ? "對" : c.trackId),
         isSubj ? "#d32f2f" : (isOpp ? "rgba(160,110,0,0.9)" : null));
     }
-    if(subj){ selLm = subj.lm; selWl = res.worldLandmarks?.[subj.i]; tracking = "ok"; }
-    else tracking = "lost";
     if(selLm && selWl) processMotion(selWl, selLm, W, H, tSec, opp);
     if(opp?.lm && opp?.wl && selLm) processIncoming(opp.wl, opp.lm, W, H, tSec, selLm);
 
@@ -1892,18 +2146,18 @@ function motionLoop(){
     else tracking = "lost";
     if(selWl && selLm) processMotion(selWl, selLm, W, H, tSec, null);
   }
+  return { selLm, selWl, opp, tracking, nPeople };
+}
 
-  if(ts - mRun.lastDom > 100){
-    mRun.lastDom = ts;
-    const lbl = $("mSelLabel");
-    if(tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
-    else if(mRun.multi && opp){ lbl.textContent = "對戰模式：主=紅 · 對=橙 · 撳人物換主角"; lbl.style.display = "block"; }
-    else if(nPeople > 1){ lbl.textContent = `偵測到 ${nPeople} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
-    else lbl.style.display = "none";
-    updateTiles(selLm, selWl);
-    updateSparCard();
-    drawSpark();
-  }
+function refreshMotionUI(out){
+  const lbl = $("mSelLabel");
+  if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
+  else if(mRun.multi && out.opp){ lbl.textContent = "對戰模式：主=紅 · 對=橙 · 撳人物換主角"; lbl.style.display = "block"; }
+  else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
+  else lbl.style.display = "none";
+  updateTiles(out.selLm, out.selWl);
+  updateSparCard();
+  drawSpark();
 }
 
 const dist3 = (a,b) => Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z);
@@ -2205,6 +2459,213 @@ function drawSpark(){
 drawSpark();
 window.addEventListener("resize", drawSpark);
 
+/* ============================================================
+   RECORDS — coach accounts + cloud database (Supabase, RLS-protected)
+   ============================================================ */
+const SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
+const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O";   // publishable key — safe in client code
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+let sb = null, sbUser = null, athletes = [], currentAthleteId = null, sessions = [];
+
+(async ()=>{
+  try{
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    sb = createClient(SB_URL, SB_KEY);
+    sb.auth.onAuthStateChange((_ev, session)=>{
+      sbUser = session?.user || null;
+      renderAuth();
+      if(sbUser) loadAthletes();
+    });
+    const { data } = await sb.auth.getSession();
+    sbUser = data?.session?.user || null;
+    renderAuth();
+    if(sbUser) loadAthletes();
+  }catch(e){ console.warn("Supabase unavailable", e); }
+})();
+
+function renderAuth(){
+  $("authOut").style.display = sbUser ? "none" : "";
+  $("authIn").style.display = sbUser ? "" : "none";
+  $("recArea").style.display = sbUser ? "" : "none";
+  if(sbUser) $("authWho").textContent = sbUser.email || "";
+}
+$("loginBtn").addEventListener("click", async ()=>{
+  if(!sb){ toast("雲端服務未載入，請檢查網絡後重新整理"); return; }
+  const email = $("authEmail").value.trim(), password = $("authPass").value;
+  if(!email || !password){ toast("請輸入電郵同密碼"); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ toast("登入失敗：" + error.message, 4500); return; }
+  toast("登入成功 ✔");
+});
+$("signupBtn").addEventListener("click", async ()=>{
+  if(!sb){ toast("雲端服務未載入，請檢查網絡後重新整理"); return; }
+  const email = $("authEmail").value.trim(), password = $("authPass").value;
+  if(!email || password.length < 6){ toast("請輸入電郵，密碼至少 6 位"); return; }
+  const { error } = await sb.auth.signUp({ email, password });
+  if(error){ toast("註冊失敗：" + error.message, 4500); return; }
+  toast("註冊成功 ✔ 請去電郵撳確認連結，然後返嚟登入", 6000);
+});
+$("logoutBtn").addEventListener("click", async ()=>{ await sb?.auth.signOut(); toast("已登出"); });
+
+async function loadAthletes(){
+  if(!sb || !sbUser) return;
+  const { data, error } = await sb.from("athletes").select("*").order("created_at");
+  if(error){ toast("讀取拳手失敗：" + error.message); return; }
+  athletes = data || [];
+  const sel = $("athleteSel");
+  sel.innerHTML = athletes.length
+    ? athletes.map(a=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join("")
+    : `<option value="">（未有拳手——請先新增）</option>`;
+  if(!athletes.find(a=>a.id === currentAthleteId)) currentAthleteId = athletes[0]?.id || null;
+  if(currentAthleteId) sel.value = currentAthleteId;
+  loadSessions();
+}
+$("athleteSel").addEventListener("change", ()=>{ currentAthleteId = $("athleteSel").value || null; loadSessions(); });
+$("addAthBtn").addEventListener("click", async ()=>{
+  if(!sb || !sbUser) return;
+  const name = $("newAthName").value.trim();
+  if(!name){ toast("請輸入拳手姓名"); return; }
+  const row = { owner: sbUser.id, name,
+    height_cm: parseFloat($("newAthH").value) || null,
+    weight_kg: parseFloat($("newAthW").value) || null };
+  const { data, error } = await sb.from("athletes").insert(row).select().single();
+  if(error){ toast("新增失敗：" + error.message); return; }
+  $("newAthName").value = ""; $("newAthH").value = ""; $("newAthW").value = "";
+  currentAthleteId = data.id;
+  toast(`已新增拳手：${name} ✔`);
+  loadAthletes();
+});
+
+async function loadSessions(){
+  if(!sb || !currentAthleteId){ sessions = []; renderSessions(); return; }
+  const { data, error } = await sb.from("training_sessions").select("*")
+    .eq("athlete_id", currentAthleteId).order("session_date");
+  if(error){ toast("讀取紀錄失敗：" + error.message); return; }
+  sessions = data || [];
+  renderSessions();
+}
+function renderSessions(){
+  const el = $("sessList");
+  if(!sessions.length){
+    el.innerHTML = "未有紀錄";
+    $("chartsWrap").style.display = "none"; $("chartsEmpty").style.display = "";
+    return;
+  }
+  el.innerHTML = sessions.slice().reverse().map(s=>{
+    const d = new Date(s.session_date).toLocaleDateString("zh-HK");
+    const sum = s.summary || {};
+    const info = s.kind === "motion"
+      ? `🥊 ${sum.punches ?? 0} 拳 · 峰值 ${fmt(sum.peak)} m/s`
+        + (sum.hitRate != null ? ` · 命中 ${sum.hitRate}%` : "")
+        + (sum.overall != null ? ` · 綜合 ${sum.overall}` : "")
+      : `🧍 體態評估（${sum.view === "side" ? "側面" : "正面"}）`;
+    return `<div class="sess-item"><span style="color:var(--ink-muted)">${d}</span><span>${info}</span><button class="del" data-id="${s.id}" title="刪除">🗑</button></div>`;
+  }).join("");
+  el.querySelectorAll(".del").forEach(b=>b.addEventListener("click", async ()=>{
+    if(!confirm("確定刪除呢節紀錄？")) return;
+    await sb.from("training_sessions").delete().eq("id", b.dataset.id);
+    loadSessions();
+  }));
+  drawGrowthCharts();
+}
+
+/* ---- growth curves ---- */
+function drawGrowthCharts(){
+  const motion = sessions.filter(s=>s.kind === "motion");
+  if(!motion.length){ $("chartsWrap").style.display = "none"; $("chartsEmpty").style.display = ""; return; }
+  $("chartsWrap").style.display = ""; $("chartsEmpty").style.display = "none";
+  lineChart($("chSpeed"),   motion.map(s=>({ d:s.session_date, v:s.summary?.peak })), 1);
+  lineChart($("chAcc"),     motion.map(s=>({ d:s.session_date, v:s.summary?.hitRate })), 0);
+  lineChart($("chOverall"), motion.map(s=>({ d:s.session_date, v:s.summary?.overall })), 0);
+}
+function lineChart(canvas, pts, dec){
+  pts = pts.filter(p=>p.v != null && isFinite(p.v));
+  const dpr = window.devicePixelRatio || 1;
+  const cw = canvas.clientWidth || 300, chh = 110;
+  canvas.width = cw*dpr; canvas.height = chh*dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cw, chh);
+  ctx.strokeStyle = "#2c2c2a"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(30, chh-18); ctx.lineTo(cw-6, chh-18); ctx.stroke();
+  if(!pts.length){ ctx.fillStyle = "#898781"; ctx.font = "11px system-ui,sans-serif"; ctx.fillText("未有數據", 34, chh/2); return; }
+  let vmin = Math.min(...pts.map(p=>p.v)), vmax = Math.max(...pts.map(p=>p.v));
+  if(vmax === vmin){ vmax += 1; vmin = Math.max(0, vmin-1); }
+  const pad = (vmax-vmin)*0.15; vmin = Math.max(0, vmin-pad); vmax += pad;
+  const X = i => pts.length === 1 ? cw/2 : 34 + i*(cw-46)/(pts.length-1);
+  const Y = v => (chh-26) - (v-vmin)/(vmax-vmin)*(chh-44) + 8;
+  ctx.strokeStyle = "#3987e5"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.beginPath(); pts.forEach((p,i)=> i ? ctx.lineTo(X(i), Y(p.v)) : ctx.moveTo(X(i), Y(p.v))); ctx.stroke();
+  pts.forEach((p,i)=>{
+    ctx.beginPath(); ctx.arc(X(i), Y(p.v), 6, 0, 7); ctx.fillStyle = "#1a1a19"; ctx.fill();
+    ctx.beginPath(); ctx.arc(X(i), Y(p.v), 4, 0, 7); ctx.fillStyle = "#3987e5"; ctx.fill();
+  });
+  ctx.fillStyle = "#898781"; ctx.font = "10px system-ui,sans-serif";
+  ctx.fillText(vmax.toFixed(dec), 2, 14);
+  ctx.fillText(vmin.toFixed(dec), 2, chh-22);
+  const dstr = t => new Date(t).toLocaleDateString("zh-HK", { month:"numeric", day:"numeric" });
+  ctx.fillText(dstr(pts[0].d), 30, chh-6);
+  const lastD = dstr(pts[pts.length-1].d);
+  ctx.fillText(lastD, cw-6-ctx.measureText(lastD).width, chh-6);
+  ctx.fillStyle = "#ffffff"; ctx.font = "600 11px system-ui,sans-serif";
+  ctx.fillText(pts[pts.length-1].v.toFixed(dec), Math.min(cw-30, X(pts.length-1)+8), Math.max(12, Y(pts[pts.length-1].v)-8));
+}
+
+/* ---- save buttons ---- */
+function requireRecordsReady(){
+  if(!sb){ toast("雲端服務未載入，請檢查網絡"); return false; }
+  if(!sbUser){ toast("請先去「📊 紀錄」分頁登入／註冊"); return false; }
+  if(!currentAthleteId){ toast("請先喺「📊 紀錄」分頁新增／揀選拳手"); return false; }
+  return true;
+}
+$("saveMotionBtn").addEventListener("click", async ()=>{
+  if(!requireRecordsReady()) return;
+  const s = mState;
+  const dur = (s.startT != null && s.lastT != null) ? s.lastT - s.startT : 0;
+  if(dur < 5 || !s.punchLog.length){ toast("本節數據不足，冇嘢可以儲存"); return; }
+  const sp = sparStats();
+  const kes = s.punchLog.map(p=>p.ke).filter(Boolean);
+  const durMin = Math.max(dur/60, 1/60);
+  const summary = {
+    durSec: Math.round(dur),
+    punches: s.punchLog.length, countsL: s.counts.L, countsR: s.counts.R,
+    peak: round1(s.peak),
+    avgKE: kes.length ? Math.round(kes.reduce((a,b)=>a+b,0)/kes.length) : null,
+    sepMax: Math.round(s.sepMax || 0),
+    rate: round1(s.punchLog.length/durMin),
+    atkCount: sp.atk.length, headHits: sp.headHits, bodyHits: sp.bodyHits,
+    hitRate: sp.atk.length ? Math.round(sp.landed/sp.atk.length*100) : null,
+    defRate: sp.inc.length ? Math.round((sp.inc.length-sp.incLanded)/sp.inc.length*100) : null,
+    blocks: sp.blocks, dodgeOk: sp.dodgeOk, dodgeTry: sp.dodges.length,
+    heavyTaken: sp.heavy.length, stability: sp.stability,
+  };
+  const c100 = v => Math.max(0, Math.min(100, Math.round(v)));
+  const ax = [];
+  if(summary.avgKE != null) ax.push(c100(summary.avgKE/1.2));
+  if(s.peak) ax.push(c100((s.peak-3)*14));
+  ax.push(c100(summary.rate*3.3));
+  if(summary.hitRate != null) ax.push(summary.hitRate);
+  if(summary.defRate != null) ax.push(summary.defRate);
+  if(summary.stability != null) ax.push(summary.stability);
+  ax.push(c100((s.travel/durMin)*5));
+  summary.overall = Math.round(ax.reduce((a,b)=>a+b,0)/ax.length);
+  const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"motion", summary });
+  if(error){ toast("儲存失敗：" + error.message); return; }
+  toast("已儲存 ✔ 去「📊 紀錄」睇成長曲線");
+  loadSessions();
+});
+$("savePostureBtn").addEventListener("click", async ()=>{
+  if(!requireRecordsReady()) return;
+  const a = pState.analyzed;
+  if(!a){ toast("未有分析結果"); return; }
+  const summary = { view: a.view, heightCm: a.heightCm,
+    metrics: a.metrics.map(m=>({ name:m.name, value:m.value, extra:m.extra, status:m.status })) };
+  const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"posture", summary });
+  if(error){ toast("儲存失敗：" + error.message); return; }
+  toast("已儲存體態紀錄 ✔");
+  loadSessions();
+});
+
 /* testing hook: lets automated tests inject a session and re-render (no effect on normal use) */
 window.__ml = {
   get state(){ return mState; }, set state(v){ mState = v; },
@@ -2212,11 +2673,18 @@ window.__ml = {
   renderTechAnalysis, updateSparCard, freshSession,
 };
 
+/* PWA: install-to-home-screen + offline app shell */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW register failed", e));
+}
+
 /* stop cameras when page hidden (uploaded-video sessions survive — rAF pauses on its own) */
 document.addEventListener("visibilitychange", ()=>{
   if(document.hidden){
     if(pState.source === "cam") stopPostureSource();
     if(mRun.on && mRun.source === "cam") stopMotion();
+  }else if(mRun.on){
+    acquireWake();               // wake lock is auto-released when the page hides
   }
 });
 </script>
