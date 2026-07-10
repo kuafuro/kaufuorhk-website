@@ -755,7 +755,10 @@ const tracker = {
       const missed = Math.max(0, t - tr.lastSeen);
       const dt = Math.min(0.3, Math.max(0.001, missed));
       const pred = { x: tr.pos.x + tr.vel.x*dt, y: tr.pos.y + tr.vel.y*dt };
-      const gate = Math.max(0.18, tr.h*0.45) * (1 + Math.min(1.4, missed*0.9));
+      const spd = Math.hypot(tr.vel.x, tr.vel.y);
+      // gate grows with the person's own speed and with occlusion time — fast
+      // movers must not outrun their own track
+      const gate = (Math.max(0.2, tr.h*0.5) + Math.min(0.4, spd*dt*1.6)) * (1 + Math.min(1.6, missed*1.1));
       cands.forEach((c, ci)=>{
         const dPos = Math.hypot(c.pos.x-pred.x, c.pos.y-pred.y);
         if(dPos > gate) return;                                  // impossible jump
@@ -776,6 +779,26 @@ const tracker = {
       tr.pos = c.pos; tr.h = c.h; tr.lastSeen = t; tr.box = c.box;
       tr.sig = tr.sig.map((v,i)=>0.85*v + 0.15*c.sig[i]);
       c.trackId = p.id;
+    }
+    // second pass: loosely pair leftover tracks with leftover people —
+    // following imperfectly beats losing the track during fast exchanges
+    for(const tr of this.tracks.values()){
+      if(usedT.has(tr.id)) continue;
+      let best = -1, bd = 1e9;
+      cands.forEach((c, ci)=>{
+        if(usedC.has(ci) || c.trackId != null) return;
+        const d = Math.hypot(c.pos.x-tr.pos.x, c.pos.y-tr.pos.y);
+        if(d < bd){ bd = d; best = ci; }
+      });
+      if(best >= 0 && bd < 0.8){
+        usedT.add(tr.id); usedC.add(best);
+        const c = cands[best];
+        const dt = Math.max(0.02, t - tr.lastSeen);
+        tr.vel = { x: 0.5*tr.vel.x + 0.5*(c.pos.x-tr.pos.x)/dt, y: 0.5*tr.vel.y + 0.5*(c.pos.y-tr.pos.y)/dt };
+        tr.pos = c.pos; tr.h = c.h; tr.lastSeen = t; tr.box = c.box;
+        tr.sig = tr.sig.map((v,i)=>0.9*v + 0.1*c.sig[i]);
+        c.trackId = tr.id;
+      }
     }
     for(const c of cands){
       if(c.trackId == null){
@@ -1589,12 +1612,12 @@ let mState = null;
    minPeak filters slow movements (steps, resets); mass = effective
    striking mass as a fraction of body weight (estimate, disclaimed). */
 const LIMBS = [
-  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:2.2, end:1.0, minPeak:2.6, mass:0.05, vmax:16 },
-  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:2.2, end:1.0, minPeak:2.6, mass:0.05, vmax:16 },
-  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:3.5, end:1.5, minPeak:4.0, mass:0.09, vmax:20 },
-  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:3.5, end:1.5, minPeak:4.0, mass:0.09, vmax:20 },
-  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:2.8, end:1.2, minPeak:3.2, mass:0.07, vmax:16 },
-  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:2.8, end:1.2, minPeak:3.2, mass:0.07, vmax:16 },
+  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:1.8, end:1.0, minPeak:2.2, mass:0.05, vmax:22 },
+  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:1.8, end:1.0, minPeak:2.2, mass:0.05, vmax:22 },
+  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:2.8, end:1.4, minPeak:3.2, mass:0.09, vmax:28 },
+  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:2.8, end:1.4, minPeak:3.2, mass:0.09, vmax:28 },
+  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:2.4, end:1.1, minPeak:2.8, mass:0.07, vmax:22 },
+  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:2.4, end:1.1, minPeak:2.8, mass:0.07, vmax:22 },
 ];
 const TYPE_LABEL = { punch:"拳", kick:"踢", knee:"膝" };
 /* WAKO Art.4: techniques must land with full power — below these peak speeds
@@ -2253,7 +2276,7 @@ function handleDetections(res, tSec, mirrored, W, H){
         const dPos = mRun.lastSubjectPos ? Math.hypot(c.pos.x-mRun.lastSubjectPos.x, c.pos.y-mRun.lastSubjectPos.y) : 999;
         const dSig = tracker.sigDist(c.sig, mRun.subjectSig);
         const isOppTrack = c.trackId === mRun.oppId;
-        const near = dPos < 0.3 && !isOppTrack;
+        const near = dPos < 0.45 && !isOppTrack;
         const appear = dSig < 18 && (!mRun.oppSig || dSig + 5 < tracker.sigDist(c.sig, mRun.oppSig));
         // strongest signal: appearance-embedding match against A's prototype
         let embMatch = false, cosA = -1;
@@ -2267,13 +2290,15 @@ function handleDetections(res, tSec, mirrored, W, H){
         }
         if(near || appear || embMatch){
           const score = embMatch ? (1 - cosA) : Math.min(dPos, dSig/60);
-          if(score < bestScore){ bestScore = score; best = c; }
+          if(score < bestScore){ bestScore = score; best = c; best._emb = embMatch; }
         }
       }
       if(best){
         if(mRun.adopt?.trackId === best.trackId) mRun.adopt.n++;
         else mRun.adopt = { trackId: best.trackId, n: 1 };
-        if(mRun.adopt.n >= 2){ mRun.subjectId = best.trackId; subj = best; mRun.adopt = null; }
+        // appearance-confirmed matches re-adopt IMMEDIATELY — no frames lost;
+        // position/colour-only matches still need 2 consecutive frames
+        if(best._emb || mRun.adopt.n >= 2){ mRun.subjectId = best.trackId; subj = best; mRun.adopt = null; }
       }else mRun.adopt = null;
     }
     if(!subj && mRun.subjectId == null && cands.length){
@@ -2430,37 +2455,99 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
   // torso yaw — spinning techniques rotate the shoulders 100°+
   const yawNow = deg(Math.atan2(wl[LM.L_SHOULDER].z - wl[LM.R_SHOULDER].z, wl[LM.L_SHOULDER].x - wl[LM.R_SHOULDER].x));
 
+  /* finalize a limb's strike: gates → classify → WAKO quality → record */
+  const endStrike = (st, L) => {
+    st.active = false; st.lastEnd = t;
+    let count = st.peak > L.minPeak;
+    if(count && (st.nSamples || 0) >= 3){          // gates need enough samples to be meaningful
+      if(L.type === "kick" && st.maxLift < 0.12) count = false;      // foot never left the ground
+      if(L.type === "knee" && st.minKneeGap > -0.05) count = false;  // knee never rose
+    }
+    if(count && L.type === "knee"){
+      // a kick swings the knee too — don't double-count it as a knee strike
+      const kick = F.limbs["kick"+L.side];
+      if(kick.active || (t - kick.lastEnd < 0.35 && (kick.lastPeakVal || 0) > st.peak)) count = false;
+    }
+    if(count){
+      const ke = 0.5 * (L.mass*w) * st.peak*st.peak;
+      const tgt = st.hadFoe
+        ? (st.minHead < 1 ? "head" : (st.minBody < 1 ? "body" : (st.minLeg < 1 ? "leg" : null)))
+        : null;
+      const cls = classifyStrike(L, st, torsoN);
+      // WAKO K1 illegal targets: punches to legs; straight/side & spinning-back kicks to the thigh
+      const illegal = tgt === "leg" && (L.type === "punch" || cls.tech === "正蹬／側踢" || cls.tech === "後旋踢");
+      const blockedOut = !tgt && st.hadFoe && st.minBlock < (foeZ?.torso || 1)*0.35;
+      // WAKO Art.4: deviated/blocked or touch/brush strikes do NOT score
+      const quality = !st.hadFoe ? "solo"
+        : illegal ? "foul"
+        : tgt ? (st.peak >= EFF_V[L.type] ? "effective" : "light")
+        : blockedOut ? "blocked" : "missed";
+      F.strikes.push({ t, type:L.type, side:L.side, v:st.peak, ke, target:tgt,
+                       tech:cls.tech, quality, elbowExt:st.maxElbow || 0 });
+      F.dots.push({ t, v:st.peak });
+      F.peak = Math.max(F.peak, st.peak);
+      F.lastKE = ke;
+      st.lastPeakVal = st.peak;
+      if(st.hadFoe && foeF){
+        const dodgeTried = (st.defMaxDisp || 0) > (foeZ?.torso || 1)*0.35;
+        const defense = tgt ? null : (blockedOut ? "block" : (dodgeTried ? "dodge" : "range"));
+        foeF.incoming.push({ t, type:L.type, ke, landedZone:tgt, quality, defense, dodgeTried, blocked: blockedOut });
+        if(tgt && tgt !== "leg" && quality === "effective" && ke >= 55 && foeZ){
+          foeF.pendingHits.push({ t0:t, headStart:{ x:foeZ.head.x, y:foeZ.head.y }, torso:foeZ.torso, ke, maxDisp:0 });
+        }
+      }
+    }
+    st.peak = 0; st.maxElbow = 0; st.nSamples = 0;
+  };
+
   for(const L of LIMBS){
     const st = F.limbs[L.key];
-    if((lm[L.idx].visibility ?? 1) < 0.5){
-      st.buf.length = 0; st.v = 0; st.active = false; st.peak = 0;
+    const vis = lm[L.idx].visibility ?? 1;
+    if(vis < 0.5){
+      // fast strikes blur the limb — tolerate short dropouts instead of resetting
+      st.lowVisT = st.lowVisT ?? t;
+      if(t - st.lowVisT > 0.35){
+        if(st.active) endStrike(st, L);       // blur usually means FAST — finish & count it
+        st.buf.length = 0; st.v = 0; st.lowVisT = null;
+      }
       continue;
     }
+    st.lowVisT = null;
     const p0 = wl[L.idx];
     const p = { t, x: p0.x + midHipPx.x*mPerPx, y: p0.y + midHipPx.y*mPerPx, z: p0.z };
+    const prev = st.buf.length ? st.buf[st.buf.length-1] : null;
     st.buf.push(p);
     while(st.buf.length && t - st.buf[0].t > 0.5) st.buf.shift();
-    let v = 0, ref = null;
-    const target = t - 0.08;
-    for(let i=st.buf.length-1;i>=0;i--){ if(st.buf[i].t <= target){ ref = st.buf[i]; break; } }
-    if(ref && t - ref.t > 0.02){
-      v = dist3(p, ref)/(t - ref.t);
-      if(v > L.vmax){                       // tracking glitch — drop history, cancel strike
-        st.buf.length = 0; st.buf.push(p);
-        st.v = 0; st.active = false; st.peak = 0;
-        continue;
-      }
-      st.v = st.v == null ? v : 0.5*st.v + 0.5*v;
-    }else{ st.v = st.v ?? 0; }
-    const sp = st.v || 0;
+
+    // PEAK-PRESERVING speed:
+    // · instantaneous segment speed (survives low frame rates)
+    // · path-length speed over ~120ms (out-and-back does NOT cancel, unlike net displacement)
+    let inst = 0, segLen = 0;
+    if(prev && t - prev.t > 0.005){
+      segLen = dist3(p, prev);
+      inst = Math.min(L.vmax, segLen/(t - prev.t));   // clamp glitches instead of cancelling the strike
+    }
+    let pl = 0, tw0 = t;
+    for(let i = st.buf.length-1; i > 0; i--){
+      if(t - st.buf[i-1].t > 0.12) break;
+      pl += dist3(st.buf[i], st.buf[i-1]);
+      tw0 = st.buf[i-1].t;
+    }
+    const wSpd = (t - tw0) > 0.02 ? Math.min(L.vmax, pl/(t - tw0)) : inst;
+    const sp = Math.max(inst, wSpd);
+    st.v = sp;
 
     const elbowNow = L.type === "punch"
       ? angle3D(wl[L.side==="L"?LM.L_SHOULDER:LM.R_SHOULDER], wl[L.side==="L"?LM.L_ELBOW:LM.R_ELBOW], wl[L.idx])
       : 0;
 
-    if(!st.active && sp > L.onset && t - st.lastEnd > 0.25){
+    // impulse trigger: at low FPS a whole strike can be ONE big inter-frame jump
+    const impulse = !st.active && prev && inst > L.onset && segLen > 0.18;
+
+    if(!st.active && (sp > L.onset || impulse) && t - st.lastEnd > 0.22){
       st.active = true; st.peak = sp; st.start = t; st.maxElbow = elbowNow;
       st.minHead = 1e9; st.minBody = 1e9; st.minLeg = 1e9; st.hadFoe = false;
+      st.nSamples = 1;
       st.path = [{ x: lm[L.idx].x, y: lm[L.idx].y }];
       st.maxLift = 0; st.minKneeGap = 1e9;
       st.yaw0 = yawNow; st.maxYawD = 0;
@@ -2468,6 +2555,7 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
       if(foeZ){ st.defHeadStart = { x:foeZ.head.x, y:foeZ.head.y }; st.defMaxDisp = 0; st.minBlock = 1e9; }
     }else if(st.active){
       st.peak = Math.max(st.peak, sp);
+      st.nSamples = (st.nSamples || 0) + 1;
       if(L.type === "punch") st.maxElbow = Math.max(st.maxElbow || 0, elbowNow);
       if(st.path && st.path.length < 90) st.path.push({ x: lm[L.idx].x, y: lm[L.idx].y });
       let yd = Math.abs(yawNow - st.yaw0); if(yd > 180) yd = 360 - yd;
@@ -2490,55 +2578,14 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
           Math.min(Math.hypot(px.x-foeZ.thighL.x, px.y-foeZ.thighL.y),
                    Math.hypot(px.x-foeZ.thighR.x, px.y-foeZ.thighR.y))/foeZ.legR);
         if(foe.lm){
-          for(const wi of [LM.L_WRIST, LM.R_WRIST]){    // foe guard intercepting this strike
+          for(const wi of [LM.L_WRIST, LM.R_WRIST]){
             const gw = { x: foe.lm[wi].x*W, y: foe.lm[wi].y*H };
             st.minBlock = Math.min(st.minBlock, Math.hypot(px.x-gw.x, px.y-gw.y));
           }
         }
         st.defMaxDisp = Math.max(st.defMaxDisp || 0, Math.hypot(foeZ.head.x-st.defHeadStart.x, foeZ.head.y-st.defHeadStart.y));
       }
-      if(sp < L.end){
-        st.active = false; st.lastEnd = t;
-        let count = st.peak > L.minPeak && t - st.start > 0.05;
-        if(count && L.type === "kick" && st.maxLift < 0.22) count = false;      // foot never left the ground — a step, not a kick
-        if(count && L.type === "knee" && st.minKneeGap > -0.15) count = false;  // knee never rose toward hip height
-        if(count && L.type === "knee"){
-          // a kick swings the knee too — don't double-count it as a knee strike
-          const kick = F.limbs["kick"+L.side];
-          if(kick.active || (t - kick.lastEnd < 0.35 && (kick.lastPeakVal || 0) > st.peak)) count = false;
-        }
-        if(count){
-          const ke = 0.5 * (L.mass*w) * st.peak*st.peak;
-          const tgt = st.hadFoe
-            ? (st.minHead < 1 ? "head" : (st.minBody < 1 ? "body" : (st.minLeg < 1 ? "leg" : null)))
-            : null;
-          const cls = classifyStrike(L, st, torsoN);
-          // WAKO K1 illegal targets: punches to legs; straight/side & spinning-back kicks to the thigh
-          const illegal = tgt === "leg" && (L.type === "punch" || cls.tech === "正蹬／側踢" || cls.tech === "後旋踢");
-          const blockedOut = !tgt && st.hadFoe && st.minBlock < (foeZ?.torso || 1)*0.35;
-          // WAKO Art.4: deviated/blocked or touch/brush strikes do NOT score
-          const quality = !st.hadFoe ? "solo"
-            : illegal ? "foul"
-            : tgt ? (st.peak >= EFF_V[L.type] ? "effective" : "light")
-            : blockedOut ? "blocked" : "missed";
-          F.strikes.push({ t, type:L.type, side:L.side, v:st.peak, ke, target:tgt,
-                           tech:cls.tech, quality, elbowExt:st.maxElbow || 0 });
-          F.dots.push({ t, v:st.peak });
-          F.peak = Math.max(F.peak, st.peak);
-          F.lastKE = ke;
-          st.lastPeakVal = st.peak;
-          if(st.hadFoe && foeF){
-            const dodgeTried = (st.defMaxDisp || 0) > (foeZ?.torso || 1)*0.35;
-            // classify the foe's successful defense: 格擋 / 閃避 / 距離
-            const defense = tgt ? null : (blockedOut ? "block" : (dodgeTried ? "dodge" : "range"));
-            foeF.incoming.push({ t, type:L.type, ke, landedZone:tgt, quality, defense, dodgeTried, blocked: blockedOut });
-            if(tgt && tgt !== "leg" && quality === "effective" && ke >= 55 && foeZ){
-              foeF.pendingHits.push({ t0:t, headStart:{ x:foeZ.head.x, y:foeZ.head.y }, torso:foeZ.torso, ke, maxDisp:0 });
-            }
-          }
-        }
-        st.peak = 0; st.maxElbow = 0;
-      }
+      if(sp < L.end) endStrike(st, L);
     }else if(L.type === "punch"){
       // fists idle — sample guard height (should stay near the chin)
       const mouthY = ((lm[9]?.y ?? lm[LM.NOSE].y) + (lm[10]?.y ?? lm[LM.NOSE].y))/2;
@@ -2951,7 +2998,7 @@ $("savePostureBtn").addEventListener("click", async ()=>{
 window.__ml = {
   get state(){ return mState; }, set state(v){ mState = v; },
   get run(){ return mRun; },
-  renderTechAnalysis, updateSparCard, freshSession,
+  renderTechAnalysis, updateSparCard, freshSession, freshFighter, processFighter,
 };
 
 /* PWA: install-to-home-screen + offline app shell */
