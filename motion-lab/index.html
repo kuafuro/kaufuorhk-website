@@ -1605,6 +1605,20 @@ $("reportBtn").addEventListener("click", async ()=>{
    MOTION TAB
    ============================================================ */
 const mVideo = $("mVideo"), mCanvas = $("mCanvas"), mCtx = mCanvas.getContext("2d");
+/* feed the detector a ≤512px copy of the frame — coordinates are normalized so
+   nothing downstream changes, but per-frame cost drops a lot on phone footage */
+let detCanvas = null, detCtx = null;
+function detectFrame(){
+  const vw = mVideo.videoWidth, vh = mVideo.videoHeight;
+  if(!vw) return mVideo;
+  const scale = Math.min(1, 512/Math.max(vw, vh));
+  if(scale >= 0.999) return mVideo;
+  const dw = Math.round(vw*scale), dh = Math.round(vh*scale);
+  if(!detCanvas){ detCanvas = document.createElement("canvas"); detCtx = detCanvas.getContext("2d"); }
+  if(detCanvas.width !== dw || detCanvas.height !== dh){ detCanvas.width = dw; detCanvas.height = dh; }
+  detCtx.drawImage(mVideo, 0, 0, dw, dh);
+  return detCanvas;
+}
 const spark = $("speedSpark"), sparkCtx = spark.getContext("2d");
 let mState = null;
 /* Muay Thai / kickboxing: every striking limb gets its own detector.
@@ -1612,12 +1626,12 @@ let mState = null;
    minPeak filters slow movements (steps, resets); mass = effective
    striking mass as a fraction of body weight (estimate, disclaimed). */
 const LIMBS = [
-  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:1.8, end:1.0, minPeak:2.2, mass:0.05, vmax:22 },
-  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:1.8, end:1.0, minPeak:2.2, mass:0.05, vmax:22 },
-  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:2.8, end:1.4, minPeak:3.2, mass:0.09, vmax:28 },
-  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:2.8, end:1.4, minPeak:3.2, mass:0.09, vmax:28 },
-  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:2.4, end:1.1, minPeak:2.8, mass:0.07, vmax:22 },
-  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:2.4, end:1.1, minPeak:2.8, mass:0.07, vmax:22 },
+  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:1.5, end:0.9, minPeak:1.8, mass:0.05, vmax:22 },
+  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:1.5, end:0.9, minPeak:1.8, mass:0.05, vmax:22 },
+  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:2.2, end:1.2, minPeak:2.6, mass:0.09, vmax:28 },
+  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:2.2, end:1.2, minPeak:2.6, mass:0.09, vmax:28 },
+  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:2.0, end:1.0, minPeak:2.4, mass:0.07, vmax:22 },
+  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:2.0, end:1.0, minPeak:2.4, mass:0.07, vmax:22 },
 ];
 const TYPE_LABEL = { punch:"拳", kick:"踢", knee:"膝" };
 /* WAKO Art.4: techniques must land with full power — below these peak speeds
@@ -1928,6 +1942,7 @@ async function batchAnalyze(){
   mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   mRun.subjectSig = null; mRun.oppSig = null;
+  mRun.detMs = null; mRun.lastDetTs = null; mRun.fpsWarned = false;
   tracker.reset();
   identity.lastCheck = -1; identity.lastFix = -1;
   $("mMsg").classList.add("hidden");
@@ -1939,12 +1954,12 @@ async function batchAnalyze(){
   $("mProgLabel").textContent = "⚡ 快速分析 0%";
   acquireWake();
 
-  // adaptive fast playback: speed up as far as inference keeps ~15 samples
-  // per media second (no seeking — seeks decode from the last keyframe and
-  // can be quadratically slow on long-GOP videos)
+  // adaptive playback: fast device → up to 6×; slow device → DOWN to 0.15×.
+  // Slower-than-realtime is the key guarantee: every ~1/15s of media time
+  // gets analysed, so fast strikes can no longer fall between frames.
   const dur = mVideo.duration;
   let inferEMA = 0.06, lastMedia = -1, frames = 0;
-  mVideo.playbackRate = 2;
+  mVideo.playbackRate = 1;
   try{ await mVideo.play(); }
   catch(err){
     releaseWake(); stopMotion();
@@ -1960,9 +1975,9 @@ async function batchAnalyze(){
         lastMedia = mt;
         const s0 = performance.now();
         let res2 = null;
-        try{ res2 = landmarker.detect(mVideo); }catch(e){}
+        try{ res2 = landmarker.detect(detectFrame()); }catch(e){}
         inferEMA = 0.8*inferEMA + 0.2*(performance.now()-s0)/1000;
-        try{ mVideo.playbackRate = Math.max(1, Math.min(6, 1/(inferEMA*15))); }catch(e){}
+        try{ mVideo.playbackRate = Math.max(0.15, Math.min(6, 1/(inferEMA*15))); }catch(e){}
         const W = mVideo.videoWidth, H = mVideo.videoHeight;
         if(res2 && W){
           if(mCanvas.width !== W || mCanvas.height !== H){ mCanvas.width = W; mCanvas.height = H; }
@@ -1973,7 +1988,7 @@ async function batchAnalyze(){
             const pct = mt/dur*100;
             $("mProgFill").style.width = pct + "%";
             const rate = mt / Math.max(0.001, (performance.now()-t0wall)/1000);
-            $("mProgLabel").textContent = `⚡ 快速分析 ${Math.round(pct)}%（${fmt(rate,1)}× 速度）· 剩餘約 ${rate>0 ? ((dur-mt)/rate).toFixed(0) : "–"} 秒`;
+            $("mProgLabel").textContent = `⚡ ${rate < 0.95 ? "逐格精細分析" : "快速分析"} ${Math.round(pct)}%（${fmt(rate,1)}× 速度）· 剩餘約 ${rate>0 ? ((dur-mt)/rate).toFixed(0) : "–"} 秒`;
             refreshMotionUI(out);
           }
         }
@@ -2000,6 +2015,7 @@ async function startMotion(source){
   mRun.targetPos = null; mRun.lastRanked = null;   // re-lock onto the most prominent person
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null; mRun.lastCands = null;
   mRun.subjectSig = null; mRun.oppSig = null;
+  mRun.detMs = null; mRun.lastDetTs = null;
   tracker.reset();
   identity.lastCheck = -1; identity.lastFix = -1;
   acquireWake();
@@ -2208,8 +2224,11 @@ function motionLoop(){
   if(ts <= mRun.lastTs) return;
   mRun.lastTs = ts;
   let res;
-  try{ res = mRun.multi ? landmarker.detect(mVideo) : landmarker.detectForVideo(mVideo, ts); }
+  try{ res = mRun.multi ? landmarker.detect(detectFrame()) : landmarker.detectForVideo(mVideo, ts); }
   catch(e){ return; }
+  // live FPS estimate — drives the low-frame-rate warning and identity cadence
+  if(mRun.lastDetTs){ const d = ts - mRun.lastDetTs; mRun.detMs = mRun.detMs ? 0.8*mRun.detMs + 0.2*d : d; }
+  mRun.lastDetTs = ts;
   const W = mVideo.videoWidth, H = mVideo.videoHeight;
   if(!W) return;
   if(mCanvas.width !== W || mCanvas.height !== H){ mCanvas.width = W; mCanvas.height = H; }
@@ -2320,7 +2339,9 @@ function handleDetections(res, tSec, mirrored, W, H){
     /* ---- identity memory: verify A/B are still bound to the right PEOPLE.
        Runs every ~0.25s. If the tracker silently swapped the two fighters
        (crossing, clinch, occlusion), the embeddings expose it — rebind. ---- */
-    if(embedder && subj && tSec - identity.lastCheck > 0.25){
+    const liveFps = mRun.on && mRun.detMs ? 1000/mRun.detMs : null;   // null in batch (dense by design)
+    const idInterval = liveFps != null && liveFps < 8 ? 1.0 : 0.25;   // don't let the embedder eat the frame rate
+    if(embedder && subj && (liveFps == null || liveFps >= 5) && tSec - identity.lastCheck > idInterval){
       identity.lastCheck = tSec;
       const overlap = oppCand ? tracker.iou(subj.box, oppCand.box) : 0;
       const eS = embedPerson(subj.box);
@@ -2403,12 +2424,19 @@ function handleDetections(res, tSec, mirrored, W, H){
 
 function refreshMotionUI(out){
   const lbl = $("mSelLabel");
-  if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
+  const fps = mRun.source === "cam" && mRun.detMs ? 1000/mRun.detMs : null;
+  const fpsTag = fps != null && fps < 10 ? ` · ⚠${fps.toFixed(0)}fps` : "";
+  if(fps != null && fps < 8 && !mRun.fpsWarned){
+    mRun.fpsWarned = true;
+    toast("⚠ 幀率偏低——快動作可能漏計。建議改用⚡上載影片（會自動逐格慢速分析，唔會漏），或 AI 精度㨂「快」", 6000);
+  }
+  if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人" + fpsTag; lbl.style.display = "block"; }
   else if(mRun.multi && out.opp){
-    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 撳B對調";
+    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 撳B對調" + fpsTag;
     lbl.style.display = "block";
   }
-  else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
+  else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象` + fpsTag; lbl.style.display = "block"; }
+  else if(fpsTag){ lbl.textContent = "單人分析" + fpsTag; lbl.style.display = "block"; }
   else lbl.style.display = "none";
   updateTiles();
   updateSparCard();
@@ -2460,8 +2488,8 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
     st.active = false; st.lastEnd = t;
     let count = st.peak > L.minPeak;
     if(count && (st.nSamples || 0) >= 3){          // gates need enough samples to be meaningful
-      if(L.type === "kick" && st.maxLift < 0.12) count = false;      // foot never left the ground
-      if(L.type === "knee" && st.minKneeGap > -0.05) count = false;  // knee never rose
+      if(L.type === "kick" && st.maxLift < 0.08) count = false;      // foot never left the ground
+      if(L.type === "knee" && st.minKneeGap > -0.02) count = false;  // knee never rose
     }
     if(count && L.type === "knee"){
       // a kick swings the knee too — don't double-count it as a knee strike
@@ -2525,7 +2553,11 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
     let inst = 0, segLen = 0;
     if(prev && t - prev.t > 0.005){
       segLen = dist3(p, prev);
-      inst = Math.min(L.vmax, segLen/(t - prev.t));   // clamp glitches instead of cancelling the strike
+      // limbs don't teleport: a big single-gap displacement WAS fast. The frame
+      // gap only upper-bounds the movement time — real strikes take ≤150ms, so
+      // reconstruct speed with min(gap, 0.15s) instead of diluting it at low FPS
+      const dtEff = Math.min(Math.max(t - prev.t, 0.03), 0.15);
+      inst = Math.min(L.vmax, segLen/dtEff);
     }
     let pl = 0, tw0 = t;
     for(let i = st.buf.length-1; i > 0; i--){
@@ -2542,7 +2574,7 @@ function processFighter(wl, lm, W, H, t, F, foe, foeF){
       : 0;
 
     // impulse trigger: at low FPS a whole strike can be ONE big inter-frame jump
-    const impulse = !st.active && prev && inst > L.onset && segLen > 0.18;
+    const impulse = !st.active && prev && inst > L.onset && segLen > 0.12 && segLen < (L.type === "kick" ? 1.4 : 0.9);
 
     if(!st.active && (sp > L.onset || impulse) && t - st.lastEnd > 0.22){
       st.active = true; st.peak = sp; st.start = t; st.maxElbow = elbowNow;
