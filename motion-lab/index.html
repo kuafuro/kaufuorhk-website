@@ -394,7 +394,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div class="prog-label" id="mSelLabel" style="top:auto;bottom:10px"></div>
       </div>
       <div class="card sparkwrap" style="margin-top:10px">
-        <div class="tile-lb" style="font-size:.78rem;color:var(--ink-muted)">手部速度（最近 6 秒）·<span style="color:var(--series-1)"> ─ 速度</span> ·<span style="color:var(--critical)"> ● 出拳峰值</span></div>
+        <div class="tile-lb" style="font-size:.78rem;color:var(--ink-muted)">出擊速度（最近 6 秒）·<span style="color:var(--series-1)"> ─ A</span> ·<span style="color:#fab219"> ─ B</span> · ● 出擊峰值</div>
         <canvas id="speedSpark"></canvas>
       </div>
     </div>
@@ -402,50 +402,50 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
     <div>
       <div class="tiles">
         <div class="tile hero">
-          <div class="lb">最快出拳（本節）Peak hand speed</div>
-          <div class="val" id="tPeak">–<small>m/s</small></div>
-          <div class="sub" id="tPeakKmh">= – km/h</div>
+          <div class="lb">最快出擊（本節）A / B · Peak strike speed</div>
+          <div class="val" id="tPeak" style="font-size:2rem">– / –<small>m/s</small></div>
+          <div class="sub" id="tPeakKmh">拳・踢・膝一齊計 · A=紅 B=橙</div>
         </div>
         <div class="tile">
-          <div class="lb">即時手速</div>
-          <div class="val" id="tSpeed">–<small>m/s</small></div>
+          <div class="lb">即時速度 A / B</div>
+          <div class="val" id="tSpeed" style="font-size:1.2rem">– / –<small>m/s</small></div>
         </div>
         <div class="tile">
-          <div class="lb">出拳次數 左/右</div>
-          <div class="val" id="tCount">0 / 0</div>
+          <div class="lb">A 出擊：拳・踢・膝</div>
+          <div class="val" id="tStrA" style="font-size:1.2rem">0・0・0</div>
         </div>
         <div class="tile">
-          <div class="lb">上一拳動能（估算）</div>
-          <div class="val" id="tKE">–<small>J</small></div>
-          <div class="sub">按體重 × 有效質量估算</div>
+          <div class="lb">B 出擊：拳・踢・膝</div>
+          <div class="val" id="tStrB" style="font-size:1.2rem">0・0・0</div>
         </div>
         <div class="tile">
-          <div class="lb">髖肩分離角</div>
-          <div class="val" id="tSep">–<small>°</small></div>
-          <div class="sub" id="tSepMax">峰值 –°</div>
+          <div class="lb">命中率 A / B</div>
+          <div class="val" id="tHit" style="font-size:1.2rem">– / –</div>
         </div>
         <div class="tile">
-          <div class="lb">手肘角 左/右</div>
-          <div class="val" id="tElbow" style="font-size:1.15rem">– / –°</div>
+          <div class="lb">防守成功率 A / B</div>
+          <div class="val" id="tDef" style="font-size:1.2rem">– / –</div>
         </div>
         <div class="tile">
-          <div class="lb">膝關節角 左/右</div>
-          <div class="val" id="tKnee" style="font-size:1.15rem">– / –°</div>
+          <div class="lb">上一擊動能 A / B</div>
+          <div class="val" id="tKE" style="font-size:1.2rem">– / –<small>J</small></div>
         </div>
         <div class="tile">
-          <div class="lb">站距 / 肩寬</div>
-          <div class="val" id="tStance">–<small>×</small></div>
-          <div class="sub">拳擊常見 1.0–1.6×</div>
+          <div class="lb">髖肩分離峰值 A / B</div>
+          <div class="val" id="tSep" style="font-size:1.2rem">– / –<small>°</small></div>
         </div>
       </div>
       <div class="card" id="sparCard" style="margin-top:12px;display:none">
-        <h3>🥊 對戰數據 <small style="color:var(--ink-muted);font-weight:400">Sparring（主角 vs 對手）</small></h3>
+        <h3>🥊 對戰數據 <small style="color:var(--ink-muted);font-weight:400">A（紅）vs B（橙）· 拳踢膝全計</small></h3>
         <div id="sparList"></div>
-        <div class="note-strip">命中／防守以 2D 影像重疊估算，唔代表真實接觸力度；力量以主角體重估算。數字用作訓練對比參考。</div>
+        <div class="note-strip">命中／防守以 2D 影像重疊估算，唔代表真實接觸力度；力量以輸入體重估算（兩人同值）。數字用作訓練對比參考。</div>
       </div>
       <div class="card" id="techCard" style="margin-top:12px;display:none">
         <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small>
-          <button class="btn" id="saveMotionBtn" style="float:right;padding:6px 12px;font-size:.82rem">💾 儲存本節紀錄</button></h3>
+          <span style="float:right">
+            <button class="btn" id="saveMotionBtn" style="padding:6px 12px;font-size:.82rem">💾 儲存 A</button>
+            <button class="btn" id="saveMotionBtnB" style="padding:6px 12px;font-size:.82rem">💾 儲存 B</button>
+          </span></h3>
         <div id="techList"></div>
         <div class="note-strip">分析基於 AI 骨架估算同拍攝角度，屬教練參考，唔係絕對標準。側面 45°–90° 拍攝結果最準。</div>
       </div>
@@ -536,10 +536,10 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <li>輸入體重（用作估算出拳動能）</li>
         <li>開鏡頭即時分析，或上載訓練影片——「⚡ 快速分析」會全速逐格處理，唔使睇住佢播</li>
         <li>多人模式<b>預設開啟</b>——每人有個號碼牌，撳你想分析嘅人物即可鎖定做「主角」（單人操練可以較返做單人模式，更快更省電）</li>
-        <li>對打／對練：兩人入鏡就自動計命中率（頭/腹）、防守成功率、閃避、承受重擊</li>
+        <li>對打／對練：兩人入鏡自動分 A（紅）/ B（橙），兩邊數據並排——拳、踢、膝全計，命中分頭/腹/腿（low kick）、防守、閃避、承受重擊</li>
         <li>「AI 精度」可揀 快／標準／超精細（Heavy 最仔細，下載約 29MB，適合影片批次分析）</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
-        <li>撳「技術分析」攞弱點總結（影片播完會自動生成）</li>
+        <li>撳「技術分析」攞 A/B 各自嘅弱點總結＋風格檔案（影片播完自動生成）；「儲存 A／儲存 B」分別入落唔同拳手檔案</li>
         <li>登入「📊 紀錄」後可以撳「儲存本節紀錄」——建立拳手檔案、追蹤成長曲線</li>
         <li>「重設數據」開始新一節統計</li>
       </ol>
@@ -658,7 +658,11 @@ function zonesOf(lm, W, H){
   const hipMid = { x:(px(LM.L_HIP).x+px(LM.R_HIP).x)/2, y:(px(LM.L_HIP).y+px(LM.R_HIP).y)/2 };
   const torso = Math.hypot(shoMid.x-hipMid.x, shoMid.y-hipMid.y) || 1;
   const belly = { x: hipMid.x + (shoMid.x-hipMid.x)*0.35, y: hipMid.y + (shoMid.y-hipMid.y)*0.35 };
-  return { head, headR, belly, bodyR: torso*0.5, torso };
+  // thighs — low-kick target zone (Muay Thai)
+  const mix = (a,b,f)=>({ x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f });
+  const thighL = mix(px(LM.L_HIP), px(LM.L_KNEE), 0.5);
+  const thighR = mix(px(LM.R_HIP), px(LM.R_KNEE), 0.5);
+  return { head, headR, belly, bodyR: torso*0.5, thighL, thighR, legR: torso*0.38, torso };
 }
 
 /* ---- identity tracker v2 ----
@@ -1558,29 +1562,36 @@ $("reportBtn").addEventListener("click", async ()=>{
 const mVideo = $("mVideo"), mCanvas = $("mCanvas"), mCtx = mCanvas.getContext("2d");
 const spark = $("speedSpark"), sparkCtx = spark.getContext("2d");
 let mState = null;
-const freshHands = () => ({
-  L:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
-  R:{ buf:[], active:false, peak:0, lastEnd:-1e9 },
-});
-function freshSession(){
+/* Muay Thai / kickboxing: every striking limb gets its own detector.
+   onset/end = speed thresholds (m/s) for the strike state machine;
+   minPeak filters slow movements (steps, resets); mass = effective
+   striking mass as a fraction of body weight (estimate, disclaimed). */
+const LIMBS = [
+  { key:"fistL", type:"punch", side:"L", idx:LM.L_WRIST, onset:2.5, end:1.0, minPeak:3.0, mass:0.05, vmax:16 },
+  { key:"fistR", type:"punch", side:"R", idx:LM.R_WRIST, onset:2.5, end:1.0, minPeak:3.0, mass:0.05, vmax:16 },
+  { key:"kickL", type:"kick",  side:"L", idx:LM.L_ANKLE, onset:4.2, end:1.6, minPeak:4.8, mass:0.09, vmax:20 },
+  { key:"kickR", type:"kick",  side:"R", idx:LM.R_ANKLE, onset:4.2, end:1.6, minPeak:4.8, mass:0.09, vmax:20 },
+  { key:"kneeL", type:"knee",  side:"L", idx:LM.L_KNEE,  onset:3.2, end:1.3, minPeak:3.8, mass:0.07, vmax:16 },
+  { key:"kneeR", type:"knee",  side:"R", idx:LM.R_KNEE,  onset:3.2, end:1.3, minPeak:3.8, mass:0.07, vmax:16 },
+];
+const TYPE_LABEL = { punch:"拳", kick:"踢", knee:"膝" };
+
+function freshFighter(){
   return {
-    peak:0, counts:{L:0,R:0}, lastKE:null, sepMax:0,
-    trace:[],                     // {t, v} for sparkline
-    punches:[],                   // {t, v} punch peaks for sparkline dots
-    punchLog:[],                  // {t, hand, v, ke, elbowExt, sep} full-session log for technique review
-    guard:{ low:0, total:0 },     // non-punching wrist-below-chin samples
+    limbs: Object.fromEntries(LIMBS.map(l=>[l.key, { buf:[], active:false, peak:0, lastEnd:-1e9 }])),
+    strikes: [],     // {t, type, side, v, ke, target:'head'|'body'|'leg'|null, elbowExt}
+    incoming: [],    // strikes RECEIVED: {t, type, ke, landedZone, dodgeTried, blocked}
+    hitsTaken: [],   // landed heavy hits: {t, ke, perturb}
+    pendingHits: [], // post-hit stability measurements in progress
+    guard:{ low:0, total:0 },
     stanceSum:0, stanceN:0,
-    travel:0, lastHipPx:null, lastHipT:null,   // footwork distance (metres, image-plane)
-    startT:null, lastT:null,
-    hands: freshHands(),          // subject's punch state machines
-    oppHands: freshHands(),       // opponent's punch state machines (incoming attacks)
-    spar:{
-      atk:[],        // subject's attacks:   {t, hand, v, ke, target:'head'|'body'|null}
-      def:[],        // incoming attacks:    {t, ke, landedZone, dodgeTried, blocked}
-      hitsTaken:[],  // landed heavy hits:   {t, ke, perturb}
-      pending:[],    // post-hit stability measurements in progress
-    },
+    travel:0, lastHipPx:null, lastHipT:null,
+    peak:0, vNow:0, sep:0, sepMax:0, lastKE:null,
+    trace:[], dots:[],   // sparkline series + strike markers
   };
+}
+function freshSession(){
+  return { A: freshFighter(), B: freshFighter(), startT:null, lastT:null };
 }
 let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, lastDom:0,
              gen:0 /* generation token: any start/stop invalidates suspended async handlers */,
@@ -1648,15 +1659,25 @@ $("mStage").addEventListener("click", e=>{
       if(d < bestD){ bestD = d; best = c; }
     }
     if(!best || bestD > 0.45) return;
-    if(best.trackId === mRun.subjectId) return;      // already the subject
+    if(best.trackId === mRun.subjectId) return;      // already fighter A
+    if(best.trackId === mRun.oppId){
+      // tapped fighter B — swap A↔B, keeping BOTH fighters' stats
+      const oldSubj = mRun.subjectId, oldSig = mRun.subjectSig;
+      mRun.subjectId = mRun.oppId; mRun.oppId = oldSubj;
+      mRun.subjectSig = mRun.oppSig; mRun.oppSig = oldSig;
+      mRun.lastSubjectPos = best.pos;
+      const tmp = mState.A; mState.A = mState.B; mState.B = tmp;
+      toast("已對調 A↔B（數據跟人走，冇重設）");
+      return;
+    }
     mRun.subjectId = best.trackId;
     mRun.lastSubjectPos = best.pos;
     mRun.subjectSig = best.sig ? best.sig.slice() : null;
-    mRun.oppId = null; mRun.oppSig = null;           // opponent re-resolves next frame
-    mState = freshSession();                         // stats describe ONE person — restart on switch
+    mRun.oppId = null; mRun.oppSig = null;           // B re-resolves next frame
+    mState = freshSession();                         // pairing changed — restart stats
     $("techCard").style.display = "none";
-    updateTiles(null, null, true);
-    toast(`已鎖定人物 ${best.trackId} 做主角，本節數據重新開始`);
+    updateTiles();
+    toast(`已鎖定人物 ${best.trackId} 做拳手 A，本節數據重新開始`);
   }else if(mRun.lastRanked?.length){
     let best = null, bestD = 1e9, bestRank = 0;
     mRun.lastRanked.forEach((o, rank)=>{
@@ -1671,7 +1692,7 @@ $("mStage").addEventListener("click", e=>{
     if(!already){
       mState = freshSession();
       $("techCard").style.display = "none";
-      updateTiles(null, null, true);
+      updateTiles();
       toast(`已切換至人物 ${bestRank+1}，本節數據重新開始`);
     }
   }
@@ -1918,14 +1939,14 @@ function stopMotion(){
   $("mProgLabel").style.display = "none";
   $("mSelLabel").style.display = "none";
   mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);   // no stale skeleton over the idle message
-  updateTiles(null, null, true);       // blank the live tiles; session totals stay
+  updateTiles();       // blank the live tiles; session totals stay
   updateSparCard();                    // re-evaluate card visibility at the transition
   drawSpark();
 }
 $("mStopBtn").addEventListener("click", stopMotion);
 $("mResetBtn").addEventListener("click", ()=>{
   mState = freshSession();
-  updateTiles(null, null, true);
+  updateTiles();
   drawSpark();
   $("techCard").style.display = "none";
   $("sparCard").style.display = "none";
@@ -1935,136 +1956,130 @@ $("mTechBtn").addEventListener("click", renderTechAnalysis);
 
 /* ---- rule-based technique / weakness review over the session data ---- */
 function renderTechAnalysis(){
-  const s = mState;
-  const dur = (s.startT != null && s.lastT != null) ? s.lastT - s.startT : 0;
-  const punches = s.punchLog;
-  const items = [];
+  const dur = (mState.startT != null && mState.lastT != null) ? mState.lastT - mState.startT : 0;
+  let html = "";
+  const fighters = [["A", mState.A, "#ff8a80", "A（紅）"], ["B", mState.B, "#ffd54f", "B（橙）"]];
+  let anyData = false;
 
-  if(dur < 5 || !punches.length){
-    items.push({ sev:"warning", t:"數據不足，未能分析弱點",
-      d:"開鏡頭或上載影片，側面 45°–90° 全身入鏡，打幾記出拳（刺拳／直拳／組合）再撳「技術分析」。" });
-  }else{
-    // 1) absolute speed benchmark
-    if(s.peak){
-      const lvl = s.peak >= 9 ? ["good","出色——接近職業選手參考水平（>9 m/s）"]
-              : s.peak >= 6 ? ["good","良好——業餘拳手常見範圍（6–9 m/s）"]
-              : s.peak >= 4 ? ["warning","初階（4–6 m/s）——多練髖部發力同放鬆出拳"]
-              : ["serious","偏慢（<4 m/s）——亦可能係拍攝距離／角度令數值偏低，建議側面重拍確認"];
-      items.push({ sev:lvl[0], t:`最快出拳 ${fmt(s.peak)} m/s（${fmt(s.peak*3.6,0)} km/h）`, d:`參考等級：${lvl[1]}。` });
+  for(const [tag, F, col, title] of fighters){
+    if(!F.strikes.length && !F.incoming.length) continue;
+    anyData = true;
+    const st = fStats(F);
+    const durMin = Math.max(dur/60, 1/60);
+    const items = [];
+
+    // 1) speed benchmark (all strike types)
+    if(F.peak){
+      const lvl = F.peak >= 10 ? ["good","出色——接近職業水平"]
+              : F.peak >= 7 ? ["good","良好（業餘常見 6–9 m/s，踢擊可更高）"]
+              : F.peak >= 4.5 ? ["warning","初階——多練由髖發力、放鬆出擊"]
+              : ["serious","偏慢——亦可能係拍攝距離／角度影響"];
+      items.push({ sev:lvl[0], t:`最快出擊 ${fmt(F.peak)} m/s（${fmt(F.peak*3.6,0)} km/h）`, d:lvl[1] });
     }
-    // 2) left/right asymmetry
-    const avg = hand => { const a = punches.filter(p=>p.hand===hand).map(p=>p.v); return a.length ? a.reduce((x,y)=>x+y,0)/a.length : null; };
-    const aL = avg("L"), aR = avg("R");
+    // 2) arsenal balance 拳踢膝
+    if(st.atk.length >= 5){
+      const kickShare = (st.by.kick + st.by.knee)/st.atk.length;
+      if(kickShare < 0.15) items.push({ sev:"warning", t:`武器偏單一：${st.by.punch}拳／${st.by.kick}踢／${st.by.knee}膝`,
+        d:"泰拳／踢拳計分重視腿法——加入低掃、正蹬同箍頸膝擊嘅組合。" });
+      else items.push({ sev:"good", t:`武器組合：${st.by.punch}拳／${st.by.kick}踢／${st.by.knee}膝`,
+        d:`腿法佔 ${(kickShare*100).toFixed(0)}%，組合多元。` });
+    }
+    // 3) fist L/R asymmetry
+    const avgH = side => { const a = F.strikes.filter(p=>p.type==="punch"&&p.side===side).map(p=>p.v); return a.length ? a.reduce((x,y)=>x+y,0)/a.length : null; };
+    const aL = avgH("L"), aR = avgH("R");
     if(aL != null && aR != null){
       const diff = Math.abs(aL-aR)/Math.max(aL,aR);
       if(diff > 0.2) items.push({ sev:"serious", t:`左右手速唔平均：左 ${fmt(aL)} / 右 ${fmt(aR)} m/s`,
-        d:`弱側平均慢 ${(diff*100).toFixed(0)}%。建議：弱側加練速度球／單手空擊 2 組，注意由轉髖帶動出拳而唔係淨靠手臂。` });
-      else items.push({ sev:"good", t:`左右手速平均（左 ${fmt(aL)} / 右 ${fmt(aR)} m/s）`, d:"" });
-    }else if(aL == null || aR == null){
-      const missing = aL == null ? "左" : "右";
-      items.push({ sev:"warning", t:`${missing}手未有出拳紀錄`, d:"組合拳練習記得兩手都要出，或者檢查該側手腕有冇被遮擋。" });
+        d:`弱側平均慢 ${(diff*100).toFixed(0)}%——弱側加練速度球／單手組合。` });
     }
-    // 3) hip–shoulder separation
-    if(s.sepMax){
-      if(s.sepMax < 15) items.push({ sev:"serious", t:`髖肩分離不足（峰值 ${fmt(s.sepMax,0)}°）`,
-        d:"出拳主要靠手臂，軀幹旋轉未用盡。建議：藥球側拋、「定髖轉肩」分離式空擊、慢動作重拳練軀幹先行。" });
-      else if(s.sepMax < 25) items.push({ sev:"warning", t:`髖肩分離一般（峰值 ${fmt(s.sepMax,0)}°）`,
-        d:"重拳前嘅蓄勁可以更明顯——試下刻意將髖先轉、膊頭遲少少跟上。" });
-      else items.push({ sev:"good", t:`髖肩分離良好（峰值 ${fmt(s.sepMax,0)}°）`, d:"軀幹旋轉參與充足。" });
+    // 4) hip–shoulder separation
+    if(F.sepMax){
+      if(F.sepMax < 15) items.push({ sev:"serious", t:`髖肩分離不足（峰值 ${fmt(F.sepMax,0)}°）`,
+        d:"出擊主要靠四肢，軀幹旋轉未用盡——藥球側拋、分離式空擊。" });
+      else if(F.sepMax >= 25) items.push({ sev:"good", t:`髖肩分離良好（峰值 ${fmt(F.sepMax,0)}°）`, d:"" });
     }
-    // 4) punch extension
-    const exts = punches.map(p=>p.elbowExt).filter(v=>v>0);
-    if(exts.length){
-      const maxExt = Math.max(...exts);
-      if(maxExt < 150) items.push({ sev:"warning", t:`出拳伸展未盡（手肘峰值 ${fmt(maxExt,0)}°）`,
-        d:"直拳完成時手肘應接近伸直（>160°）。如果本節以鈎拳／上擊為主可以忽略；否則留意距離感同膊頭前送。" });
-      else items.push({ sev:"good", t:`出拳伸展充分（手肘峰值 ${fmt(maxExt,0)}°）`, d:"" });
+    // 5) punch extension
+    const exts = F.strikes.filter(p=>p.type==="punch").map(p=>p.elbowExt).filter(v=>v>0);
+    if(exts.length && Math.max(...exts) < 150){
+      items.push({ sev:"warning", t:`出拳伸展未盡（手肘峰值 ${fmt(Math.max(...exts),0)}°）`,
+        d:"直拳完成時手肘應近伸直（>160°）；鈎拳為主可忽略。" });
     }
-    // 5) guard height
-    if(s.guard.total > 30){
-      const frac = s.guard.low / s.guard.total;
+    // 6) guard
+    if(F.guard.total > 30){
+      const frac = F.guard.low / F.guard.total;
       if(frac > 0.4) items.push({ sev:"serious", t:`防守手偏低（${(frac*100).toFixed(0)}% 時間喺下巴以下）`,
-        d:"非出拳時雙手應貼近面頰。建議：空擊全程「手掌摸面頰」提示、出拳後即刻收返，疲勞回合特別留意。" });
-      else if(frac > 0.2) items.push({ sev:"warning", t:`防守手間中放低（${(frac*100).toFixed(0)}% 時間）`,
-        d:"大致 OK，但注意組合拳尾同疲勞時嘅收手。" });
-      else items.push({ sev:"good", t:"防守手位置保持良好", d:"" });
+        d:"泰拳高保護式：雙手貼面頰、手肘收——出擊後即刻收返。" });
+      else if(frac <= 0.2) items.push({ sev:"good", t:"防守手位置保持良好", d:"" });
     }
-    // 6) stance width
-    if(s.stanceN > 30){
-      const st = s.stanceSum / s.stanceN;
-      if(st < 0.9) items.push({ sev:"warning", t:`站距偏窄（平均 ${fmt(st)}× 肩寬）`,
-        d:"重心易被逼失衡。目標約 1.0–1.6× 肩寬，前後腳約 45°。" });
-      else if(st > 1.8) items.push({ sev:"warning", t:`站距偏闊（平均 ${fmt(st)}× 肩寬）`,
-        d:"步法進退會偏慢，留意能唔能夠快速埋位同撤出。" });
-      else items.push({ sev:"good", t:`站距合適（平均 ${fmt(st)}× 肩寬）`, d:"" });
-    }
-    // 7) sparring: accuracy / defense / durability (needs 多人模式 + opponent)
-    const sp = sparStats();
-    if(sp.atk.length){
-      const accPct = Math.round(sp.landed/sp.atk.length*100);
+    // 7) accuracy by zone
+    if(st.atk.length){
+      const accPct = Math.round(st.landed/st.atk.length*100);
       const sevAcc = accPct >= 55 ? "good" : (accPct >= 35 ? "warning" : "serious");
-      items.push({ sev:sevAcc, t:`命中率 ${accPct}%（頭 ${sp.headHits}／腹 ${sp.bodyHits}，共 ${sp.atk.length} 次攻擊）`,
-        d: accPct < 55 ? "空拳多——留意距離感同出拳時機，先用刺拳量距再出組合。" : "命中效率良好。" });
+      items.push({ sev:sevAcc, t:`命中率 ${accPct}%（頭 ${st.headHits}／腹 ${st.bodyHits}／腿 ${st.legHits}，共 ${st.atk.length} 次出擊）`,
+        d: accPct < 55 ? "空擊多——用刺拳／前蹬量距，先控制距離再出組合。" : "命中效率良好。" });
     }
-    if(sp.inc.length){
-      const defPct = Math.round((sp.inc.length - sp.incLanded)/sp.inc.length*100);
+    // 8) defense
+    if(st.inc.length){
+      const defPct = Math.round((st.inc.length - st.incLanded)/st.inc.length*100);
       const sevDef = defPct >= 75 ? "good" : (defPct >= 50 ? "warning" : "serious");
-      items.push({ sev:sevDef, t:`防守成功率 ${defPct}%（對手攻擊 ${sp.inc.length} 次 · 格擋 ${sp.blocks} · 閃避成功 ${sp.dodgeOk}/${sp.dodges.length}）`,
-        d: defPct < 75 ? "被擊中比例偏高——練「出拳後即收手」同頭部離線（slip/roll）。" : "防守反應良好。" });
+      items.push({ sev:sevDef, t:`防守成功率 ${defPct}%（對方出擊 ${st.inc.length} · 格擋 ${st.blocks} · 閃避 ${st.dodgeOk}/${st.dodges.length}）`,
+        d: defPct < 75 ? "被擊中偏多——練提膝擋低掃、手肘防膝擊、頭部離線。" : "防守反應良好。" });
     }
-    if(sp.heavy.length){
-      const sevDur = (sp.stability ?? 0) >= 60 ? "good" : (sp.stability >= 40 ? "warning" : "serious");
-      items.push({ sev:sevDur, t:`承受重擊 ${sp.heavy.length} 次 · 抗打穩定指數 ${sp.stability}/100`,
-        d: (sp.stability < 60 ? "受擊後身體擾動較大——加強頸部訓練、核心抗旋轉，同埋收下巴習慣。" : "受擊後恢復穩定。")
-         + (sp.projected ? `估算一場（3×3 分鐘）可承受重擊約 ${sp.projected} 次（實驗性推算，僅供參考）。` : "") });
+    // 9) durability
+    if(st.heavy.length){
+      const sevDur = (st.stability ?? 0) >= 60 ? "good" : (st.stability >= 40 ? "warning" : "serious");
+      items.push({ sev:sevDur, t:`承受重擊 ${st.heavy.length} 次 · 抗打穩定指數 ${st.stability}/100`,
+        d: (st.stability < 60 ? "受擊後擾動較大——頸部訓練、核心抗旋轉、收下巴。" : "受擊後恢復穩定。")
+         + (st.projected ? `估算一場（3×3 分鐘）可承受重擊約 ${st.projected} 次（實驗性）。` : "") });
     }
-    // session volume summary
-    items.push({ sev:"good", t:`本節：${s.counts.L + s.counts.R} 記出拳（左 ${s.counts.L}／右 ${s.counts.R}）· 時長 ${fmt(dur,0)} 秒`, d:"" });
-  }
+    items.push({ sev:"good", t:`本節：${st.atk.length} 次出擊（拳${st.by.punch}／踢${st.by.kick}／膝${st.by.knee}）· 時長 ${fmt(dur,0)} 秒`, d:"" });
 
-  /* ---- quantified fighter profile (0–100 axes + style label) ---- */
-  let profileHtml = "";
-  if(dur >= 5){
-    const sp = sparStats();
-    const durMin = Math.max(dur/60, 1/60);
-    const rate = punches.length/durMin;
-    const kes = punches.map(p=>p.ke).filter(Boolean);
+    // quantified profile axes
+    const rateNum = st.atk.length/durMin;
+    const kes = st.kes;
     const avgKE = kes.length ? kes.reduce((a,b)=>a+b,0)/kes.length : null;
     const c100 = v => Math.max(0, Math.min(100, Math.round(v)));
-    const mpm = s.travel/durMin;
+    const mpm = F.travel/durMin;
     const axes = [
-      { n:"力量 Power",      v: avgKE != null ? c100(avgKE/1.2) : null,                       note: avgKE != null ? `平均 ${fmt(avgKE,0)} J` : "未有數據" },
-      { n:"速度 Speed",      v: s.peak ? c100((s.peak-3)*14) : null,                          note: s.peak ? `峰值 ${fmt(s.peak)} m/s` : "未有數據" },
-      { n:"攻擊性 Volume",   v: c100(rate*3.3),                                               note: `${fmt(rate,1)} 拳／分鐘` },
-      { n:"命中 Accuracy",   v: sp.atk.length ? c100(sp.landed/sp.atk.length*100) : null,     note: sp.atk.length ? `${sp.landed}／${sp.atk.length} 中` : "需對戰數據" },
-      { n:"防守 Defense",    v: sp.inc.length ? c100((sp.inc.length-sp.incLanded)/sp.inc.length*100) : null, note: sp.inc.length ? `對手攻擊 ${sp.inc.length} 次` : "需對戰數據" },
-      { n:"抗打 Durability", v: sp.stability,                                                 note: sp.heavy.length ? `受重擊 ${sp.heavy.length} 次` : "未受重擊" },
+      { n:"力量 Power",      v: avgKE != null ? c100(avgKE/1.6) : null,                       note: avgKE != null ? `平均 ${fmt(avgKE,0)} J` : "未有數據" },
+      { n:"速度 Speed",      v: F.peak ? c100((F.peak-3)*12) : null,                          note: F.peak ? `峰值 ${fmt(F.peak)} m/s` : "未有數據" },
+      { n:"攻擊性 Volume",   v: c100(rateNum*3.3),                                            note: `${fmt(rateNum,1)} 擊／分鐘` },
+      { n:"命中 Accuracy",   v: st.atk.length ? c100(st.landed/st.atk.length*100) : null,     note: st.atk.length ? `${st.landed}／${st.atk.length} 中` : "需對手入鏡" },
+      { n:"防守 Defense",    v: st.inc.length ? c100((st.inc.length-st.incLanded)/st.inc.length*100) : null, note: st.inc.length ? `捱打 ${st.inc.length} 次` : "需對手入鏡" },
+      { n:"抗打 Durability", v: st.stability,                                                 note: st.heavy.length ? `受重擊 ${st.heavy.length} 次` : "未受重擊" },
       { n:"步法 Footwork",   v: c100(mpm*5),                                                  note: `移動 ${fmt(mpm,1)} 米／分鐘` },
     ];
-    const A = Object.fromEntries(axes.map(a=>[a.n.split(" ")[0], a.v]));
-    const s1 = (A["攻擊性"] ?? 0) >= 55 ? "進攻型" : ((A["防守"] ?? 0) >= 60 ? "防守反擊型" : "均衡型");
-    const s2 = (A["力量"] ?? 0) >= 65 ? "重炮手" : ((A["速度"] ?? 0) >= 65 ? "快攻手" : ((A["步法"] ?? 0) >= 55 ? "游擊手" : "技術型"));
-    const pref = sp.landed
-      ? `目標偏好：攻頭 ${Math.round(sp.headHits/sp.landed*100)}%／攻腹 ${Math.round(sp.bodyHits/sp.landed*100)}%` : "";
-    profileHtml = `
-      <div style="margin-top:12px;border-top:1px solid var(--hairline);padding-top:10px">
-        <b style="color:var(--ink)">風格檔案（量化）：${s1}・${s2}</b>
-        ${pref ? `<div class="hint" style="margin-top:2px">${pref}</div>` : ""}
-        ${axes.map(a=>`
-          <div class="metric-row" style="padding:6px 0">
-            <div class="metric-name" style="flex:0 0 128px;font-size:.82rem">${a.n}</div>
-            <div class="loadbar" style="flex:1"><div style="width:${a.v ?? 0}%"></div></div>
-            <div class="metric-val" style="flex:0 0 96px;font-size:.85rem">${a.v != null ? a.v+"/100" : "—"}<small>${a.note}</small></div>
+    const A2 = Object.fromEntries(axes.map(a=>[a.n.split(" ")[0], a.v]));
+    const s1 = (A2["攻擊性"] ?? 0) >= 55 ? "進攻型" : ((A2["防守"] ?? 0) >= 60 ? "防守反擊型" : "均衡型");
+    const kickShare2 = st.atk.length ? (st.by.kick+st.by.knee)/st.atk.length : 0;
+    const s2 = kickShare2 >= 0.45 ? "腿法手" : (A2["力量"] ?? 0) >= 65 ? "重炮手" : (A2["速度"] ?? 0) >= 65 ? "快攻手" : (A2["步法"] ?? 0) >= 55 ? "游擊手" : "技術型";
+
+    html += `
+      <div style="margin-top:${html?18:0}px;border-top:${html?"1px solid var(--hairline)":"none"};padding-top:${html?12:0}px">
+        <div style="font-weight:800;color:${col};margin-bottom:6px">拳手 ${title} — ${s1}・${s2}</div>
+        ${items.map(i=>`
+          <div class="muscle-item">
+            <span class="dot" style="background:${STATUS_COLOR[i.sev]}"></span>
+            <span><b>${i.t}</b>${i.d ? `<br><span style="color:var(--ink-muted)">${i.d}</span>` : ""}</span>
           </div>`).join("")}
-        <div class="hint">評分以業餘訓練水平校準；命中／防守／抗打需「多人模式＋對手入鏡」先有數據。</div>
+        <div style="margin-top:8px">
+          ${axes.map(a=>`
+            <div class="metric-row" style="padding:5px 0">
+              <div class="metric-name" style="flex:0 0 128px;font-size:.82rem">${a.n}</div>
+              <div class="loadbar" style="flex:1"><div style="width:${a.v ?? 0}%;background:${col}"></div></div>
+              <div class="metric-val" style="flex:0 0 96px;font-size:.85rem">${a.v != null ? a.v+"/100" : "—"}<small>${a.note}</small></div>
+            </div>`).join("")}
+        </div>
       </div>`;
   }
 
-  $("techList").innerHTML = items.map(i=>`
-    <div class="muscle-item">
-      <span class="dot" style="background:${STATUS_COLOR[i.sev]}"></span>
-      <span><b>${i.t}</b>${i.d ? `<br><span style="color:var(--ink-muted)">${i.d}</span>` : ""}</span>
-    </div>`).join("") + profileHtml;
+  if(!anyData){
+    html = `<div class="muscle-item"><span class="dot" style="background:${STATUS_COLOR.warning}"></span>
+      <span><b>數據不足，未能分析</b><br><span style="color:var(--ink-muted)">開鏡頭或上載影片，全身入鏡，出幾記拳／踢／膝再撳「技術分析」。對戰數據需要兩人同時入鏡。</span></span></div>`;
+  }else{
+    html += `<div class="hint" style="margin-top:10px">評分以業餘訓練水平校準；命中／防守／抗打需兩人同時入鏡先有數據。力量以輸入體重估算。</div>`;
+  }
+  $("techList").innerHTML = html;
   $("techCard").style.display = "";
   $("techCard").scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
@@ -2152,7 +2167,7 @@ function handleDetections(res, tSec, mirrored, W, H){
 
     const others = cands.filter(c=>c.trackId !== mRun.subjectId);
     let oppCand = others.find(c=>c.trackId === mRun.oppId) || others.sort((a,b)=>b.h-a.h)[0] || null;
-    if(oppCand && oppCand.trackId !== mRun.oppId){ mRun.oppId = oppCand.trackId; mState.oppHands = freshHands(); }
+    if(oppCand && oppCand.trackId !== mRun.oppId){ mRun.oppId = oppCand.trackId; mState.B = freshFighter(); }
     if(oppCand){
       mRun.oppSig = mRun.oppSig ? mRun.oppSig.map((v,i)=>0.9*v + 0.1*oppCand.sig[i]) : oppCand.sig.slice();
     }
@@ -2175,11 +2190,11 @@ function handleDetections(res, tSec, mirrored, W, H){
         isSubj ? 0.85 : (isOpp ? 0.6 : 0.3),
         isSubj ? SKELETON_COLOR : (isOpp ? "#fab219" : "#9a9a94"));
       drawPersonBadge(mCtx, lmDraw, W, H, mirrored,
-        isSubj ? "主" : (isOpp ? "對" : c.trackId),
+        isSubj ? "A" : (isOpp ? "B" : c.trackId),
         isSubj ? "#d32f2f" : (isOpp ? "rgba(160,110,0,0.9)" : null));
     }
-    if(selLm && selWl) processMotion(selWl, selLm, W, H, tSec, opp);
-    if(opp?.lm && opp?.wl && selLm) processIncoming(opp.wl, opp.lm, W, H, tSec, selLm);
+    if(selLm && selWl) processFighter(selWl, selLm, W, H, tSec, mState.A, opp, opp ? mState.B : null);
+    if(opp?.lm && opp?.wl && selLm) processFighter(opp.wl, opp.lm, W, H, tSec, mState.B, { lm:selLm, wl:selWl }, mState.A);
 
   }else if(people.length){
     /* ---- single-person tracking mode ---- */
@@ -2207,7 +2222,7 @@ function handleDetections(res, tSec, mirrored, W, H){
     });
     if(selIdx >= 0){ selLm = people[selIdx]; selWl = res.worldLandmarks?.[selIdx]; tracking = "ok"; }
     else tracking = "lost";
-    if(selWl && selLm) processMotion(selWl, selLm, W, H, tSec, null);
+    if(selWl && selLm) processFighter(selWl, selLm, W, H, tSec, mState.A, null, null);
   }
   return { selLm, selWl, opp, tracking, nPeople };
 }
@@ -2215,10 +2230,10 @@ function handleDetections(res, tSec, mirrored, W, H){
 function refreshMotionUI(out){
   const lbl = $("mSelLabel");
   if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人"; lbl.style.display = "block"; }
-  else if(mRun.multi && out.opp){ lbl.textContent = "對戰模式：主=紅 · 對=橙 · 撳人物換主角"; lbl.style.display = "block"; }
+  else if(mRun.multi && out.opp){ lbl.textContent = "對戰模式：A=紅 · B=橙 · 撳人物設為A"; lbl.style.display = "block"; }
   else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象`; lbl.style.display = "block"; }
   else lbl.style.display = "none";
-  updateTiles(out.selLm, out.selWl);
+  updateTiles();
   updateSparCard();
   drawSpark();
 }
@@ -2229,10 +2244,12 @@ function angle3D(a,b,c){
   const d = (v1.x*v2.x+v1.y*v2.y+v1.z*v2.z)/((Math.hypot(v1.x,v1.y,v1.z)*Math.hypot(v2.x,v2.y,v2.z))||1);
   return deg(Math.acos(Math.max(-1,Math.min(1,d))));
 }
-function processMotion(wl, lm, W, H, t, opp){
-  // MediaPipe world landmarks are hip-centred per frame (whole-body translation removed).
-  // Re-anchor with the mid-hip image position × a metres-per-pixel scale from torso length,
-  // so a stepping punch keeps its footwork speed. Depth (towards-camera) motion is still lost.
+/* ============================================================
+   FIGHT ENGINE — symmetric per-fighter (A vs B), 拳・踢・膝
+   ============================================================ */
+/* one full pass for a fighter F: limb strike machines, zone hit-tests vs
+   the foe, and the foe's defensive response (dodge / block) */
+function processFighter(wl, lm, W, H, t, F, foe, foeF){
   const midHipPx = { x:(lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2 * W, y:(lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2 * H };
   const torsoM = (Math.hypot(wl[LM.L_SHOULDER].x-wl[LM.L_HIP].x, wl[LM.L_SHOULDER].y-wl[LM.L_HIP].y)
                 + Math.hypot(wl[LM.R_SHOULDER].x-wl[LM.R_HIP].x, wl[LM.R_SHOULDER].y-wl[LM.R_HIP].y))/2;
@@ -2242,250 +2259,215 @@ function processMotion(wl, lm, W, H, t, opp){
   mState.startT ??= t;
   mState.lastT = t;
 
-  // footwork travel (metres, image-plane)
-  if(mState.lastHipPx && t - mState.lastHipT < 0.5){
-    mState.travel += Math.hypot(midHipPx.x-mState.lastHipPx.x, midHipPx.y-mState.lastHipPx.y) * mPerPx;
+  if(F.lastHipPx && t - F.lastHipT < 0.5){
+    F.travel += Math.hypot(midHipPx.x-F.lastHipPx.x, midHipPx.y-F.lastHipPx.y) * mPerPx;
   }
-  mState.lastHipPx = midHipPx; mState.lastHipT = t;
+  F.lastHipPx = midHipPx; F.lastHipT = t;
 
-  const oppZones = opp?.lm ? zonesOf(opp.lm, W, H) : null;
+  const foeZ = foe?.lm ? zonesOf(foe.lm, W, H) : null;
+  const w = parseFloat($("weightInput").value) || 70;
 
-  // per-hand speed via displacement over an ~80ms window
-  for(const [hand, wristIdx] of [["L",LM.L_WRIST],["R",LM.R_WRIST]]){
-    const h = mState.hands[hand];
-    if((lm[wristIdx].visibility ?? 1) < 0.5){
-      // unreliable wrist — reset rather than corrupt speed / punch stats
-      h.buf.length = 0; h.v = 0; h.active = false; h.peak = 0;
+  for(const L of LIMBS){
+    const st = F.limbs[L.key];
+    if((lm[L.idx].visibility ?? 1) < 0.5){
+      st.buf.length = 0; st.v = 0; st.active = false; st.peak = 0;
       continue;
     }
-    const p0 = wl[wristIdx];
+    const p0 = wl[L.idx];
     const p = { t, x: p0.x + midHipPx.x*mPerPx, y: p0.y + midHipPx.y*mPerPx, z: p0.z };
-    h.buf.push(p);
-    while(h.buf.length && t - h.buf[0].t > 0.5) h.buf.shift();
-    let v = 0;
+    st.buf.push(p);
+    while(st.buf.length && t - st.buf[0].t > 0.5) st.buf.shift();
+    let v = 0, ref = null;
     const target = t - 0.08;
-    let ref = null;
-    for(let i=h.buf.length-1;i>=0;i--){ if(h.buf[i].t <= target){ ref = h.buf[i]; break; } }
+    for(let i=st.buf.length-1;i>=0;i--){ if(st.buf[i].t <= target){ ref = st.buf[i]; break; } }
     if(ref && t - ref.t > 0.02){
       v = dist3(p, ref)/(t - ref.t);
-      if(v > 16){
-        // tracking glitch (16 m/s is beyond elite hand speed) — drop history, cancel any punch
-        h.buf.length = 0; h.buf.push(p);
-        h.v = 0; h.active = false; h.peak = 0;
+      if(v > L.vmax){                       // tracking glitch — drop history, cancel strike
+        st.buf.length = 0; st.buf.push(p);
+        st.v = 0; st.active = false; st.peak = 0;
         continue;
       }
-      h.v = h.v == null ? v : 0.5*h.v + 0.5*v;   // light EMA
-    }else{
-      h.v = h.v ?? 0;
-    }
-    const sp = h.v || 0;
-    // elbow extension of this arm (for technique review of punch reach)
-    const sIdx = hand==="L"?LM.L_SHOULDER:LM.R_SHOULDER, eIdx = hand==="L"?LM.L_ELBOW:LM.R_ELBOW;
-    const elbowNow = angle3D(wl[sIdx], wl[eIdx], wl[wristIdx]);
-    // punch state machine
-    if(!h.active && sp > 2.5 && t - h.lastEnd > 0.25){
-      h.active = true; h.peak = sp; h.start = t; h.maxElbow = elbowNow;
-      h.minHeadRatio = 1e9; h.minBodyRatio = 1e9; h.hadOpp = false;
-    }else if(h.active){
-      h.peak = Math.max(h.peak, sp);
-      h.maxElbow = Math.max(h.maxElbow || 0, elbowNow);
-      if(oppZones){
-        // how close this punch gets to the opponent's head / belly zones
-        h.hadOpp = true;
-        const wpx = { x: lm[wristIdx].x*W, y: lm[wristIdx].y*H };
-        h.minHeadRatio = Math.min(h.minHeadRatio, Math.hypot(wpx.x-oppZones.head.x, wpx.y-oppZones.head.y)/oppZones.headR);
-        h.minBodyRatio = Math.min(h.minBodyRatio, Math.hypot(wpx.x-oppZones.belly.x, wpx.y-oppZones.belly.y)/oppZones.bodyR);
-      }
-      if(sp < 1.0){
-        h.active = false; h.lastEnd = t;
-        if(h.peak > 3.0 && t - h.start > 0.05){
-          mState.counts[hand]++;
-          mState.punches.push({t, v:h.peak});
-          const w = parseFloat($("weightInput").value) || 70;
-          const ke = 0.5 * (0.05*w) * h.peak*h.peak;
-          mState.lastKE = ke;
-          mState.punchLog.push({ t, hand, v:h.peak, ke, elbowExt:h.maxElbow, sep:mState.sep || 0 });
-          mState.peak = Math.max(mState.peak, h.peak);
-          if(h.hadOpp){
-            const target = h.minHeadRatio < 1 ? "head" : (h.minBodyRatio < 1 ? "body" : null);
-            mState.spar.atk.push({ t, hand, v:h.peak, ke, target });
+      st.v = st.v == null ? v : 0.5*st.v + 0.5*v;
+    }else{ st.v = st.v ?? 0; }
+    const sp = st.v || 0;
+
+    const elbowNow = L.type === "punch"
+      ? angle3D(wl[L.side==="L"?LM.L_SHOULDER:LM.R_SHOULDER], wl[L.side==="L"?LM.L_ELBOW:LM.R_ELBOW], wl[L.idx])
+      : 0;
+
+    if(!st.active && sp > L.onset && t - st.lastEnd > 0.25){
+      st.active = true; st.peak = sp; st.start = t; st.maxElbow = elbowNow;
+      st.minHead = 1e9; st.minBody = 1e9; st.minLeg = 1e9; st.hadFoe = false;
+      if(foeZ){ st.defHeadStart = { x:foeZ.head.x, y:foeZ.head.y }; st.defMaxDisp = 0; st.minBlock = 1e9; }
+    }else if(st.active){
+      st.peak = Math.max(st.peak, sp);
+      if(L.type === "punch") st.maxElbow = Math.max(st.maxElbow || 0, elbowNow);
+      if(foeZ){
+        st.hadFoe = true;
+        const px = { x: lm[L.idx].x*W, y: lm[L.idx].y*H };
+        st.minHead = Math.min(st.minHead, Math.hypot(px.x-foeZ.head.x, px.y-foeZ.head.y)/foeZ.headR);
+        st.minBody = Math.min(st.minBody, Math.hypot(px.x-foeZ.belly.x, px.y-foeZ.belly.y)/foeZ.bodyR);
+        st.minLeg = Math.min(st.minLeg,
+          Math.min(Math.hypot(px.x-foeZ.thighL.x, px.y-foeZ.thighL.y),
+                   Math.hypot(px.x-foeZ.thighR.x, px.y-foeZ.thighR.y))/foeZ.legR);
+        if(foe.lm){
+          for(const wi of [LM.L_WRIST, LM.R_WRIST]){    // foe guard intercepting this strike
+            const gw = { x: foe.lm[wi].x*W, y: foe.lm[wi].y*H };
+            st.minBlock = Math.min(st.minBlock, Math.hypot(px.x-gw.x, px.y-gw.y));
           }
         }
-        h.peak = 0; h.maxElbow = 0;
+        st.defMaxDisp = Math.max(st.defMaxDisp || 0, Math.hypot(foeZ.head.x-st.defHeadStart.x, foeZ.head.y-st.defHeadStart.y));
       }
-    }else{
-      // not punching — sample guard position (wrist should stay near the chin)
+      if(sp < L.end){
+        st.active = false; st.lastEnd = t;
+        let count = st.peak > L.minPeak && t - st.start > 0.05;
+        if(count && L.type === "knee"){
+          // a kick swings the knee too — don't double-count it as a knee strike
+          const kick = F.limbs["kick"+L.side];
+          if(kick.active || (t - kick.lastEnd < 0.35 && (kick.lastPeakVal || 0) > st.peak)) count = false;
+        }
+        if(count){
+          const ke = 0.5 * (L.mass*w) * st.peak*st.peak;
+          const tgt = st.hadFoe
+            ? (st.minHead < 1 ? "head" : (st.minBody < 1 ? "body" : (st.minLeg < 1 ? "leg" : null)))
+            : null;
+          F.strikes.push({ t, type:L.type, side:L.side, v:st.peak, ke, target:tgt, elbowExt:st.maxElbow || 0 });
+          F.dots.push({ t, v:st.peak });
+          F.peak = Math.max(F.peak, st.peak);
+          F.lastKE = ke;
+          st.lastPeakVal = st.peak;
+          if(st.hadFoe && foeF){
+            const dodgeTried = (st.defMaxDisp || 0) > (foeZ?.torso || 1)*0.35;
+            const blocked = !tgt && st.minBlock < (foeZ?.torso || 1)*0.35;
+            foeF.incoming.push({ t, type:L.type, ke, landedZone:tgt, dodgeTried, blocked });
+            if(tgt && tgt !== "leg" && ke >= 55 && foeZ){
+              foeF.pendingHits.push({ t0:t, headStart:{ x:foeZ.head.x, y:foeZ.head.y }, torso:foeZ.torso, ke, maxDisp:0 });
+            }
+          }
+        }
+        st.peak = 0; st.maxElbow = 0;
+      }
+    }else if(L.type === "punch"){
+      // fists idle — sample guard height (should stay near the chin)
       const mouthY = ((lm[9]?.y ?? lm[LM.NOSE].y) + (lm[10]?.y ?? lm[LM.NOSE].y))/2;
-      mState.guard.total++;
-      if(lm[wristIdx].y > mouthY + 0.06) mState.guard.low++;
+      F.guard.total++;
+      if(lm[L.idx].y > mouthY + 0.06) F.guard.low++;
     }
   }
-  // stance width sample (for technique review)
+
   {
     const shoulderW = Math.hypot(wl[LM.L_SHOULDER].x-wl[LM.R_SHOULDER].x, wl[LM.L_SHOULDER].z-wl[LM.R_SHOULDER].z);
     const stanceW = Math.hypot(wl[LM.L_ANKLE].x-wl[LM.R_ANKLE].x, wl[LM.L_ANKLE].z-wl[LM.R_ANKLE].z);
-    if(shoulderW > 0.05){ mState.stanceSum += stanceW/shoulderW; mState.stanceN++; }
+    if(shoulderW > 0.05){ F.stanceSum += stanceW/shoulderW; F.stanceN++; }
   }
-  const vNow = Math.max(mState.hands.L.v||0, mState.hands.R.v||0);
-  mState.trace.push({t, v:vNow});
-  while(mState.trace.length && t - mState.trace[0].t > 6) mState.trace.shift();
-  while(mState.punches.length && t - mState.punches[0].t > 6) mState.punches.shift();
+  F.vNow = Math.max(...LIMBS.map(L=>F.limbs[L.key].v || 0));
+  F.trace.push({ t, v:F.vNow });
+  while(F.trace.length && t - F.trace[0].t > 6) F.trace.shift();
+  while(F.dots.length && t - F.dots[0].t > 6) F.dots.shift();
 
-  // hip–shoulder separation (yaw difference in the horizontal plane)
   const yaw = (l,r) => Math.atan2(wl[l].z - wl[r].z, wl[l].x - wl[r].x);
   let sep = deg(yaw(LM.L_SHOULDER,LM.R_SHOULDER) - yaw(LM.L_HIP,LM.R_HIP));
   if(sep > 180) sep -= 360; if(sep < -180) sep += 360;
-  mState.sep = Math.abs(sep);
-  mState.sepMax = Math.max(mState.sepMax, mState.sep);
+  F.sep = Math.abs(sep);
+  F.sepMax = Math.max(F.sepMax, F.sep);
 
-  // finish post-hit stability measurements (durability)
-  const pend = mState.spar.pending;
-  if(pend.length){
+  // finish this fighter's own post-hit stability measurements
+  if(F.pendingHits.length){
     const selfZ = zonesOf(lm, W, H);
-    for(let i=pend.length-1;i>=0;i--){
-      const pd = pend[i];
+    for(let i=F.pendingHits.length-1;i>=0;i--){
+      const pd = F.pendingHits[i];
       pd.maxDisp = Math.max(pd.maxDisp, Math.hypot(selfZ.head.x-pd.headStart.x, selfZ.head.y-pd.headStart.y));
       if(t - pd.t0 > 0.8){
-        mState.spar.hitsTaken.push({ t:pd.t0, ke:pd.ke, perturb: pd.maxDisp/(pd.torso||1) });
-        pend.splice(i,1);
+        F.hitsTaken.push({ t:pd.t0, ke:pd.ke, perturb: pd.maxDisp/(pd.torso || 1) });
+        F.pendingHits.splice(i,1);
       }
     }
   }
 }
 
-/* opponent's attacks toward the subject: incoming hit / block / dodge classification */
-function processIncoming(oppWl, oppLm, W, H, t, subjLm){
-  const midHipPx = { x:(oppLm[LM.L_HIP].x + oppLm[LM.R_HIP].x)/2 * W, y:(oppLm[LM.L_HIP].y + oppLm[LM.R_HIP].y)/2 * H };
-  const torsoM = (Math.hypot(oppWl[LM.L_SHOULDER].x-oppWl[LM.L_HIP].x, oppWl[LM.L_SHOULDER].y-oppWl[LM.L_HIP].y)
-                + Math.hypot(oppWl[LM.R_SHOULDER].x-oppWl[LM.R_HIP].x, oppWl[LM.R_SHOULDER].y-oppWl[LM.R_HIP].y))/2;
-  const torsoPx = (Math.hypot((oppLm[LM.L_SHOULDER].x-oppLm[LM.L_HIP].x)*W, (oppLm[LM.L_SHOULDER].y-oppLm[LM.L_HIP].y)*H)
-                 + Math.hypot((oppLm[LM.R_SHOULDER].x-oppLm[LM.R_HIP].x)*W, (oppLm[LM.R_SHOULDER].y-oppLm[LM.R_HIP].y)*H))/2;
-  const mPerPx = torsoPx > 1 ? torsoM/torsoPx : 0;
-  const subjZ = zonesOf(subjLm, W, H);
-
-  for(const [hand, wristIdx] of [["L",LM.L_WRIST],["R",LM.R_WRIST]]){
-    const h = mState.oppHands[hand];
-    if((oppLm[wristIdx].visibility ?? 1) < 0.5){
-      h.buf.length = 0; h.v = 0; h.active = false; h.peak = 0;
-      continue;
-    }
-    const p0 = oppWl[wristIdx];
-    const p = { t, x: p0.x + midHipPx.x*mPerPx, y: p0.y + midHipPx.y*mPerPx, z: p0.z };
-    h.buf.push(p);
-    while(h.buf.length && t - h.buf[0].t > 0.5) h.buf.shift();
-    let v = 0;
-    const target = t - 0.08;
-    let ref = null;
-    for(let i=h.buf.length-1;i>=0;i--){ if(h.buf[i].t <= target){ ref = h.buf[i]; break; } }
-    if(ref && t - ref.t > 0.02){
-      v = dist3(p, ref)/(t - ref.t);
-      if(v > 16){ h.buf.length = 0; h.buf.push(p); h.v = 0; h.active = false; h.peak = 0; continue; }
-      h.v = h.v == null ? v : 0.5*h.v + 0.5*v;
-    }else{ h.v = h.v ?? 0; }
-    const sp = h.v || 0;
-
-    if(!h.active && sp > 2.5 && t - h.lastEnd > 0.25){
-      h.active = true; h.peak = sp; h.start = t;
-      h.minHeadRatio = 1e9; h.minBodyRatio = 1e9; h.minBlockDist = 1e9;
-      h.defHeadStart = { x: subjZ.head.x, y: subjZ.head.y };
-      h.defMaxDisp = 0;
-    }else if(h.active){
-      h.peak = Math.max(h.peak, sp);
-      const wpx = { x: oppLm[wristIdx].x*W, y: oppLm[wristIdx].y*H };
-      h.minHeadRatio = Math.min(h.minHeadRatio, Math.hypot(wpx.x-subjZ.head.x, wpx.y-subjZ.head.y)/subjZ.headR);
-      h.minBodyRatio = Math.min(h.minBodyRatio, Math.hypot(wpx.x-subjZ.belly.x, wpx.y-subjZ.belly.y)/subjZ.bodyR);
-      for(const wi of [LM.L_WRIST, LM.R_WRIST]){       // subject's guard intercepting the incoming fist
-        const swpx = { x: subjLm[wi].x*W, y: subjLm[wi].y*H };
-        h.minBlockDist = Math.min(h.minBlockDist, Math.hypot(wpx.x-swpx.x, wpx.y-swpx.y));
-      }
-      h.defMaxDisp = Math.max(h.defMaxDisp, Math.hypot(subjZ.head.x-h.defHeadStart.x, subjZ.head.y-h.defHeadStart.y));
-      if(sp < 1.0){
-        h.active = false; h.lastEnd = t;
-        if(h.peak > 3.0 && t - h.start > 0.05){
-          const w = parseFloat($("weightInput").value) || 70;
-          const ke = 0.5 * (0.05*w) * h.peak*h.peak;
-          const landedZone = h.minHeadRatio < 1 ? "head" : (h.minBodyRatio < 1 ? "body" : null);
-          const dodgeTried = h.defMaxDisp > subjZ.torso*0.35;
-          const blocked = !landedZone && h.minBlockDist < subjZ.torso*0.35;
-          mState.spar.def.push({ t, ke, landedZone, dodgeTried, blocked });
-          if(landedZone && ke >= 55){                  // heavy hit → measure post-hit stability
-            mState.spar.pending.push({ t0:t, headStart:{ x:subjZ.head.x, y:subjZ.head.y }, torso:subjZ.torso, ke, maxDisp:0 });
-          }
-        }
-        h.peak = 0;
-      }
-    }
-  }
-}
-function updateTiles(lm, wl, forceClear){
-  const s = mState;
-  $("tPeak").innerHTML = (s.peak? fmt(s.peak):"–") + "<small>m/s</small>";
-  $("tPeakKmh").textContent = s.peak ? `= ${fmt(s.peak*3.6)} km/h` : "= – km/h";
-  const vNow = Math.max(s.hands.L.v||0, s.hands.R.v||0);
-  $("tSpeed").innerHTML = (forceClear||!mRun.on ? "–" : fmt(vNow)) + "<small>m/s</small>";
-  $("tCount").textContent = `${s.counts.L} / ${s.counts.R}`;
-  $("tKE").innerHTML = (s.lastKE? fmt(s.lastKE,0):"–") + "<small>J</small>";
-  $("tSep").innerHTML = (s.sep!=null && mRun.on ? fmt(s.sep,0) : "–") + "<small>°</small>";
-  $("tSepMax").textContent = `峰值 ${s.sepMax?fmt(s.sepMax,0):"–"}°`;
-  if(wl){
-    $("tElbow").textContent = `${fmt(angle3D(wl[LM.L_SHOULDER],wl[LM.L_ELBOW],wl[LM.L_WRIST]),0)} / ${fmt(angle3D(wl[LM.R_SHOULDER],wl[LM.R_ELBOW],wl[LM.R_WRIST]),0)}°`;
-    $("tKnee").textContent = `${fmt(angle3D(wl[LM.L_HIP],wl[LM.L_KNEE],wl[LM.L_ANKLE]),0)} / ${fmt(angle3D(wl[LM.R_HIP],wl[LM.R_KNEE],wl[LM.R_ANKLE]),0)}°`;
-    const shoulderW = Math.hypot(wl[LM.L_SHOULDER].x-wl[LM.R_SHOULDER].x, wl[LM.L_SHOULDER].z-wl[LM.R_SHOULDER].z);
-    const stanceW = Math.hypot(wl[LM.L_ANKLE].x-wl[LM.R_ANKLE].x, wl[LM.L_ANKLE].z-wl[LM.R_ANKLE].z);
-    $("tStance").innerHTML = fmt(shoulderW>0.05 ? stanceW/shoulderW : null) + "<small>×</small>";
-  }else if(forceClear){
-    $("tElbow").textContent = "– / –°";
-    $("tKnee").textContent = "– / –°";
-    $("tStance").innerHTML = "–<small>×</small>";
-  }
-}
-/* live sparring stats: 命中（頭/腹）、力量、防守/閃避、承受重擊 */
-function sparStats(){
-  const sp = mState.spar;
-  const atk = sp.atk;
+/* per-fighter aggregates */
+function fStats(F){
+  const atk = F.strikes;
+  const by = { punch:0, kick:0, knee:0 };
+  for(const s of atk) by[s.type]++;
   const headHits = atk.filter(a=>a.target==="head").length;
   const bodyHits = atk.filter(a=>a.target==="body").length;
-  const landed = headHits + bodyHits;
+  const legHits  = atk.filter(a=>a.target==="leg").length;
+  const landed = headHits + bodyHits + legHits;
+  const withFoe = atk.filter(a=>a.target !== undefined);
   const kes = atk.map(a=>a.ke).filter(Boolean);
-  const inc = sp.def;
+  const inc = F.incoming;
   const incLanded = inc.filter(d=>d.landedZone).length;
   const dodges = inc.filter(d=>d.dodgeTried);
   const dodgeOk = dodges.filter(d=>!d.landedZone).length;
   const blocks = inc.filter(d=>d.blocked).length;
-  const heavy = sp.hitsTaken;
+  const heavy = F.hitsTaken;
   const avgPerturb = heavy.length ? heavy.reduce((s,x)=>s+x.perturb,0)/heavy.length : null;
   const stability = avgPerturb != null ? Math.max(0, Math.min(100, Math.round(100 - avgPerturb*180))) : null;
   const projected = (avgPerturb && avgPerturb > 0.02) ? Math.max(5, Math.min(60, Math.round(6/avgPerturb))) : null;
-  return { atk, headHits, bodyHits, landed, kes, inc, incLanded, dodges, dodgeOk, blocks, heavy, stability, projected };
+  return { atk, by, headHits, bodyHits, legHits, landed, kes, inc, incLanded, dodges, dodgeOk, blocks, heavy, stability, projected };
 }
+
+function updateTiles(){
+  const A = mState.A, B = mState.B;
+  const live = mRun.on;
+  const pair = (fa, fb) => `${fa} / ${fb}`;
+  $("tPeak").innerHTML = pair(A.peak?fmt(A.peak):"–", B.peak?fmt(B.peak):"–") + "<small>m/s</small>";
+  $("tSpeed").innerHTML = pair(live?fmt(A.vNow||0):"–", live && mRun.multi ? fmt(B.vNow||0) : "–") + "<small>m/s</small>";
+  const sA = fStats(A), sB = fStats(B);
+  $("tStrA").textContent = `${sA.by.punch}・${sA.by.kick}・${sA.by.knee}`;
+  $("tStrB").textContent = `${sB.by.punch}・${sB.by.kick}・${sB.by.knee}`;
+  const rate = s => s.atk.length ? Math.round(s.landed/s.atk.length*100)+"%" : "–";
+  $("tHit").textContent = pair(rate(sA), rate(sB));
+  const defR = s => s.inc.length ? Math.round((s.inc.length-s.incLanded)/s.inc.length*100)+"%" : "–";
+  $("tDef").textContent = pair(defR(sA), defR(sB));
+  $("tKE").innerHTML = pair(A.lastKE?fmt(A.lastKE,0):"–", B.lastKE?fmt(B.lastKE,0):"–") + "<small>J</small>";
+  $("tSep").innerHTML = pair(A.sepMax?fmt(A.sepMax,0):"–", B.sepMax?fmt(B.sepMax,0):"–") + "<small>°</small>";
+}
+
+/* live sparring table: A | B columns, 拳踢膝/命中/防守/閃避/承受 */
 function updateSparCard(){
-  const sp = mState.spar;
-  const hasData = sp.atk.length || sp.def.length || sp.hitsTaken.length;
-  // always show the full metric set once multi-person mode is on — zeros included
+  const hasData = mState.A.strikes.length || mState.B.strikes.length || mState.A.incoming.length || mState.B.incoming.length;
   const active = mRun.multi && (mRun.on || hasData);
   $("sparCard").style.display = active ? "" : "none";
   if(!active) return;
-  const s = sparStats();
+  const sA = fStats(mState.A), sB = fStats(mState.B);
   const pct = (x,y)=> y ? Math.round(x/y*100)+"%" : "–";
-  const row = (name, val) => `
+  const row = (name, va, vb) => `
     <div class="metric-row">
-      <div class="metric-name">${name}</div>
-      <div class="metric-val">${val}</div>
+      <div class="metric-name" style="flex:1.2">${name}</div>
+      <div class="metric-val" style="flex:1;color:#ff8a80">${va}</div>
+      <div class="metric-val" style="flex:1;color:#ffd54f">${vb}</div>
     </div>`;
+  const f = (s)=>({
+    total: s.atk.length,
+    types: `${s.by.punch}拳 ${s.by.kick}踢 ${s.by.knee}膝`,
+    head: `${s.headHits}（${pct(s.headHits, s.atk.length)}）`,
+    body: `${s.bodyHits}（${pct(s.bodyHits, s.atk.length)}）`,
+    leg: `${s.legHits}（${pct(s.legHits, s.atk.length)}）`,
+    hit: pct(s.landed, s.atk.length),
+    pow: s.kes.length ? `${fmt(s.kes.reduce((a,b)=>a+b,0)/s.kes.length,0)}/${fmt(Math.max(...s.kes),0)}J` : "–",
+    def: s.inc.length ? pct(s.inc.length - s.incLanded, s.inc.length) : "–",
+    blocks: s.blocks,
+    dodge: s.dodges.length ? `${s.dodgeOk}/${s.dodges.length}（${pct(s.dodgeOk, s.dodges.length)}）` : "0/0",
+    heavy: s.heavy.length,
+    stab: s.stability != null ? `${s.stability}/100` : "–",
+  });
+  const a = f(sA), b = f(sB);
   $("sparList").innerHTML =
-    row("對手狀態", mRun.oppId != null ? "已鎖定（橙牌「對」）" : "等待對手入鏡…") +
-    row("攻擊次數", s.atk.length) +
-    row("命中頭部", `${s.headHits} 次（${pct(s.headHits, s.atk.length)}）`) +
-    row("命中腹部", `${s.bodyHits} 次（${pct(s.bodyHits, s.atk.length)}）`) +
-    row("整體命中率", pct(s.landed, s.atk.length)) +
-    row("力量（平均／最大）", s.kes.length
-      ? `${fmt(s.kes.reduce((a,b)=>a+b,0)/s.kes.length,0)} / ${fmt(Math.max(...s.kes),0)} J` : "–") +
-    row("對手攻擊次數", s.inc.length) +
-    row("防守成功率", s.inc.length ? pct(s.inc.length - s.incLanded, s.inc.length) : "–") +
-    row("格擋次數", s.blocks) +
-    row("閃避（成功／嘗試）", s.dodges.length ? `${s.dodgeOk} / ${s.dodges.length}（${pct(s.dodgeOk, s.dodges.length)}）` : "0 / 0") +
-    row("承受重擊", `${s.heavy.length} 次`) +
-    row("抗打穩定指數", s.stability != null ? `${s.stability} / 100` : "–");
+    row("<b style='color:var(--ink)'>拳手</b>", "<b>A（紅）</b>", "<b>B（橙）</b>") +
+    row("出擊總數", a.total, b.total) +
+    row("拳・踢・膝", a.types, b.types) +
+    row("命中頭部", a.head, b.head) +
+    row("命中腹部", a.body, b.body) +
+    row("命中腿部（low kick）", a.leg, b.leg) +
+    row("整體命中率", a.hit, b.hit) +
+    row("力量 平均/最大", a.pow, b.pow) +
+    row("防守成功率", a.def, b.def) +
+    row("格擋次數", a.blocks, b.blocks) +
+    row("閃避 成功/嘗試", a.dodge, b.dodge) +
+    row("承受重擊", a.heavy, b.heavy) +
+    row("抗打穩定指數", a.stab, b.stab);
 }
 
 function drawSpark(){
@@ -2495,31 +2477,31 @@ function drawSpark(){
   const ctx = sparkCtx;
   ctx.save(); ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,cw,chh);
-  const tr = mState.trace;
-  // baseline
   ctx.strokeStyle = "#2c2c2a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0,chh-1); ctx.lineTo(cw,chh-1); ctx.stroke();
-  if(tr.length > 1){
-    const t1 = tr[tr.length-1].t, t0 = t1 - 6;
-    const vmax = Math.max(6, ...tr.map(p=>p.v), ...mState.punches.map(p=>p.v));
+  const all = [...mState.A.trace, ...mState.B.trace];
+  if(all.length > 1){
+    const t1 = Math.max(...all.map(p=>p.t)), t0 = t1 - 6;
+    const vmax = Math.max(6, ...all.map(p=>p.v), ...mState.A.dots.map(p=>p.v), ...mState.B.dots.map(p=>p.v));
     const X = t => (t - t0)/6 * cw;
     const Y = v => chh - 4 - (v/vmax)*(chh-10);
-    ctx.strokeStyle = "#3987e5"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
-    ctx.beginPath();
-    tr.forEach((p,i)=> i ? ctx.lineTo(X(p.t),Y(p.v)) : ctx.moveTo(X(p.t),Y(p.v)));
-    ctx.stroke();
-    // punch peak markers with surface ring
-    for(const p of mState.punches){
-      ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 6, 0, 7); ctx.fillStyle = "#1a1a19"; ctx.fill();
-      ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 4, 0, 7); ctx.fillStyle = "#d03b3b"; ctx.fill();
+    const series = [ [mState.B, "#fab219"], [mState.A, "#3987e5"] ];   // A drawn on top
+    for(const [F, col] of series){
+      if(F.trace.length < 2) continue;
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      F.trace.forEach((p,i)=> i ? ctx.lineTo(X(p.t),Y(p.v)) : ctx.moveTo(X(p.t),Y(p.v)));
+      ctx.stroke();
+      for(const p of F.dots){
+        ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 6, 0, 7); ctx.fillStyle = "#1a1a19"; ctx.fill();
+        ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 4, 0, 7); ctx.fillStyle = col; ctx.fill();
+      }
     }
-    // y-scale hint
     ctx.fillStyle = "#898781"; ctx.font = "10px system-ui,sans-serif";
     ctx.fillText(`${vmax.toFixed(0)} m/s`, 4, 10);
   }
   ctx.restore();
 }
-drawSpark();
 window.addEventListener("resize", drawSpark);
 
 /* ============================================================
@@ -2623,7 +2605,7 @@ function renderSessions(){
     const d = new Date(s.session_date).toLocaleDateString("zh-HK");
     const sum = s.summary || {};
     const info = s.kind === "motion"
-      ? `🥊 ${sum.punches ?? 0} 拳 · 峰值 ${fmt(sum.peak)} m/s`
+      ? `🥊 ${sum.strikes ?? sum.punches ?? 0} 擊（拳${sum.punches ?? 0}·踢${sum.kicks ?? 0}·膝${sum.knees ?? 0}）· 峰值 ${fmt(sum.peak)} m/s`
         + (sum.hitRate != null ? ` · 命中 ${sum.hitRate}%` : "")
         + (sum.overall != null ? ` · 綜合 ${sum.overall}` : "")
       : `🧍 體態評估（${sum.view === "side" ? "側面" : "正面"}）`;
@@ -2686,42 +2668,45 @@ function requireRecordsReady(){
   if(!currentAthleteId){ toast("請先喺「📊 紀錄」分頁新增／揀選拳手"); return false; }
   return true;
 }
-$("saveMotionBtn").addEventListener("click", async ()=>{
+async function saveFighter(tag){
   if(!requireRecordsReady()) return;
-  const s = mState;
-  const dur = (s.startT != null && s.lastT != null) ? s.lastT - s.startT : 0;
-  if(dur < 5 || !s.punchLog.length){ toast("本節數據不足，冇嘢可以儲存"); return; }
-  const sp = sparStats();
-  const kes = s.punchLog.map(p=>p.ke).filter(Boolean);
+  const F = mState[tag];
+  const dur = (mState.startT != null && mState.lastT != null) ? mState.lastT - mState.startT : 0;
+  if(dur < 5 || !F.strikes.length){ toast(`拳手 ${tag} 本節數據不足，冇嘢可以儲存`); return; }
+  const st = fStats(F);
   const durMin = Math.max(dur/60, 1/60);
   const summary = {
+    fighter: tag,
     durSec: Math.round(dur),
-    punches: s.punchLog.length, countsL: s.counts.L, countsR: s.counts.R,
-    peak: round1(s.peak),
-    avgKE: kes.length ? Math.round(kes.reduce((a,b)=>a+b,0)/kes.length) : null,
-    sepMax: Math.round(s.sepMax || 0),
-    rate: round1(s.punchLog.length/durMin),
-    atkCount: sp.atk.length, headHits: sp.headHits, bodyHits: sp.bodyHits,
-    hitRate: sp.atk.length ? Math.round(sp.landed/sp.atk.length*100) : null,
-    defRate: sp.inc.length ? Math.round((sp.inc.length-sp.incLanded)/sp.inc.length*100) : null,
-    blocks: sp.blocks, dodgeOk: sp.dodgeOk, dodgeTry: sp.dodges.length,
-    heavyTaken: sp.heavy.length, stability: sp.stability,
+    punches: st.by.punch, kicks: st.by.kick, knees: st.by.knee,
+    strikes: st.atk.length,
+    peak: round1(F.peak),
+    avgKE: st.kes.length ? Math.round(st.kes.reduce((a,b)=>a+b,0)/st.kes.length) : null,
+    sepMax: Math.round(F.sepMax || 0),
+    rate: round1(st.atk.length/durMin),
+    headHits: st.headHits, bodyHits: st.bodyHits, legHits: st.legHits,
+    hitRate: st.atk.length ? Math.round(st.landed/st.atk.length*100) : null,
+    defRate: st.inc.length ? Math.round((st.inc.length-st.incLanded)/st.inc.length*100) : null,
+    blocks: st.blocks, dodgeOk: st.dodgeOk, dodgeTry: st.dodges.length,
+    heavyTaken: st.heavy.length, stability: st.stability,
   };
   const c100 = v => Math.max(0, Math.min(100, Math.round(v)));
   const ax = [];
-  if(summary.avgKE != null) ax.push(c100(summary.avgKE/1.2));
-  if(s.peak) ax.push(c100((s.peak-3)*14));
+  if(summary.avgKE != null) ax.push(c100(summary.avgKE/1.6));
+  if(F.peak) ax.push(c100((F.peak-3)*12));
   ax.push(c100(summary.rate*3.3));
   if(summary.hitRate != null) ax.push(summary.hitRate);
   if(summary.defRate != null) ax.push(summary.defRate);
   if(summary.stability != null) ax.push(summary.stability);
-  ax.push(c100((s.travel/durMin)*5));
+  ax.push(c100((F.travel/durMin)*5));
   summary.overall = Math.round(ax.reduce((a,b)=>a+b,0)/ax.length);
   const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"motion", summary });
   if(error){ toast("儲存失敗：" + error.message); return; }
-  toast("已儲存 ✔ 去「📊 紀錄」睇成長曲線");
+  toast(`已儲存拳手 ${tag} → ${$("athleteSel").selectedOptions[0]?.textContent || ""} ✔`);
   loadSessions();
-});
+}
+$("saveMotionBtn").addEventListener("click", ()=>saveFighter("A"));
+$("saveMotionBtnB").addEventListener("click", ()=>saveFighter("B"));
 $("savePostureBtn").addEventListener("click", async ()=>{
   if(!requireRecordsReady()) return;
   const a = pState.analyzed;
