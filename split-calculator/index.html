@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分成計算器｜踢拳小班</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#1c2430; --muted:#66707e;
+    --line:#e3e7ec; --accent:#d32f2f; --accent-soft:#fdecea;
+    --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#9a6a00; --warn-soft:#fff6de;
+    --ming:#1655b8; --ming-soft:#e8f0fd; --tom:#7a3ab8; --tom-soft:#f2eafc;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#12161c; --card:#1b212a; --ink:#e8ecf1; --muted:#9aa5b1;
+      --line:#2b3542; --accent:#ff6b60; --accent-soft:#3a2220;
+      --ok:#5fd08d; --ok-soft:#1d3327; --warn:#ffd166; --warn-soft:#3a3018;
+      --ming:#7aa8ff; --ming-soft:#1c2a44; --tom:#c79bf2; --tom-soft:#2e2140;
+    }
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:-apple-system,"PingFang HK","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.55; padding:16px 12px 80px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+  header.top h1{font-size:1.25rem;letter-spacing:.5px}
+  header.top h1 small{display:block;font-size:.75rem;font-weight:400;color:var(--muted)}
+  .month-pick{display:flex;gap:6px;align-items:center}
+  .month-pick input[type=month]{
+    font-size:1rem;padding:8px 10px;border:1px solid var(--line);border-radius:10px;
+    background:var(--card);color:var(--ink);
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .card h2{font-size:1rem;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card h2 .hint{font-size:.72rem;font-weight:400;color:var(--muted)}
+  .rule{font-size:.72rem;color:var(--muted);margin-bottom:10px}
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{
+    border:1px solid var(--line);border-radius:12px;padding:10px;
+    display:grid;gap:8px;position:relative;background:var(--bg);
+  }
+  .row .del{
+    position:absolute;top:8px;right:8px;border:none;background:none;color:var(--muted);
+    font-size:1rem;cursor:pointer;padding:4px 8px;border-radius:8px;
+  }
+  .row .del:hover{color:var(--accent);background:var(--accent-soft)}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  @media (max-width:520px){ .grid4{grid-template-columns:repeat(2,1fr)} .grid3{grid-template-columns:repeat(2,1fr)} }
+  label.f{display:flex;flex-direction:column;gap:3px;font-size:.72rem;color:var(--muted)}
+  label.f input,label.f select{
+    font-size:.95rem;padding:8px;border:1px solid var(--line);border-radius:8px;
+    background:var(--card);color:var(--ink);width:100%;
+  }
+  label.f input:focus,label.f select:focus{outline:2px solid var(--ming);outline-offset:0}
+  .row .calc{
+    font-size:.78rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px;
+    display:flex;flex-wrap:wrap;gap:4px 14px;
+  }
+  .row .calc b{color:var(--ink);font-weight:600}
+  .tag{display:inline-block;font-size:.7rem;padding:1px 8px;border-radius:99px;font-weight:600}
+  .tag.ming{background:var(--ming-soft);color:var(--ming)}
+  .tag.tom{background:var(--tom-soft);color:var(--tom)}
+  .tag.warn{background:var(--warn-soft);color:var(--warn)}
+  .tag.ok{background:var(--ok-soft);color:var(--ok)}
+  button.add{
+    margin-top:10px;width:100%;padding:10px;border:1px dashed var(--line);border-radius:10px;
+    background:none;color:var(--muted);font-size:.9rem;cursor:pointer;
+  }
+  button.add:hover{border-color:var(--ming);color:var(--ming)}
+  .empty{font-size:.8rem;color:var(--muted);text-align:center;padding:8px}
+  /* result */
+  .result .block{border-top:1px solid var(--line);padding:10px 0}
+  .result .block:first-of-type{border-top:none}
+  .result h3{font-size:.8rem;color:var(--muted);font-weight:600;margin-bottom:6px;letter-spacing:1px}
+  .li{display:flex;justify-content:space-between;font-size:.9rem;padding:2px 0;gap:10px}
+  .li span:first-child{color:var(--muted)}
+  .li.total{font-weight:700;border-top:1px dashed var(--line);margin-top:4px;padding-top:6px}
+  .li.total span:first-child{color:var(--ink)}
+  .payout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  @media (max-width:430px){ .payout{grid-template-columns:1fr} }
+  .pay{border-radius:12px;padding:12px}
+  .pay.ming{background:var(--ming-soft)} .pay.tom{background:var(--tom-soft)}
+  .pay .who{font-size:.8rem;font-weight:700}
+  .pay.ming .who{color:var(--ming)} .pay.tom .who{color:var(--tom)}
+  .pay .amt{font-size:1.6rem;font-weight:800;margin:2px 0}
+  .pay .sub{font-size:.72rem;color:var(--muted)}
+  .notice{font-size:.75rem;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 10px;margin-top:8px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .toolbar button{
+    flex:1;min-width:130px;padding:10px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);font-size:.85rem;cursor:pointer;
+  }
+  .toolbar button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  details.settings summary{cursor:pointer;font-size:.9rem;font-weight:600;padding:4px 0}
+  details.settings .grid3{margin-top:10px}
+  .foot{font-size:.7rem;color:var(--muted);text-align:center;margin-top:18px}
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;
+    font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;
+  }
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>🥊 分成計算器<small>踢拳小班教學合辦協議 — 每月結算</small></h1>
+    <div class="month-pick">
+      <input type="month" id="month">
+    </div>
+  </header>
+
+  <!-- 參數 -->
+  <div class="card">
+    <details class="settings">
+      <summary>⚙️ 協議參數（跟協議書預設，可改）</summary>
+      <div class="grid3">
+        <label class="f">4堂套票價（HK$）<input type="number" id="s-price4" min="0" step="10"></label>
+        <label class="f">8堂套票價（HK$）<input type="number" id="s-price8" min="0" step="10"></label>
+        <label class="f">請假行政費（HK$／次）<input type="number" id="s-adminFee" min="0" step="10"></label>
+        <label class="f">場租上限：少於3人（$／小時）<input type="number" id="s-rentLow" min="0" step="10"></label>
+        <label class="f">場租上限：3人或以上（$／小時）<input type="number" id="s-rentHigh" min="0" step="10"></label>
+        <label class="f">大班門檻（人數 ≥）<input type="number" id="s-threshold" min="2" step="1"></label>
+        <label class="f">導師A 名稱（週六日當值）<input type="text" id="s-nameA"></label>
+        <label class="f">導師B 名稱（週一至五當值）<input type="text" id="s-nameB"></label>
+      </div>
+    </details>
+  </div>
+
+  <!-- 課堂 -->
+  <div class="card">
+    <h2>📅 課堂記錄 <span class="hint">每節一行；收入按「當月實際消耗堂數」入賬（條款2.4）</span></h2>
+    <div class="rule">
+      學員時數 = 時長 × 出席人數（條款4.2）。兩位導師同場：出席 &lt; 3人 → 全歸當值導師；≥ 3人 → 學員時數平分（條款4.4）。
+      「缺席扣堂」= 通知少於兩小時或無故缺席，照扣堂入收入但不計出席（條款1.7.2）。「合規請假」收行政費、不扣堂（條款1.7.1）。
+    </div>
+    <div class="rows" id="sessions"></div>
+    <button class="add" id="add-session">＋ 加一節課堂</button>
+  </div>
+
+  <!-- 場租 -->
+  <div class="card">
+    <h2>🏟️ 場地租金 <span class="hint">認可成本上限按「該日最高出席人數」全日統一計（條款3）</span></h2>
+    <div class="rule">
+      該日任何一小時出席 ≥ 3人 → 上限 $<span data-bind="rentHigh"></span>/小時；全日 &lt; 3人 → 上限 $<span data-bind="rentLow"></span>/小時。
+      入賬支出 = min（實付租金，上限 × 時數）。超出上限部分不入公數。
+    </div>
+    <div class="rows" id="rents"></div>
+    <button class="add" id="add-rent">＋ 加一日場租</button>
+  </div>
+
+  <!-- 其他支出 -->
+  <div class="card">
+    <h2>🧾 其他認可營運支出 <span class="hint">器材、消耗品等；須雙方認可（條款2.2）</span></h2>
+    <div class="rows" id="expenses"></div>
+    <button class="add" id="add-expense">＋ 加一項支出</button>
+  </div>
+
+  <!-- 逾期套票 -->
+  <div class="card">
+    <h2>⏳ 逾期作廢套票 <span class="hint">未耗用預收款視作額外純利，雙方各 50%（條款4.5）</span></h2>
+    <div class="rows" id="expired"></div>
+    <button class="add" id="add-expired">＋ 加一筆作廢金額</button>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card result" id="result"></div>
+
+  <div class="card">
+    <div class="toolbar">
+      <button class="primary" id="copy-report">📋 複製月結報表（WhatsApp 格式）</button>
+      <button id="export">⬇️ 匯出資料（JSON）</button>
+      <button id="import">⬆️ 匯入資料</button>
+    </div>
+    <input type="file" id="import-file" accept="application/json" hidden>
+  </div>
+
+  <div class="foot">
+    資料只儲存喺本機瀏覽器（localStorage），唔會上傳。換機前請先匯出 JSON。<br>
+    計法依據《踢拳小班教學合辦協議書》條款 1.4、1.7、2.4、3、4。
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ---------- 資料層 ---------- */
+const STORE_KEY = 'split-calc-v1';
+
+const DEFAULT_SETTINGS = {
+  price4: 800, classes4: 4,
+  price8: 1400, classes8: 8,
+  adminFee: 100,
+  rentLow: 100, rentHigh: 150,
+  threshold: 3,
+  nameA: 'Ming',   // Cheng Chun Ming — 週六日當值（條款1.4.2）
+  nameB: 'Tom',    // Tsang Ling Hong — 週一至五當值（條款1.4.1）
+};
+
+function emptyMonth(){ return { sessions:[], rents:[], expenses:[], expired:[] }; }
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      const d = JSON.parse(raw);
+      d.settings = Object.assign({}, DEFAULT_SETTINGS, d.settings||{});
+      d.months = d.months || {};
+      return d;
+    }
+  }catch(e){ console.warn('load failed', e); }
+  return { settings: {...DEFAULT_SETTINGS}, months:{} };
+}
+let DB = load();
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
+
+let currentMonth = new Date().toISOString().slice(0,7); // "YYYY-MM"
+function monthData(){
+  if(!DB.months[currentMonth]) DB.months[currentMonth] = emptyMonth();
+  return DB.months[currentMonth];
+}
+let uidCounter = Date.now() % 1e9;
+const uid = () => 'r' + (uidCounter++).toString(36);
+
+/* ---------- 計算核心（跟協議書） ---------- */
+function perClass4(s){ return s.price4 / s.classes4; }   // 套票均價：$800/4 = $200
+function perClass8(s){ return s.price8 / s.classes8; }   // $1400/8 = $175
+
+// 當值導師（條款1.4）：六、日 = A（Ming）；一至五 = B（Tom）
+function autoDuty(dateStr){
+  if(!dateStr) return 'B';
+  const d = new Date(dateStr + 'T12:00:00');
+  const w = d.getDay();
+  return (w === 0 || w === 6) ? 'A' : 'B';
+}
+
+// 單節課堂運算
+function calcSession(sess, s){
+  const n4 = +sess.n4||0, n8 = +sess.n8||0;        // 出席（4堂票／8堂票）
+  const m4 = +sess.m4||0, m8 = +sess.m8||0;        // 缺席扣堂（照收費，不算出席）
+  const excused = +sess.excused||0;                 // 合規請假（行政費）
+  const dur = +sess.dur||0;
+  const attendance = n4 + n8;
+
+  const revenue = (n4+m4)*perClass4(s) + (n8+m8)*perClass8(s) + excused*s.adminFee;
+  const consumed4 = n4+m4, consumed8 = n8+m8;
+
+  const sh = dur * attendance;                      // 學員時數（條款4.2）
+  let shA = 0, shB = 0, allocNote = '';
+  const duty = sess.duty === 'auto' || !sess.duty ? autoDuty(sess.date) : sess.duty;
+
+  if(sess.coaches === 'A'){ shA = sh; allocNote = '只有A執教'; }
+  else if(sess.coaches === 'B'){ shB = sh; allocNote = '只有B執教'; }
+  else { // 兩位導師同場（條款4.4）
+    if(attendance >= s.threshold){ shA = sh/2; shB = sh/2; allocNote = '≥'+s.threshold+'人，時數平分（4.4.2）'; }
+    else if(duty === 'A'){ shA = sh; allocNote = '<'+s.threshold+'人，全歸當值導師A（4.4.1）'; }
+    else { shB = sh; allocNote = '<'+s.threshold+'人，全歸當值導師B（4.4.1）'; }
+  }
+  return { revenue, consumed4, consumed8, excused, attendance, sh, shA, shB, duty, allocNote };
+}
+
+// 場租入賬（條款3）：上限按該日最高出席人數
+function calcRent(rent, s, maxAttByDate){
+  const hours = +rent.hours||0, paid = +rent.paid||0;
+  const maxAtt = maxAttByDate[rent.date] || 0;
+  const rate = maxAtt >= s.threshold ? s.rentHigh : s.rentLow;
+  const cap = rate * hours;
+  const chargeable = Math.min(paid, cap);
+  return { maxAtt, rate, cap, chargeable, over: Math.max(0, paid - cap) };
+}
+
+function calcMonth(md, s){
+  const maxAttByDate = {};
+  for(const sess of md.sessions){
+    const r = calcSession(sess, s);
+    if(sess.date) maxAttByDate[sess.date] = Math.max(maxAttByDate[sess.date]||0, r.attendance);
+  }
+  let income = 0, consumed4 = 0, consumed8 = 0, excusedCount = 0;
+  let shA = 0, shB = 0;
+  for(const sess of md.sessions){
+    const r = calcSession(sess, s);
+    income += r.revenue; consumed4 += r.consumed4; consumed8 += r.consumed8;
+    excusedCount += r.excused; shA += r.shA; shB += r.shB;
+  }
+  let rentChargeable = 0, rentPaid = 0, rentOver = 0;
+  for(const rent of md.rents){
+    const r = calcRent(rent, s, maxAttByDate);
+    rentChargeable += r.chargeable; rentPaid += (+rent.paid||0); rentOver += r.over;
+  }
+  const otherExpense = md.expenses.reduce((a,e)=>a+(+e.amount||0),0);
+  const expiredTotal = md.expired.reduce((a,e)=>a+(+e.amount||0),0);
+
+  const totalExpense = rentChargeable + otherExpense;
+  const pool = income - totalExpense;               // 可分配純利（條款4.1／4.3）
+  const H = shA + shB;
+  const unit = H > 0 ? pool / H : 0;                // 每學員小時單價
+  let payA, payB, splitNote = '';
+  if(H > 0){
+    payA = unit*shA + expiredTotal/2;
+    payB = unit*shB + expiredTotal/2;
+  }else{
+    payA = pool/2 + expiredTotal/2;                 // 冇學員時數時對半分，需雙方確認
+    payB = pool/2 + expiredTotal/2;
+    splitNote = '本月冇學員時數，純利暫按50/50顯示，請雙方自行議定。';
+  }
+  return { income, consumed4, consumed8, excusedCount, adminIncome: excusedCount*s.adminFee,
+           rentChargeable, rentPaid, rentOver, otherExpense, expiredTotal,
+           totalExpense, pool, shA, shB, H, unit, payA, payB, splitNote, maxAttByDate };
+}
+
+/* ---------- 格式化 ---------- */
+const $ = sel => document.querySelector(sel);
+const fmt$ = v => 'HK$' + (Math.round(v*100)/100).toLocaleString('en-HK',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtH = v => (Math.round(v*100)/100).toLocaleString('en-HK');
+function esc(str){ const d=document.createElement('div'); d.textContent=str==null?'':String(str); return d.innerHTML; }
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------- 介面渲染 ---------- */
+function bindSettingsInputs(){
+  const map = { 'price4':'s-price4','price8':'s-price8','adminFee':'s-adminFee',
+    'rentLow':'s-rentLow','rentHigh':'s-rentHigh','threshold':'s-threshold',
+    'nameA':'s-nameA','nameB':'s-nameB' };
+  for(const [key,id] of Object.entries(map)){
+    const el = document.getElementById(id);
+    el.value = DB.settings[key];
+    el.addEventListener('input', ()=>{
+      DB.settings[key] = (el.type === 'number') ? +el.value : el.value;
+      save(); renderAll();
+    });
+  }
+}
+
+function fieldNum(label, value, key, id, step, min){
+  return `<label class="f">${label}<input type="number" inputmode="decimal" min="${min??0}" step="${step??1}" value="${esc(value??'')}" data-id="${id}" data-key="${key}"></label>`;
+}
+
+function renderSessions(){
+  const s = DB.settings, md = monthData(), box = $('#sessions');
+  if(!md.sessions.length){ box.innerHTML = '<div class="empty">未有課堂記錄</div>'; return; }
+  box.innerHTML = md.sessions.map(sess=>{
+    const r = calcSession(sess, s);
+    const dutyName = r.duty === 'A' ? s.nameA : s.nameB;
+    return `<div class="row" data-id="${sess.id}">
+      <button class="del" data-del="sessions" data-id="${sess.id}" title="刪除">✕</button>
+      <div class="grid4">
+        <label class="f">日期<input type="date" value="${esc(sess.date)}" data-id="${sess.id}" data-key="date"></label>
+        <label class="f">時長（小時）<input type="number" inputmode="decimal" min="0" step="0.5" value="${esc(sess.dur)}" data-id="${sess.id}" data-key="dur"></label>
+        <label class="f">在場導師
+          <select data-id="${sess.id}" data-key="coaches">
+            <option value="AB" ${sess.coaches==='AB'?'selected':''}>兩位同場</option>
+            <option value="A" ${sess.coaches==='A'?'selected':''}>${esc(s.nameA)}</option>
+            <option value="B" ${sess.coaches==='B'?'selected':''}>${esc(s.nameB)}</option>
+          </select></label>
+        <label class="f">當值導師（條款1.4）
+          <select data-id="${sess.id}" data-key="duty">
+            <option value="auto" ${(!sess.duty||sess.duty==='auto')?'selected':''}>自動（${esc(dutyName)}）</option>
+            <option value="A" ${sess.duty==='A'?'selected':''}>${esc(s.nameA)}</option>
+            <option value="B" ${sess.duty==='B'?'selected':''}>${esc(s.nameB)}</option>
+          </select></label>
+      </div>
+      <div class="grid4">
+        ${fieldNum('出席：4堂票（人）', sess.n4, 'n4', sess.id)}
+        ${fieldNum('出席：8堂票（人）', sess.n8, 'n8', sess.id)}
+        ${fieldNum('缺席扣堂：4堂票（人）', sess.m4, 'm4', sess.id)}
+        ${fieldNum('缺席扣堂：8堂票（人）', sess.m8, 'm8', sess.id)}
+      </div>
+      <div class="grid4">
+        ${fieldNum('合規請假（人，收$'+esc(s.adminFee)+'）', sess.excused, 'excused', sess.id)}
+      </div>
+      <div class="calc">
+        <span>收入 <b>${fmt$(r.revenue)}</b></span>
+        <span>學員時數 <b>${fmtH(r.sh)}</b></span>
+        <span><span class="tag ming">${esc(s.nameA)} ${fmtH(r.shA)}</span> <span class="tag tom">${esc(s.nameB)} ${fmtH(r.shB)}</span></span>
+        <span>${esc(r.allocNote)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRents(){
+  const s = DB.settings, md = monthData(), box = $('#rents');
+  const { maxAttByDate } = calcMonth(md, s);
+  if(!md.rents.length){ box.innerHTML = '<div class="empty">未有場租記錄</div>'; return; }
+  box.innerHTML = md.rents.map(rent=>{
+    const r = calcRent(rent, s, maxAttByDate);
+    return `<div class="row" data-id="${rent.id}">
+      <button class="del" data-del="rents" data-id="${rent.id}" title="刪除">✕</button>
+      <div class="grid3">
+        <label class="f">日期<input type="date" value="${esc(rent.date)}" data-id="${rent.id}" data-key="date"></label>
+        ${fieldNum('租用時數（小時）', rent.hours, 'hours', rent.id, 0.5)}
+        ${fieldNum('實付租金（HK$）', rent.paid, 'paid', rent.id, 10)}
+      </div>
+      <div class="calc">
+        <span>當日最高出席 <b>${r.maxAtt}</b> 人 → 上限 <b>$${r.rate}/小時</b>（上限總額 ${fmt$(r.cap)}）</span>
+        <span>入賬 <b>${fmt$(r.chargeable)}</b></span>
+        ${r.over > 0 ? `<span class="tag warn">超上限 ${fmt$(r.over)} 不入公數</span>` : '<span class="tag ok">上限內</span>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderExpenses(){
+  const md = monthData(), box = $('#expenses');
+  if(!md.expenses.length){ box.innerHTML = '<div class="empty">未有其他支出</div>'; return; }
+  box.innerHTML = md.expenses.map(e=>`
+    <div class="row" data-id="${e.id}">
+      <button class="del" data-del="expenses" data-id="${e.id}" title="刪除">✕</button>
+      <div class="grid2">
+        <label class="f">項目<input type="text" value="${esc(e.desc)}" placeholder="例：拳套、繃帶" data-id="${e.id}" data-key="desc"></label>
+        ${fieldNum('金額（HK$）', e.amount, 'amount', e.id, 10)}
+      </div>
+    </div>`).join('');
+}
+
+function renderExpired(){
+  const md = monthData(), box = $('#expired');
+  if(!md.expired.length){ box.innerHTML = '<div class="empty">未有逾期作廢套票</div>'; return; }
+  box.innerHTML = md.expired.map(e=>`
+    <div class="row" data-id="${e.id}">
+      <button class="del" data-del="expired" data-id="${e.id}" title="刪除">✕</button>
+      <div class="grid2">
+        <label class="f">學員／備註<input type="text" value="${esc(e.desc)}" placeholder="例：阿邊個 4堂票剩2堂" data-id="${e.id}" data-key="desc"></label>
+        ${fieldNum('作廢金額（HK$）', e.amount, 'amount', e.id, 5)}
+      </div>
+    </div>`).join('');
+}
+
+function renderResult(){
+  const s = DB.settings, md = monthData();
+  const r = calcMonth(md, s);
+  $('#result').innerHTML = `
+    <h2>📊 ${currentMonth.replace('-','年')}月 結算</h2>
+    <div class="block">
+      <h3>收入（按消耗堂數入賬，條款2.4）</h3>
+      <div class="li"><span>4堂票消耗 ${r.consumed4} 堂 × ${fmt$(perClass4(s))}</span><span>${fmt$(r.consumed4*perClass4(s))}</span></div>
+      <div class="li"><span>8堂票消耗 ${r.consumed8} 堂 × ${fmt$(perClass8(s))}</span><span>${fmt$(r.consumed8*perClass8(s))}</span></div>
+      <div class="li"><span>請假行政費 ${r.excusedCount} 次 × ${fmt$(s.adminFee)}</span><span>${fmt$(r.adminIncome)}</span></div>
+      <div class="li total"><span>總收入</span><span>${fmt$(r.income)}</span></div>
+    </div>
+    <div class="block">
+      <h3>支出</h3>
+      <div class="li"><span>場地租金（認可入賬）</span><span>${fmt$(r.rentChargeable)}</span></div>
+      ${r.rentOver>0?`<div class="li"><span>　·實付 ${fmt$(r.rentPaid)}，超上限 ${fmt$(r.rentOver)} 不入公數</span><span></span></div>`:''}
+      <div class="li"><span>其他認可支出</span><span>${fmt$(r.otherExpense)}</span></div>
+      <div class="li total"><span>總支出</span><span>${fmt$(r.totalExpense)}</span></div>
+    </div>
+    <div class="block">
+      <h3>分配基準（條款4.3）</h3>
+      <div class="li"><span>可分配純利（收入 − 支出）</span><span>${fmt$(r.pool)}</span></div>
+      <div class="li"><span>學員時數：${esc(s.nameA)} ${fmtH(r.shA)} ｜ ${esc(s.nameB)} ${fmtH(r.shB)}</span><span>共 ${fmtH(r.H)}</span></div>
+      <div class="li"><span>每學員小時單價</span><span>${r.H>0?fmt$(r.unit):'—'}</span></div>
+      <div class="li"><span>逾期套票純利（各50%，條款4.5）</span><span>${fmt$(r.expiredTotal)}</span></div>
+    </div>
+    <div class="payout">
+      <div class="pay ming">
+        <div class="who">${esc(s.nameA)}（Cheng Chun Ming）</div>
+        <div class="amt">${fmt$(r.payA)}</div>
+        <div class="sub">時數酬金 ${fmt$(r.payA - r.expiredTotal/2)} ＋ 逾期套票 ${fmt$(r.expiredTotal/2)}</div>
+      </div>
+      <div class="pay tom">
+        <div class="who">${esc(s.nameB)}（Tsang Ling Hong）</div>
+        <div class="amt">${fmt$(r.payB)}</div>
+        <div class="sub">時數酬金 ${fmt$(r.payB - r.expiredTotal/2)} ＋ 逾期套票 ${fmt$(r.expiredTotal/2)}</div>
+      </div>
+    </div>
+    ${r.splitNote?`<div class="notice">⚠️ ${esc(r.splitNote)}</div>`:''}
+    ${r.pool<0?`<div class="notice">⚠️ 本月蝕錢（純利為負），酬金按比例攤分虧損。</div>`:''}
+  `;
+  document.querySelectorAll('[data-bind="rentHigh"]').forEach(el=>el.textContent=s.rentHigh);
+  document.querySelectorAll('[data-bind="rentLow"]').forEach(el=>el.textContent=s.rentLow);
+}
+
+function renderAll(){
+  renderSessions(); renderRents(); renderExpenses(); renderExpired(); renderResult();
+}
+
+/* ---------- 月結報表文字 ---------- */
+function reportText(){
+  const s = DB.settings, md = monthData();
+  const r = calcMonth(md, s);
+  const [y,m] = currentMonth.split('-');
+  const L = [];
+  L.push(`📊 ${y}年${+m}月 分成月結報表`);
+  L.push('━━━━━━━━━━━━━━');
+  L.push('【收入】（按消耗堂數入賬）');
+  L.push(`· 4堂票：${r.consumed4} 堂 × $${perClass4(s)} = $${(r.consumed4*perClass4(s)).toFixed(2)}`);
+  L.push(`· 8堂票：${r.consumed8} 堂 × $${perClass8(s)} = $${(r.consumed8*perClass8(s)).toFixed(2)}`);
+  L.push(`· 請假行政費：${r.excusedCount} 次 × $${s.adminFee} = $${r.adminIncome.toFixed(2)}`);
+  L.push(`· 總收入：$${r.income.toFixed(2)}`);
+  L.push('【支出】');
+  L.push(`· 場地租金（認可）：$${r.rentChargeable.toFixed(2)}${r.rentOver>0?`（實付 $${r.rentPaid.toFixed(2)}，超上限 $${r.rentOver.toFixed(2)} 不入公數）`:''}`);
+  L.push(`· 其他支出：$${r.otherExpense.toFixed(2)}`);
+  L.push(`· 總支出：$${r.totalExpense.toFixed(2)}`);
+  L.push('【分配】');
+  L.push(`· 可分配純利：$${r.pool.toFixed(2)}`);
+  L.push(`· 學員時數：${s.nameA} ${fmtH(r.shA)}｜${s.nameB} ${fmtH(r.shB)}（共 ${fmtH(r.H)}）`);
+  if(r.H>0) L.push(`· 每學員小時單價：$${r.unit.toFixed(2)}`);
+  if(r.expiredTotal>0) L.push(`· 逾期套票純利：$${r.expiredTotal.toFixed(2)}（各 50%）`);
+  L.push('【應得酬金】');
+  L.push(`· ${s.nameA}：$${r.payA.toFixed(2)}`);
+  L.push(`· ${s.nameB}：$${r.payB.toFixed(2)}`);
+  L.push('━━━━━━━━━━━━━━');
+  L.push('依《踢拳小班教學合辦協議書》條款 2.4／3／4 計算');
+  return L.join('\n');
+}
+
+/* ---------- 事件 ---------- */
+function findRow(list, id){ return monthData()[list].find(x=>x.id===id); }
+
+document.body.addEventListener('input', e=>{
+  const el = e.target;
+  if(!el.dataset || !el.dataset.id || !el.dataset.key) return;
+  for(const list of ['sessions','rents','expenses','expired']){
+    const row = findRow(list, el.dataset.id);
+    if(row){
+      row[el.dataset.key] = el.type==='number' ? el.value : el.value;
+      save();
+      // 只重繪運算結果，避免輸入途中失焦
+      if(list==='sessions'){ updateInlineCalcs(); renderRents(); }
+      if(list==='rents'){ updateInlineCalcs(); }
+      renderResult();
+      return;
+    }
+  }
+});
+document.body.addEventListener('change', e=>{
+  const el = e.target;
+  if(el.tagName==='SELECT' && el.dataset.id){ renderAll(); }
+});
+document.body.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-del]');
+  if(btn){
+    const list = btn.dataset.del, id = btn.dataset.id;
+    const md = monthData();
+    md[list] = md[list].filter(x=>x.id!==id);
+    save(); renderAll();
+  }
+});
+
+function updateInlineCalcs(){
+  // 重繪課堂行內小結（保留輸入焦點：只更新 .calc 區）
+  const s = DB.settings, md = monthData();
+  document.querySelectorAll('#sessions .row').forEach(rowEl=>{
+    const sess = findRow('sessions', rowEl.dataset.id);
+    if(!sess) return;
+    const r = calcSession(sess, s);
+    const calcEl = rowEl.querySelector('.calc');
+    if(calcEl) calcEl.innerHTML =
+      `<span>收入 <b>${fmt$(r.revenue)}</b></span>
+       <span>學員時數 <b>${fmtH(r.sh)}</b></span>
+       <span><span class="tag ming">${esc(s.nameA)} ${fmtH(r.shA)}</span> <span class="tag tom">${esc(s.nameB)} ${fmtH(r.shB)}</span></span>
+       <span>${esc(r.allocNote)}</span>`;
+  });
+}
+
+$('#add-session').onclick = ()=>{
+  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coaches:'AB', duty:'auto',
+    n4: 0, n8: 0, m4: 0, m8: 0, excused: 0 });
+  save(); renderAll();
+};
+$('#add-rent').onclick = ()=>{
+  monthData().rents.push({ id: uid(), date: defaultDate(), hours: 1, paid: '' });
+  save(); renderAll();
+};
+$('#add-expense').onclick = ()=>{
+  monthData().expenses.push({ id: uid(), desc:'', amount:'' });
+  save(); renderAll();
+};
+$('#add-expired').onclick = ()=>{
+  monthData().expired.push({ id: uid(), desc:'', amount:'' });
+  save(); renderAll();
+};
+
+function defaultDate(){
+  const today = new Date().toISOString().slice(0,10);
+  return today.startsWith(currentMonth) ? today : currentMonth + '-01';
+}
+
+$('#month').value = currentMonth;
+$('#month').addEventListener('change', e=>{
+  if(!e.target.value) return;
+  currentMonth = e.target.value;
+  renderAll();
+});
+
+$('#copy-report').onclick = async ()=>{
+  const text = reportText();
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('已複製，可以直接貼上 WhatsApp ✅');
+  }catch(err){
+    // 後備方案
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    toast('已複製 ✅');
+  }
+};
+
+$('#export').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `split-calc-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('已匯出 JSON');
+};
+$('#import').onclick = ()=> $('#import-file').click();
+$('#import-file').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const d = JSON.parse(reader.result);
+      if(!d.months || !d.settings) throw new Error('格式不符');
+      DB = { settings: Object.assign({}, DEFAULT_SETTINGS, d.settings), months: d.months };
+      save(); bindSettingsInputs(); renderAll();
+      toast('已匯入資料 ✅');
+    }catch(err){ toast('匯入失敗：' + err.message); }
+  };
+  reader.readAsText(f);
+  e.target.value = '';
+});
+
+/* ---------- 啟動 ---------- */
+bindSettingsInputs();
+renderAll();
+</script>
+</body>
+</html>
