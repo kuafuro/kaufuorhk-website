@@ -1,0 +1,95 @@
+/* 頁面權限守衛（Kuafuor HK）
+ *
+ * 用法：喺想鎖嘅頁面 <head> 加一行，列明邊啲角色先入得：
+ *   <script src="/assets/guard.js" data-roles="coach,admin"></script>
+ *   <script src="/assets/guard.js" data-roles="student,coach,admin"></script>
+ *
+ * 行為：
+ *   - 未登入 → 帶去 /login/?next=本頁
+ *   - 登咗入但角色唔啱 → 顯示「未有權限」畫面
+ *   - 驗證唔到（網絡問題）→ 封鎖並提示重試（fail closed）
+ *
+ * 角色喺 Supabase public.profiles.role，只有 admin 可以改（set_user_role RPC）。
+ */
+(function () {
+  var SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
+  var SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable key — 放喺前端係安全嘅
+
+  // 語言跟登入頁一致（localStorage kf-lang: zh | en）
+  var lang = "zh";
+  try { lang = localStorage.getItem("kf-lang") || "zh"; } catch (e) {}
+  var T = {
+    zh: {
+      roles: { member: "普通會員", student: "學生", coach: "教練", admin: "管理員" },
+      noPerm: "呢個功能你未有權限用",
+      noPermDetail: function (role, need) { return "你而家嘅身份係「" + role + "」，呢頁需要：" + need + "。想開通請聯絡 Ming。"; },
+      verifyFail: "驗證唔到你嘅身份",
+      verifyFailDetail: "網絡或者雲端服務暫時有問題，請重新整理再試。",
+      goLogin: "去登入頁 →",
+    },
+    en: {
+      roles: { member: "Member", student: "Student", coach: "Coach", admin: "Admin" },
+      noPerm: "You don't have access to this feature",
+      noPermDetail: function (role, need) { return "Your current role is “" + role + "”; this page requires: " + need + ". Contact Ming to upgrade."; },
+      verifyFail: "We couldn't verify your identity",
+      verifyFailDetail: "Network or cloud service issue — please refresh and try again.",
+      goLogin: "Go to login page →",
+    },
+  };
+  var L = T[lang] || T.zh;
+
+  var script = document.currentScript;
+  var roles = (script.getAttribute("data-roles") || "").split(",")
+    .map(function (x) { return x.trim(); }).filter(Boolean);
+  var loginUrl = script.getAttribute("data-login") || "/login/";
+
+  // 驗證期間先藏住頁面
+  var hide = document.createElement("style");
+  hide.textContent = "html{visibility:hidden !important}";
+  (document.head || document.documentElement).appendChild(hide);
+
+  function blocked(title, detail) {
+    function render() {
+      // 黑白主色，跟登入頁一致
+      var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var bg = dark ? "#1a1a1a" : "#ffffff", ink = dark ? "#f2f2f2" : "#111111",
+          mut = dark ? "#9a9a9a" : "#666666", line = dark ? "#333333" : "#e2e2e2";
+      document.body.innerHTML =
+        '<div style="font-family:-apple-system,\'PingFang HK\',\'Noto Sans TC\',sans-serif;max-width:420px;margin:80px auto;padding:28px 22px;border:1px solid ' + line + ';border-radius:14px;text-align:center;background:' + bg + ';color:' + ink + '">' +
+        '<div style="font-size:2.2rem">🔒</div>' +
+        '<h2 style="margin:10px 0 4px;font-size:1.1rem">' + title + "</h2>" +
+        (detail ? '<p style="color:' + mut + ';font-size:.85rem;line-height:1.6">' + detail + "</p>" : "") +
+        '<p style="margin-top:16px"><a href="' + loginUrl + "?next=" + encodeURIComponent(location.pathname + location.search) +
+        '" style="color:' + ink + ';font-weight:700;text-decoration:underline">' + L.goLogin + "</a></p>" +
+        "</div>";
+      document.body.style.background = dark ? "#0e0e0e" : "#fafafa";
+      document.documentElement.style.visibility = "visible";
+      hide.remove();
+    }
+    if (document.body) render();
+    else document.addEventListener("DOMContentLoaded", render);
+  }
+
+  (async function () {
+    try {
+      var mod = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+      var sb = mod.createClient(SB_URL, SB_KEY);
+      var sess = (await sb.auth.getSession()).data.session;
+      if (!sess) {
+        location.replace(loginUrl + "?next=" + encodeURIComponent(location.pathname + location.search));
+        return;
+      }
+      var res = await sb.from("profiles").select("role").eq("id", sess.user.id).single();
+      var role = (res.data && res.data.role) || "member";
+      if (roles.length === 0 || roles.indexOf(role) >= 0) {
+        document.documentElement.setAttribute("data-user-role", role);
+        hide.remove();
+        return;
+      }
+      blocked(L.noPerm, L.noPermDetail(L.roles[role] || role,
+        roles.map(function (r) { return L.roles[r] || r; }).join(" / ")));
+    } catch (e) {
+      blocked(L.verifyFail, L.verifyFailDetail);
+    }
+  })();
+})();

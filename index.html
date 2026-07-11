@@ -41,7 +41,7 @@
         .logo {
             font-size: 1.5rem;
             font-weight: bold;
-            color: #d32f2f; /* HK Red inspired accent */
+            color: #111; /* monochrome accent */
             text-transform: uppercase;
             letter-spacing: 2px;
         }
@@ -63,7 +63,7 @@
         }
 
         .nav-links a:hover {
-            color: #d32f2f;
+            color: #111;
         }
 
         /* --- Hero Section --- */
@@ -92,7 +92,7 @@
 
         .btn {
             display: inline-block;
-            background-color: #d32f2f;
+            background-color: #111;
             color: white;
             padding: 10px 30px;
             text-decoration: none;
@@ -102,7 +102,7 @@
         }
 
         .btn:hover {
-            background-color: #b71c1c;
+            background-color: #333;
         }
 
         /* --- Services/About Section --- */
@@ -135,7 +135,7 @@
 
         .card h3 {
             margin-bottom: 15px;
-            color: #d32f2f;
+            color: #111;
         }
 
         /* --- Contact Section --- */
@@ -189,7 +189,7 @@
                 <li><a href="#about">About</a></li>
                 <li><a href="#services">Services</a></li>
                 <li><a href="motion-lab/">Motion Lab</a></li>
-                <li><a href="#account" id="navAccount" style="color:#d32f2f;font-weight:700">登入</a></li>
+                <li><a href="#account" id="navAccount" style="color:#111;font-weight:800;border-bottom:2px solid #111">登入 Log in</a></li>
                 <li><a href="#contact">Contact</a></li>
             </ul>
         </nav>
@@ -242,25 +242,24 @@
     <section id="account" class="container" style="background-color:#fff">
         <h2 class="section-title">會員登入 Member Account</h2>
         <div style="max-width:480px;margin:0 auto">
-            <div id="acOut">
-                <label for="acEmail">電郵 Email</label>
-                <input type="email" id="acEmail" placeholder="you@example.com" autocomplete="email">
-                <label for="acPass">密碼 Password</label>
-                <input type="password" id="acPass" placeholder="至少 6 位" autocomplete="current-password">
-                <div style="display:flex;gap:10px;margin-top:8px">
-                    <button type="button" class="btn" id="acLogin" style="border:none;cursor:pointer">登入</button>
-                    <button type="button" class="btn" id="acSignup" style="border:none;cursor:pointer;background-color:#555">註冊新帳戶</button>
-                </div>
-                <p id="acMsg" style="margin-top:12px;color:#b03030;font-size:.9rem;min-height:1.2em"></p>
-                <p style="margin-top:6px;color:#666;font-size:.85rem">
-                    一個帳戶通行成個 Kuafuor 平台——登入後喺 <a href="motion-lab/">Motion Lab</a> 直接用到拳手檔案、訓練紀錄同成長曲線。首次註冊請去電郵撳確認連結。
+            <div id="acOut" style="text-align:center">
+                <p style="color:#666;font-size:.95rem;line-height:1.8">
+                    一個帳戶通行成個 Kuafuor 平台（Motion Lab、會員功能）。<br>
+                    One account for the whole Kuafuor platform.
+                </p>
+                <p style="margin-top:16px">
+                    <a class="btn" href="login/">登入／註冊 Log in / Register</a>
+                </p>
+                <p style="margin-top:10px;color:#666;font-size:.8rem">
+                    登入頁有齊註冊步驟同「唔記得密碼」重設 · Registration steps &amp; password reset inside
                 </p>
             </div>
             <div id="acIn" style="display:none;text-align:center">
-                <p style="font-size:1.1rem">✅ 已登入：<b id="acWho"></b></p>
+                <p style="font-size:1.1rem">✅ 已登入 Logged in：<b id="acWho"></b></p>
                 <p style="margin-top:16px">
                     <a class="btn" href="motion-lab/">進入 Motion Lab</a>
-                    <button type="button" class="btn" id="acLogout" style="border:none;cursor:pointer;background-color:#555;margin-left:8px">登出</button>
+                    <a class="btn" href="login/" style="margin-left:8px">帳戶與權限 Account</a>
+                    <button type="button" class="btn" id="acLogout" style="border:none;cursor:pointer;background-color:#555;margin-left:8px">登出 Log out</button>
                 </p>
             </div>
         </div>
@@ -295,12 +294,11 @@
     const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O";
     const $ = id => document.getElementById(id);
     let sb = null, user = null;
-    const msg = t => { $("acMsg").textContent = t || ""; };
     function render(){
         $("acOut").style.display = user ? "none" : "";
         $("acIn").style.display = user ? "" : "none";
         if(user) $("acWho").textContent = user.email || "";
-        $("navAccount").textContent = user ? `👤 ${(user.email || "").split("@")[0]}` : "登入";
+        $("navAccount").textContent = user ? `👤 ${(user.email || "").split("@")[0]}` : "登入 Log in";
     }
     try{
         const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
@@ -310,19 +308,6 @@
         user = data?.session?.user || null;
         render();
     }catch(e){ console.warn("account service unavailable", e); }
-    $("acLogin").addEventListener("click", async ()=>{
-        if(!sb){ msg("網絡問題，請重新整理再試"); return; }
-        msg("");
-        const { error } = await sb.auth.signInWithPassword({ email: $("acEmail").value.trim(), password: $("acPass").value });
-        if(error) msg("登入失敗：" + error.message);
-    });
-    $("acSignup").addEventListener("click", async ()=>{
-        if(!sb){ msg("網絡問題，請重新整理再試"); return; }
-        const email = $("acEmail").value.trim(), password = $("acPass").value;
-        if(!email || password.length < 6){ msg("請輸入電郵，密碼至少 6 位"); return; }
-        const { error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + "/" } });
-        msg(error ? "註冊失敗：" + error.message : "註冊成功 ✔ 請去電郵撳確認連結，然後返嚟登入");
-    });
     $("acLogout").addEventListener("click", async ()=>{ await sb?.auth.signOut(); });
     </script>
 
