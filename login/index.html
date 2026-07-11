@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登入｜Kuafuor HK</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#1c2430; --muted:#66707e;
+    --line:#e3e7ec; --accent:#d32f2f; --accent-soft:#fdecea;
+    --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#9a6a00; --warn-soft:#fff6de;
+    --blue:#1655b8; --blue-soft:#e8f0fd; --purple:#7a3ab8; --purple-soft:#f2eafc;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#12161c; --card:#1b212a; --ink:#e8ecf1; --muted:#9aa5b1;
+      --line:#2b3542; --accent:#ff6b60; --accent-soft:#3a2220;
+      --ok:#5fd08d; --ok-soft:#1d3327; --warn:#ffd166; --warn-soft:#3a3018;
+      --blue:#7aa8ff; --blue-soft:#1c2a44; --purple:#c79bf2; --purple-soft:#2e2140;
+    }
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:-apple-system,"PingFang HK","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6; padding:24px 14px 60px;
+    display:flex; flex-direction:column; align-items:center; min-height:100vh;
+  }
+  .brand{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:4px}
+  .brand a{color:inherit;text-decoration:none}
+  .sub{font-size:.78rem;color:var(--muted);margin-bottom:20px}
+  .card{
+    width:100%; max-width:420px; background:var(--card); border:1px solid var(--line);
+    border-radius:16px; padding:22px 18px; margin-bottom:14px;
+  }
+  h2{font-size:1rem;margin-bottom:12px}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tabs button{
+    flex:1;padding:9px;border-radius:10px;border:1px solid var(--line);
+    background:none;color:var(--muted);font-size:.9rem;cursor:pointer;font-weight:600;
+  }
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:.75rem;color:var(--muted);margin-bottom:10px}
+  label.f input{
+    font-size:1rem;padding:10px;border:1px solid var(--line);border-radius:10px;
+    background:var(--bg);color:var(--ink);width:100%;
+  }
+  label.f input:focus{outline:2px solid var(--blue)}
+  button.primary{
+    width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);
+    color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:4px;
+  }
+  button.primary:disabled{opacity:.6}
+  .aux{font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px}
+  .aux a{color:var(--blue);cursor:pointer;text-decoration:none}
+  .msg{font-size:.82rem;border-radius:10px;padding:10px 12px;margin-top:12px;display:none}
+  .msg.err{background:var(--accent-soft);color:var(--accent);display:block}
+  .msg.ok{background:var(--ok-soft);color:var(--ok);display:block}
+  .msg.info{background:var(--warn-soft);color:var(--warn);display:block}
+  /* profile */
+  .who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .avatar{width:44px;height:44px;border-radius:50%;background:var(--blue-soft);color:var(--blue);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem}
+  .who .email{font-size:.85rem;color:var(--muted);word-break:break-all}
+  .badge{display:inline-block;font-size:.75rem;padding:2px 10px;border-radius:99px;font-weight:700}
+  .badge.member{background:var(--line);color:var(--muted)}
+  .badge.student{background:var(--blue-soft);color:var(--blue)}
+  .badge.coach{background:var(--purple-soft);color:var(--purple)}
+  .badge.admin{background:var(--accent-soft);color:var(--accent)}
+  .features{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+  .features h3{font-size:.78rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px}
+  .feat{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;font-size:.9rem;border-bottom:1px dashed var(--line)}
+  .feat:last-child{border-bottom:none}
+  .feat .need{font-size:.7rem;color:var(--muted)}
+  .feat a{color:var(--blue);text-decoration:none;font-weight:600;white-space:nowrap}
+  .feat.locked{opacity:.55}
+  .row2{display:flex;gap:8px}
+  .row2 input{flex:1}
+  button.ghost{
+    padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:none;
+    color:var(--ink);font-size:.85rem;cursor:pointer;
+  }
+  /* admin */
+  .user-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
+  .user-row:last-child{border-bottom:none}
+  .user-row .em{flex:1;min-width:150px;word-break:break-all}
+  .user-row select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  .foot{font-size:.7rem;color:var(--muted);text-align:center;margin-top:10px}
+  .foot a{color:var(--muted)}
+  .spin{text-align:center;color:var(--muted);font-size:.85rem;padding:24px 0}
+</style>
+</head>
+<body>
+
+<div class="brand"><a href="/">KUAFUOR HK</a></div>
+<div class="sub">會員系統 — 註冊免費，功能按身份開放</div>
+
+<div class="card" id="loading"><div class="spin">載入緊…</div></div>
+
+<!-- 未登入 -->
+<div class="card" id="authCard" style="display:none">
+  <div class="tabs">
+    <button id="tabLogin" class="on">登入</button>
+    <button id="tabSignup">註冊</button>
+  </div>
+  <div id="signupName" style="display:none">
+    <label class="f">名（俾教練認得你）<input type="text" id="name" autocomplete="name" placeholder="例：阿明"></label>
+  </div>
+  <label class="f">電郵<input type="email" id="email" autocomplete="email" placeholder="you@example.com"></label>
+  <label class="f">密碼（至少6位）<input type="password" id="password" autocomplete="current-password"></label>
+  <button class="primary" id="submitBtn">登入</button>
+  <div class="aux"><a id="forgot">唔記得密碼？</a></div>
+  <div class="msg" id="authMsg"></div>
+</div>
+
+<!-- 已登入 -->
+<div class="card" id="profileCard" style="display:none">
+  <div class="who">
+    <div class="avatar" id="avatar">?</div>
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b id="pName"></b><span class="badge member" id="pRole">…</span>
+      </div>
+      <div class="email" id="pEmail"></div>
+    </div>
+  </div>
+  <div class="row2">
+    <label class="f" style="flex:1;margin-bottom:0">改顯示名<input type="text" id="editName"></label>
+    <button class="ghost" id="saveName" style="align-self:flex-end">儲存</button>
+  </div>
+  <div class="features">
+    <h3>功能權限</h3>
+    <div id="featList"></div>
+  </div>
+  <div class="msg" id="profMsg"></div>
+  <button class="ghost" id="logout" style="width:100%;margin-top:14px">登出</button>
+</div>
+
+<!-- admin 用戶管理 -->
+<div class="card" id="adminCard" style="display:none">
+  <h2>👥 用戶管理（管理員）</h2>
+  <div id="userList"><div class="spin">載入緊…</div></div>
+</div>
+
+<div class="foot">
+  註冊後預設係「普通會員」；學生／教練身份由管理員開通。<br>
+  <a href="/">← 返回主頁</a>
+</div>
+
+<script type="module">
+const SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
+const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable key — 前端可公開
+const ROLE_NAMES = { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" };
+
+// 每頁一行 guard 就鎖到；喺呢度列返俾用戶睇
+const FEATURES = [
+  { name:"Motion Lab 動作分析", url:"/motion-lab/", roles:["student","coach","admin"] },
+  { name:"分成計算器（財務）", url:"/split-calculator/", roles:["coach","admin"] },
+];
+
+const $ = s => document.querySelector(s);
+const esc = s => { const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; };
+let sb=null, user=null, profile=null, mode='login';
+
+function msg(el, text, cls){ el.className='msg '+cls; el.textContent=text; }
+function clearMsg(el){ el.className='msg'; el.textContent=''; }
+
+const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+sb = createClient(SB_URL, SB_KEY);
+
+sb.auth.onAuthStateChange((_ev, session)=>{ user = session?.user || null; render(); });
+user = (await sb.auth.getSession()).data.session?.user || null;
+render();
+
+async function render(){
+  $('#loading').style.display='none';
+  if(!user){
+    profile=null;
+    $('#authCard').style.display='';
+    $('#profileCard').style.display='none';
+    $('#adminCard').style.display='none';
+    return;
+  }
+  $('#authCard').style.display='none';
+  $('#profileCard').style.display='';
+  const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  profile = data || { role:'member', name:'', email:user.email };
+  const role = profile.role || 'member';
+  $('#pName').textContent = profile.name || (user.email||'').split('@')[0];
+  $('#pEmail').textContent = user.email || '';
+  $('#editName').value = profile.name || '';
+  $('#avatar').textContent = (profile.name || user.email || '?').trim().charAt(0).toUpperCase();
+  const badge = $('#pRole');
+  badge.textContent = ROLE_NAMES[role] || role;
+  badge.className = 'badge ' + role;
+  $('#featList').innerHTML = FEATURES.map(f=>{
+    const ok = f.roles.includes(role);
+    return `<div class="feat ${ok?'':'locked'}">
+      <span>${esc(f.name)}<div class="need">需要：${f.roles.map(r=>ROLE_NAMES[r]).join('／')}</div></span>
+      ${ok ? `<a href="${f.url}">開啟 →</a>` : '<span>🔒</span>'}
+    </div>`;
+  }).join('');
+  // 登入後有 ?next= 就跳返去（角色啱先跳，唔啱留喺度俾佢睇原因）
+  const next = new URLSearchParams(location.search).get('next');
+  if(next && next.startsWith('/')){
+    const feat = FEATURES.find(f=>next.startsWith(f.url));
+    if(!feat || feat.roles.includes(role)){ location.replace(next); return; }
+    msg($('#profMsg'), `你想去嘅頁面（${next}）需要 ${feat.roles.map(r=>ROLE_NAMES[r]).join('／')} 身份，你而家係「${ROLE_NAMES[role]}」。想開通請聯絡 Ming。`, 'info');
+  }
+  if(role==='admin') renderAdmin(); else $('#adminCard').style.display='none';
+}
+
+async function renderAdmin(){
+  $('#adminCard').style.display='';
+  const { data, error } = await sb.from('profiles').select('*').order('created_at');
+  if(error){ $('#userList').innerHTML = '<div class="spin">讀取失敗：'+esc(error.message)+'</div>'; return; }
+  $('#userList').innerHTML = data.map(p=>`
+    <div class="user-row">
+      <span class="em">${esc(p.name||'')} <span style="color:var(--muted)">${esc(p.email||'')}</span></span>
+      <select data-uid="${p.id}" ${p.id===user.id?'disabled title="唔可以改自己"':''}>
+        ${Object.entries(ROLE_NAMES).map(([k,v])=>`<option value="${k}" ${p.role===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>`).join('');
+  $('#userList').querySelectorAll('select[data-uid]').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      const { error } = await sb.rpc('set_user_role', { target_id: sel.dataset.uid, new_role: sel.value });
+      if(error){ alert('改唔到：'+error.message); renderAdmin(); return; }
+      sel.style.outline='2px solid var(--ok)';
+      setTimeout(()=>sel.style.outline='', 1200);
+    });
+  });
+}
+
+function setMode(m){
+  mode=m; clearMsg($('#authMsg'));
+  $('#tabLogin').classList.toggle('on', m==='login');
+  $('#tabSignup').classList.toggle('on', m==='signup');
+  $('#signupName').style.display = m==='signup' ? '' : 'none';
+  $('#submitBtn').textContent = m==='signup' ? '建立帳戶' : '登入';
+  $('#password').autocomplete = m==='signup' ? 'new-password' : 'current-password';
+}
+$('#tabLogin').onclick = ()=>setMode('login');
+$('#tabSignup').onclick = ()=>setMode('signup');
+
+$('#submitBtn').onclick = async ()=>{
+  const email = $('#email').value.trim(), password = $('#password').value;
+  const box = $('#authMsg');
+  if(!email || password.length < 6){ msg(box,'請輸入電郵，密碼至少6位','err'); return; }
+  $('#submitBtn').disabled = true;
+  try{
+    if(mode==='signup'){
+      const name = $('#name').value.trim();
+      const { data, error } = await sb.auth.signUp({
+        email, password,
+        options: { data: { name }, emailRedirectTo: location.origin + '/login/' }
+      });
+      if(error){ msg(box,'註冊失敗：'+error.message,'err'); return; }
+      if(data.session){ return; } // 有 session 即已登入（無需確認電郵）
+      msg(box,'註冊成功 ✔ 已寄確認信去 '+email+'，撳咗連結再返嚟登入。','ok');
+    }else{
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error){ msg(box,'登入失敗：'+error.message,'err'); return; }
+    }
+  } finally { $('#submitBtn').disabled = false; }
+};
+$('#password').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#submitBtn').click(); });
+
+$('#forgot').onclick = async ()=>{
+  const email = $('#email').value.trim();
+  const box = $('#authMsg');
+  if(!email){ msg(box,'先喺上面填低你嘅電郵，再撳「唔記得密碼」','info'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/login/' });
+  if(error){ msg(box,'寄唔到重設信：'+error.message,'err'); return; }
+  msg(box,'已寄密碼重設信去 '+email,'ok');
+};
+
+$('#saveName').onclick = async ()=>{
+  const name = $('#editName').value.trim();
+  const { error } = await sb.from('profiles').update({ name }).eq('id', user.id);
+  const box = $('#profMsg');
+  if(error){ msg(box,'儲存失敗：'+error.message,'err'); return; }
+  msg(box,'已儲存 ✔','ok'); render();
+};
+
+$('#logout').onclick = async ()=>{ await sb.auth.signOut(); };
+</script>
+</body>
+</html>
