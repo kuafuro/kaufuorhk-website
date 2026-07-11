@@ -490,6 +490,15 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <button class="btn" id="signupBtn">註冊新帳戶</button>
       </div>
       <p class="hint">首次註冊後請去電郵撳確認連結先可以登入。資料存喺你嘅雲端資料庫（Supabase），只有你登入先睇到。</p>
+      <div id="signupSteps" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--page)">
+        <b style="font-size:.92rem">📧 註冊成功！仲差一步——確認電郵</b>
+        <ol style="font-size:.88rem;line-height:1.7;margin:8px 0 4px;padding-left:20px">
+          <li>開你嘅電郵信箱：<b id="signupEmailShown"></b><br><small style="color:var(--ink-muted)">搵唔到？請檢查「垃圾郵件」／「促銷」分類</small></li>
+          <li>撳郵件入面嘅 <b>「Confirm your mail」確認連結</b></li>
+          <li>返嚟呢一頁，用啱先嘅電郵密碼<b>登入</b></li>
+        </ol>
+        <small style="color:var(--ink-muted)">收唔到郵件？等一分鐘再撳多次「註冊新帳戶」會重寄。</small>
+      </div>
     </div>
     <div id="authIn" style="display:none">
       <div class="controls">
@@ -648,6 +657,19 @@ function heightOf(lm){          // visible bounding height, normalized 0–1
   for(const p of lm){ if((p.visibility ?? 1) > 0.4){ mn = Math.min(mn, p.y); mx = Math.max(mx, p.y); } }
   return Math.max(0, mx - mn);
 }
+/* mean landmark confidence over the core skeleton. MediaPipe reports LOW
+   visibility on "people" it hallucinates in foliage/clutter (~0.2–0.5) and
+   HIGH on real bodies (~0.8+) — the cheapest reliable human-vs-background
+   test we have. Outdoor footage: bushes at the frame's bottom edge would
+   otherwise pass the "lowest feet" rule and steal the A/B fighter roles. */
+const CORE_LM = [LM.NOSE, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_ELBOW, LM.R_ELBOW,
+                 LM.L_WRIST, LM.R_WRIST, LM.L_HIP, LM.R_HIP,
+                 LM.L_KNEE, LM.R_KNEE, LM.L_ANKLE, LM.R_ANKLE];
+function coreVisOf(lm){
+  let s = 0;
+  for(const j of CORE_LM) s += lm[j]?.visibility ?? 1;
+  return s/CORE_LM.length;
+}
 /* order people biggest-first; drop tiny spurious detections unless nothing else remains */
 function rankPeople(people){
   const order = people.map((lm,i)=>({ lm, i, h: heightOf(lm) })).sort((a,b)=>b.h-a.h);
@@ -759,6 +781,20 @@ const tracker = {
     const ua = (a.x1-a.x0)*(a.y1-a.y0) + (b.x1-b.x0)*(b.y1-b.y0) - inter;
     return ua > 0 ? inter/ua : 0;
   },
+  /* per-track life signs, fed on every matched detection:
+     · visE   — EMA of core-landmark confidence (bushes score low, bodies high)
+     · travel — integrated SMOOTHED hip displacement in own body-heights.
+       Smoothing first means detection jitter (zero-mean) cancels out instead
+       of accumulating; real fighters integrate travel fast, foliage stays ~0.
+     · n/born — how long and how often this track has actually been seen */
+  feedLife(tr, c){
+    if(tr.born == null){ tr.born = tr.lastSeen; tr.n = 0; tr.visE = c.vis; tr.travel = 0; tr.smPos = { x:c.pos.x, y:c.pos.y }; }
+    tr.n++;
+    tr.visE = 0.85*tr.visE + 0.15*c.vis;
+    const sx = 0.7*tr.smPos.x + 0.3*c.pos.x, sy = 0.7*tr.smPos.y + 0.3*c.pos.y;
+    tr.travel += Math.hypot(sx - tr.smPos.x, sy - tr.smPos.y)/Math.max(tr.h, 0.2);
+    tr.smPos = { x:sx, y:sy };
+  },
   /* dets: [{lm, i, h}] → same objects with .trackId/.pos/.sig attached */
   update(dets, t, videoEl){
     this.beginFrame(videoEl);
@@ -766,6 +802,7 @@ const tracker = {
       o.pos = midHipOf(o.lm);
       o.sig = this.sigOf(o.lm);
       o.box = this.bboxOf(o.lm);
+      o.vis = coreVisOf(o.lm);
       o.trackId = null;
       return o;
     });
@@ -801,6 +838,7 @@ const tracker = {
       tr.vel = { x: 0.6*tr.vel.x + 0.4*(c.pos.x-tr.pos.x)/dt, y: 0.6*tr.vel.y + 0.4*(c.pos.y-tr.pos.y)/dt };
       tr.pos = c.pos; tr.h = c.h; tr.lastSeen = t; tr.box = c.box;
       tr.sig = tr.sig.map((v,i)=>0.85*v + 0.15*c.sig[i]);
+      this.feedLife(tr, c);
       c.trackId = p.id;
     }
     // second pass: loosely pair leftover tracks with leftover people —
@@ -820,13 +858,15 @@ const tracker = {
         tr.vel = { x: 0.5*tr.vel.x + 0.5*(c.pos.x-tr.pos.x)/dt, y: 0.5*tr.vel.y + 0.5*(c.pos.y-tr.pos.y)/dt };
         tr.pos = c.pos; tr.h = c.h; tr.lastSeen = t; tr.box = c.box;
         tr.sig = tr.sig.map((v,i)=>0.9*v + 0.1*c.sig[i]);
+        this.feedLife(tr, c);
         c.trackId = tr.id;
       }
     }
     for(const c of cands){
       if(c.trackId == null){
         const id = this.nextId++;
-        this.tracks.set(id, { id, pos:c.pos, vel:{x:0,y:0}, h:c.h, sig:c.sig, box:c.box, lastSeen:t });
+        this.tracks.set(id, { id, pos:c.pos, vel:{x:0,y:0}, h:c.h, sig:c.sig, box:c.box, lastSeen:t,
+          born:t, n:1, visE:c.vis, travel:0, smPos:{ x:c.pos.x, y:c.pos.y } });
         c.trackId = id;
       }
     }
@@ -1829,7 +1869,9 @@ let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, last
              batch:true /* uploaded videos: analyse frame-by-frame at full speed, unattended */,
              targetPos:null /* single-mode: tracked person's mid-hip (normalized) */, lastRanked:null,
              subjectId:null, oppId:null, lastSubjectPos:null, lastCands:null,
-             subjectSig:null, oppSig:null, lastOppPos:null, lastFullScan:-9 };
+             subjectSig:null, oppSig:null, lastOppPos:null, lastFullScan:-9,
+             manualPick:null /* coach's tapped choice — the background audit must never override it */,
+             subjSeenT:null, oppSeenT:null, bgAuditT:null };
 mState = freshSession();
 
 /* keep the screen awake while a session runs (phones dim → analysis dies) */
@@ -1865,6 +1907,7 @@ $("mMultiBtn").addEventListener("click", async ()=>{
   mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
+  mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
   tracker.reset();
   if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
   updateSparCard();
@@ -1896,6 +1939,7 @@ $("mStage").addEventListener("click", e=>{
       mRun.subjectId = mRun.oppId; mRun.oppId = oldSubj;
       mRun.subjectSig = mRun.oppSig; mRun.oppSig = oldSig;
       mRun.lastSubjectPos = best.pos;
+      mRun.manualPick = mRun.subjectId;
       const tmp = mState.A; mState.A = mState.B; mState.B = tmp;
       identity.swap();
       toast("已對調 A↔B（數據跟人走，冇重設）");
@@ -1904,6 +1948,7 @@ $("mStage").addEventListener("click", e=>{
     mRun.subjectId = best.trackId;
     mRun.lastSubjectPos = best.pos;
     mRun.subjectSig = best.sig ? best.sig.slice() : null;
+    mRun.manualPick = best.trackId;                  // coach's explicit choice
     mRun.oppId = null; mRun.oppSig = null;           // B re-resolves next frame
     mState = freshSession();                         // pairing changed — restart stats
     identity.reset();
@@ -2051,12 +2096,15 @@ async function autoDetectMulti(){
     await setMode("IMAGE");
     if(currentMode !== "IMAGE") return;
     const probe = landmarker.detect(mVideo);
-    const n = rankPeople(probe.landmarks || []).length;
+    // count human-confident detections only — a phantom in bushes must not
+    // flip a solo training clip into (broken) two-fighter sparring mode
+    const n = rankPeople(probe.landmarks || []).filter(o=>coreVisOf(o.lm) >= 0.55).length;
     if(n >= 2){
       mRun.multi = true;
       $("mMultiBtn").textContent = "👥 多人模式：開";
       mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
       mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
+      mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
       tracker.reset();
       toast(`偵測到 ${n} 人 — 已自動開啟多人模式，計算對戰數據`, 4200);
     }
@@ -2076,6 +2124,7 @@ async function batchAnalyze(){
   mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
+  mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
   mRun.detMs = null; mRun.lastDetTs = null; mRun.fpsWarned = false;
   tracker.reset();
   identity.lastCheck = -1; identity.lastFix = -1;
@@ -2155,6 +2204,7 @@ async function startMotion(source){
   mRun.targetPos = null; mRun.lastRanked = null;   // re-lock onto the most prominent person
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null; mRun.lastCands = null;
   mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
+  mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
   mRun.detMs = null; mRun.lastDetTs = null;
   tracker.reset();
   identity.lastCheck = -1; identity.lastFix = -1;
@@ -2453,11 +2503,34 @@ function handleDetections(res, tSec, mirrored, W, H){
        camera looks across the floor — the REAL fighters' feet are the lowest
        in frame; mirror people (and anyone far behind) stand higher up. Only
        floor-level, decent-size people may hold the A/B roles. */
+    /* humanness first: outdoor clips get phantom "people" hallucinated in
+       foliage/clutter. A brand-new detection may claim a role only with
+       instantly-high landmark confidence; a borderline one must prove itself
+       over several frames (confidence EMA) before it can hold A/B. Occlusion
+       dips are absorbed by the EMA, so a clinched fighter stays human. */
+    for(const c of cands){
+      const tr = tracker.tracks.get(c.trackId);
+      const visE = tr?.visE ?? c.vis, seen = tr?.n ?? 1;
+      c.human = c.vis >= 0.65 || (seen >= 3 && visE >= 0.52);
+      c.humanStrong = c.vis >= 0.72 || (seen >= 3 && visE >= 0.60);
+    }
+    let humans = cands.filter(c=>c.human);
+    if(!humans.length){    // degraded footage — relax rather than freeze
+      for(const c of cands) c.human = c.vis >= 0.5;
+      humans = cands.filter(c=>c.human);
+    }
+    /* gym walls are often mirrors: reflections look identical to the real
+       fighters and even appearance embeddings can't tell them apart. But the
+       camera looks across the floor — the REAL fighters' feet are the lowest
+       in frame; mirror people (and anyone far behind) stand higher up. Only
+       floor-level, decent-size HUMANS may hold the A/B roles — the floor
+       reference itself must ignore phantoms, or a bush at the frame's bottom
+       edge disqualifies both real fighters. */
     const feetOf = c => Math.max(c.lm[LM.L_ANKLE].y, c.lm[LM.R_ANKLE].y);
     let maxFy = 0;
-    for(const c of cands) maxFy = Math.max(maxFy, feetOf(c));
-    for(const c of cands) c.eligible = cands.length <= 2 ||
-      (maxFy - feetOf(c) < 0.17 && c.h > 0.22);
+    for(const c of humans) maxFy = Math.max(maxFy, feetOf(c));
+    for(const c of cands) c.eligible = c.human && (humans.length <= 2 ||
+      (maxFy - feetOf(c) < 0.17 && c.h > 0.22));
 
     let subj = cands.find(c=>c.trackId === mRun.subjectId) || null;
     if(subj) mRun.adopt = null;
@@ -2499,11 +2572,15 @@ function handleDetections(res, tSec, mirrored, W, H){
       }else mRun.adopt = null;
     }
     if(!subj && mRun.subjectId == null && cands.length){
-      const elig = cands.filter(c=>c.eligible);
-      subj = (elig.length ? elig : cands).slice().sort((a,b)=>b.h-a.h)[0];   // first lock: most prominent floor-level person
-      mRun.subjectId = subj.trackId;
+      // first lock: most prominent floor-level PERSON. Locking nothing for a
+      // few frames beats locking a bush — a real fighter qualifies within ~3
+      // samples, and the loop retries every frame until then. (B's track is
+      // excluded: one body must never hold both roles.)
+      subj = cands.filter(c=>c.eligible && c.humanStrong && c.trackId !== mRun.oppId)
+                  .sort((a,b)=>b.h-a.h)[0] || null;
+      if(subj) mRun.subjectId = subj.trackId;
     }
-    if(subj) mRun.lastSubjectPos = subj.pos;
+    if(subj){ mRun.lastSubjectPos = subj.pos; mRun.subjSeenT = tSec; }
 
     /* opponent gets the SAME re-adopt memory as the subject: a dropped track
        that reappears near the remembered position or in the remembered
@@ -2524,7 +2601,9 @@ function handleDetections(res, tSec, mirrored, W, H){
           }
         }
       }
-      const pick = best || elig.sort((a,b)=>b.h-a.h)[0] || null;
+      // memory re-adopt (best) may use the softer human gate; a brand-new B
+      // must clear the strong one — don't hand the opponent role to a bush
+      const pick = best || elig.filter(c=>c.humanStrong).sort((a,b)=>b.h-a.h)[0] || null;
       if(pick){
         // a brand-new opponent (no match to the remembered one) only resets B
         // while the session is still young; later it's the same fight — keep stats
@@ -2532,16 +2611,18 @@ function handleDetections(res, tSec, mirrored, W, H){
         mRun.oppId = pick.trackId; oppCand = pick;
       }
     }
-    if(oppCand) mRun.lastOppPos = oppCand.pos;
+    if(oppCand){ mRun.lastOppPos = oppCand.pos; mRun.oppSeenT = tSec; }
 
     /* colour-signature memory: only learn colours while the two fighters are
        clearly SEPARATED — clinch frames sample the wrong body half the time
        and would poison both prototypes exactly when they're needed most */
     const abOverlap = (subj && oppCand) ? tracker.iou(subj.box, oppCand.box) : 0;
-    if(subj && abOverlap < 0.3){
+    // low-confidence frames are also excluded: colours sampled off a phantom
+    // or a half-occluded body would poison the memory that re-identifies A/B
+    if(subj && abOverlap < 0.3 && subj.vis >= 0.5){
       mRun.subjectSig = mRun.subjectSig ? mRun.subjectSig.map((v,i)=>0.9*v + 0.1*subj.sig[i]) : subj.sig.slice();
     }
-    if(oppCand && abOverlap < 0.3){
+    if(oppCand && abOverlap < 0.3 && oppCand.vis >= 0.5){
       mRun.oppSig = mRun.oppSig ? mRun.oppSig.map((v,i)=>0.9*v + 0.1*oppCand.sig[i]) : oppCand.sig.slice();
     }
 
@@ -2567,13 +2648,14 @@ function handleDetections(res, tSec, mirrored, W, H){
        (crossing, clinch, occlusion), the embeddings expose it — rebind. ---- */
     const liveFps = mRun.on && mRun.detMs ? 1000/mRun.detMs : null;   // null in batch (dense by design)
     const idInterval = mRun.idEvery ?? (liveFps != null && liveFps < 8 ? 1.0 : 0.25);   // don't let the embedder eat the frame rate
-    if(embedder && subj && (liveFps == null || liveFps >= 5) && tSec - identity.lastCheck > idInterval){
+    if(embedder && subj && subj.vis >= 0.55 && (liveFps == null || liveFps >= 5) && tSec - identity.lastCheck > idInterval){
       identity.lastCheck = tSec;
       const overlap = oppCand ? tracker.iou(subj.box, oppCand.box) : 0;
       const eS = embedPerson(subj.box);
       const eO = oppCand ? embedPerson(oppCand.box) : null;
       if(eS && !identity.A.proto) identity.A.proto = eS;
-      if(eO && !identity.B.proto) identity.B.proto = eO;
+      // a phantom's texture must never become B's face — high-confidence frames only
+      if(eO && !identity.B.proto && oppCand.vis >= 0.55) identity.B.proto = eO;
       else if(eS && eO && identity.A.proto && identity.B.proto){
         const sAA = cosSim(eS, identity.A.proto), sAB = cosSim(eS, identity.B.proto);
         const sBA = cosSim(eO, identity.A.proto), sBB = cosSim(eO, identity.B.proto);
@@ -2594,6 +2676,56 @@ function handleDetections(res, tSec, mirrored, W, H){
       }
     }
 
+    /* ---- background audit: self-heal a role locked onto scenery ----
+       A phantom's signature: a well-observed track with sustained LOW
+       landmark confidence AND near-zero travel (fighters integrate travel
+       fast; foliage never moves). Or the role's track simply vanished and
+       nothing was learned about the person (no embedding prototype) — the
+       bad first lock also poisons re-adopt, so it must be broken by hand.
+       Either way: if a strong unassigned human is standing by, release the
+       role and its memories; the normal lock logic claims the real fighter
+       on the next frames. The coach's manual tap is never audited away. */
+    if(tSec - (mRun.bgAuditT ?? -9) > 0.5){
+      mRun.bgAuditT = tSec;
+      const phantom = id => {
+        const tr = id != null ? tracker.tracks.get(id) : null;
+        // 0.50: low enough that no visible fighter's EMA lives there, high
+        // enough to catch phantoms (their raw vis ~0.46 keeps the EMA under
+        // it). The near-zero-travel guard does the real discriminating —
+        // even a cornered fighter shuffles more than a bush.
+        return !!(tr && tr.n >= 8 && tSec - (tr.born ?? tSec) > 2 && (tr.visE ?? 1) < 0.50 && (tr.travel ?? 9) < 0.35);
+      };
+      const vanished = (id, seenT, proto) => id != null && !proto &&
+        tSec - (seenT ?? 0) > 3 && !cands.some(c=>c.trackId === id);
+      const spare = cands.some(c=>c.humanStrong && c.eligible &&
+        c.trackId !== mRun.subjectId && c.trackId !== mRun.oppId);
+      const humanB = oppCand && oppCand.humanStrong && !phantom(mRun.oppId);
+      if((spare || humanB) && mRun.subjectId != null && mRun.subjectId !== mRun.manualPick &&
+         (phantom(mRun.subjectId) || vanished(mRun.subjectId, mRun.subjSeenT, identity.A.proto))){
+        if(humanB){
+          // the real fighter is sitting in the B slot — promote them to A
+          // (stats follow the person, exactly like the tap-swap), and let a
+          // real second fighter claim the now-free B slot next frame
+          mRun.subjectId = mRun.oppId; mRun.oppId = null;
+          mRun.subjectSig = mRun.oppSig; mRun.oppSig = null;
+          mRun.lastSubjectPos = oppCand.pos; mRun.lastOppPos = null;
+          identity.A.proto = identity.B.proto; identity.B.proto = null;
+          mState.A = mState.B; mState.B = freshFighter();   // phantom's "stats" are noise — drop them
+          subj = oppCand; oppCand = null;
+        }else{
+          mRun.subjectId = null; mRun.lastSubjectPos = null; mRun.subjectSig = null;
+          identity.A.proto = null; subj = null;
+        }
+        mRun.adopt = null;
+        toast("🌿 偵測到 A 鎖錯背景／目標消失，重新搵拳手");
+      }else if(spare && mRun.oppId != null &&
+         (phantom(mRun.oppId) || vanished(mRun.oppId, mRun.oppSeenT, identity.B.proto))){
+        mRun.oppId = null; mRun.lastOppPos = null; mRun.oppSig = null;
+        identity.B.proto = null; oppCand = null;
+        toast("🌿 偵測到 B 鎖錯背景／目標消失，重新搵對手");
+      }
+    }
+
     // temporal smoothing for the two fighters (body only; wrists stay raw)
     if(subj){
       const sm = tracker.smooth(subj.trackId, subj.lm, res.worldLandmarks?.[subj.i], tSec);
@@ -2607,6 +2739,7 @@ function handleDetections(res, tSec, mirrored, W, H){
     for(const c of cands){
       const isSubj = subj && c.trackId === subj.trackId;
       const isOpp = oppCand && c.trackId === oppCand.trackId;
+      if(!isSubj && !isOpp && !c.human) continue;   // don't paint skeletons on foliage/clutter
       const lmDraw = isSubj ? selLm : (isOpp ? opp.lm : c.lm);
       drawSkeleton(mCtx, lmDraw, W, H, mirrored,
         isSubj ? 0.85 : (isOpp ? 0.6 : 0.3),
@@ -2625,7 +2758,8 @@ function handleDetections(res, tSec, mirrored, W, H){
     nPeople = ranked.length;
     let selIdx = -1;
     if(!mRun.targetPos){
-      selIdx = ranked[0].i;
+      // prefer the biggest CONFIDENT human — never auto-lock onto background
+      selIdx = (ranked.find(o=>coreVisOf(o.lm) >= 0.55) || ranked[0]).i;
       mRun.targetPos = midHipOf(people[selIdx]);
     }else{
       let bestD = 1e9;
@@ -3224,7 +3358,11 @@ $("signupBtn").addEventListener("click", async ()=>{
   if(!email || password.length < 6){ toast("請輸入電郵，密碼至少 6 位"); return; }
   const { error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + "/motion-lab/" } });
   if(error){ toast("註冊失敗：" + error.message, 4500); return; }
-  toast("註冊成功 ✔ 請去電郵撳確認連結，然後返嚟登入", 6000);
+  // a toast vanishes — leave the what-to-do-next steps on screen until login
+  $("signupEmailShown").textContent = email;
+  $("signupSteps").style.display = "";
+  $("signupSteps").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  toast("註冊成功 ✔ 跟住下面三步完成確認", 5000);
 });
 $("logoutBtn").addEventListener("click", async ()=>{ await sb?.auth.signOut(); toast("已登出"); });
 
@@ -3686,6 +3824,12 @@ document.addEventListener("visibilitychange", ()=>{
     acquireWake();               // wake lock is auto-released when the page hides
   }
 });
+
+/* test hook: the Playwright harness drives the tracker with SYNTHETIC
+   landmark streams — background-phantom scenarios can't be reproduced on
+   demand with real footage. Nothing in the app reads this. */
+window.__ml = { handleDetections, tracker, coreVisOf,
+  get mRun(){ return mRun; }, get mState(){ return mState; } };
 </script>
 
 </body>
