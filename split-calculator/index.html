@@ -124,6 +124,7 @@
       <div class="grid3">
         <label class="f">4堂套票價（HK$）<input type="number" id="s-price4" min="0" step="10"></label>
         <label class="f">8堂套票價（HK$）<input type="number" id="s-price8" min="0" step="10"></label>
+        <label class="f">PT套票價（HK$／4堂）<input type="number" id="s-pricePT" min="0" step="10"></label>
         <label class="f">請假行政費（HK$／次）<input type="number" id="s-adminFee" min="0" step="10"></label>
         <label class="f">場租上限：少於3人（$／小時）<input type="number" id="s-rentLow" min="0" step="10"></label>
         <label class="f">場租上限：3人或以上（$／小時）<input type="number" id="s-rentHigh" min="0" step="10"></label>
@@ -140,6 +141,7 @@
     <div class="rule">
       學員時數 = 時長 × 出席人數（條款4.2）。兩位導師同場：出席 &lt; 3人 → 全歸當值導師；≥ 3人 → 學員時數平分（條款4.4）。
       「缺席扣堂」= 通知少於兩小時或無故缺席，照扣堂入收入但不計出席（條款1.7.2）。「合規請假」收行政費、不扣堂（條款1.7.1）。
+      PT票（例：Simon，$900/4堂）：學員<b>單獨一人上堂</b>嗰節先入「PT票」欄；同其他學員一齊上嗰節照入「4堂票」欄。
     </div>
     <div class="rows" id="sessions"></div>
     <button class="add" id="add-session">＋ 加一節課堂</button>
@@ -199,6 +201,7 @@ const STORE_KEY = 'split-calc-v1';
 const DEFAULT_SETTINGS = {
   price4: 800, classes4: 4,
   price8: 1400, classes8: 8,
+  pricePT: 900, classesPT: 4,   // Simon：單獨上堂計PT
   adminFee: 100,
   rentLow: 100, rentHigh: 150,
   threshold: 3,
@@ -234,6 +237,7 @@ const uid = () => 'r' + (uidCounter++).toString(36);
 /* ---------- 計算核心（跟協議書） ---------- */
 function perClass4(s){ return s.price4 / s.classes4; }   // 套票均價：$800/4 = $200
 function perClass8(s){ return s.price8 / s.classes8; }   // $1400/8 = $175
+function perClassPT(s){ return s.pricePT / s.classesPT; } // PT：$900/4 = $225
 
 // 當值導師（條款1.4）：六、日 = A（Ming）；一至五 = B（Tom）
 function autoDuty(dateStr){
@@ -245,14 +249,14 @@ function autoDuty(dateStr){
 
 // 單節課堂運算
 function calcSession(sess, s){
-  const n4 = +sess.n4||0, n8 = +sess.n8||0;        // 出席（4堂票／8堂票）
-  const m4 = +sess.m4||0, m8 = +sess.m8||0;        // 缺席扣堂（照收費，不算出席）
+  const n4 = +sess.n4||0, n8 = +sess.n8||0, npt = +sess.npt||0; // 出席（4堂票／8堂票／PT票）
+  const m4 = +sess.m4||0, m8 = +sess.m8||0, mpt = +sess.mpt||0; // 缺席扣堂（照收費，不算出席）
   const excused = +sess.excused||0;                 // 合規請假（行政費）
   const dur = +sess.dur||0;
-  const attendance = n4 + n8;
+  const attendance = n4 + n8 + npt;
 
-  const revenue = (n4+m4)*perClass4(s) + (n8+m8)*perClass8(s) + excused*s.adminFee;
-  const consumed4 = n4+m4, consumed8 = n8+m8;
+  const revenue = (n4+m4)*perClass4(s) + (n8+m8)*perClass8(s) + (npt+mpt)*perClassPT(s) + excused*s.adminFee;
+  const consumed4 = n4+m4, consumed8 = n8+m8, consumedPT = npt+mpt;
 
   const sh = dur * attendance;                      // 學員時數（條款4.2）
   let shA = 0, shB = 0, allocNote = '';
@@ -265,7 +269,7 @@ function calcSession(sess, s){
     else if(duty === 'A'){ shA = sh; allocNote = '<'+s.threshold+'人，全歸當值導師A（4.4.1）'; }
     else { shB = sh; allocNote = '<'+s.threshold+'人，全歸當值導師B（4.4.1）'; }
   }
-  return { revenue, consumed4, consumed8, excused, attendance, sh, shA, shB, duty, allocNote };
+  return { revenue, consumed4, consumed8, consumedPT, excused, attendance, sh, shA, shB, duty, allocNote };
 }
 
 // 場租入賬（條款3）：上限按該日最高出席人數
@@ -284,11 +288,11 @@ function calcMonth(md, s){
     const r = calcSession(sess, s);
     if(sess.date) maxAttByDate[sess.date] = Math.max(maxAttByDate[sess.date]||0, r.attendance);
   }
-  let income = 0, consumed4 = 0, consumed8 = 0, excusedCount = 0;
+  let income = 0, consumed4 = 0, consumed8 = 0, consumedPT = 0, excusedCount = 0;
   let shA = 0, shB = 0;
   for(const sess of md.sessions){
     const r = calcSession(sess, s);
-    income += r.revenue; consumed4 += r.consumed4; consumed8 += r.consumed8;
+    income += r.revenue; consumed4 += r.consumed4; consumed8 += r.consumed8; consumedPT += r.consumedPT;
     excusedCount += r.excused; shA += r.shA; shB += r.shB;
   }
   let rentChargeable = 0, rentPaid = 0, rentOver = 0;
@@ -312,7 +316,7 @@ function calcMonth(md, s){
     payB = pool/2 + expiredTotal/2;
     splitNote = '本月冇學員時數，純利暫按50/50顯示，請雙方自行議定。';
   }
-  return { income, consumed4, consumed8, excusedCount, adminIncome: excusedCount*s.adminFee,
+  return { income, consumed4, consumed8, consumedPT, excusedCount, adminIncome: excusedCount*s.adminFee,
            rentChargeable, rentPaid, rentOver, otherExpense, expiredTotal,
            totalExpense, pool, shA, shB, H, unit, payA, payB, splitNote, maxAttByDate };
 }
@@ -330,7 +334,7 @@ function toast(msg){
 
 /* ---------- 介面渲染 ---------- */
 function bindSettingsInputs(){
-  const map = { 'price4':'s-price4','price8':'s-price8','adminFee':'s-adminFee',
+  const map = { 'price4':'s-price4','price8':'s-price8','pricePT':'s-pricePT','adminFee':'s-adminFee',
     'rentLow':'s-rentLow','rentHigh':'s-rentHigh','threshold':'s-threshold',
     'nameA':'s-nameA','nameB':'s-nameB' };
   for(const [key,id] of Object.entries(map)){
@@ -371,13 +375,17 @@ function renderSessions(){
             <option value="B" ${sess.duty==='B'?'selected':''}>${esc(s.nameB)}</option>
           </select></label>
       </div>
-      <div class="grid4">
+      <div class="grid3">
         ${fieldNum('出席：4堂票（人）', sess.n4, 'n4', sess.id)}
         ${fieldNum('出席：8堂票（人）', sess.n8, 'n8', sess.id)}
+        ${fieldNum('出席：PT票（人）', sess.npt, 'npt', sess.id)}
+      </div>
+      <div class="grid3">
         ${fieldNum('缺席扣堂：4堂票（人）', sess.m4, 'm4', sess.id)}
         ${fieldNum('缺席扣堂：8堂票（人）', sess.m8, 'm8', sess.id)}
+        ${fieldNum('缺席扣堂：PT票（人）', sess.mpt, 'mpt', sess.id)}
       </div>
-      <div class="grid4">
+      <div class="grid3">
         ${fieldNum('合規請假（人，收$'+esc(s.adminFee)+'）', sess.excused, 'excused', sess.id)}
       </div>
       <div class="calc">
@@ -447,6 +455,7 @@ function renderResult(){
       <h3>收入（按消耗堂數入賬，條款2.4）</h3>
       <div class="li"><span>4堂票消耗 ${r.consumed4} 堂 × ${fmt$(perClass4(s))}</span><span>${fmt$(r.consumed4*perClass4(s))}</span></div>
       <div class="li"><span>8堂票消耗 ${r.consumed8} 堂 × ${fmt$(perClass8(s))}</span><span>${fmt$(r.consumed8*perClass8(s))}</span></div>
+      <div class="li"><span>PT票消耗 ${r.consumedPT} 堂 × ${fmt$(perClassPT(s))}</span><span>${fmt$(r.consumedPT*perClassPT(s))}</span></div>
       <div class="li"><span>請假行政費 ${r.excusedCount} 次 × ${fmt$(s.adminFee)}</span><span>${fmt$(r.adminIncome)}</span></div>
       <div class="li total"><span>總收入</span><span>${fmt$(r.income)}</span></div>
     </div>
@@ -498,6 +507,7 @@ function reportText(){
   L.push('【收入】（按消耗堂數入賬）');
   L.push(`· 4堂票：${r.consumed4} 堂 × $${perClass4(s)} = $${(r.consumed4*perClass4(s)).toFixed(2)}`);
   L.push(`· 8堂票：${r.consumed8} 堂 × $${perClass8(s)} = $${(r.consumed8*perClass8(s)).toFixed(2)}`);
+  L.push(`· PT票：${r.consumedPT} 堂 × $${perClassPT(s)} = $${(r.consumedPT*perClassPT(s)).toFixed(2)}`);
   L.push(`· 請假行政費：${r.excusedCount} 次 × $${s.adminFee} = $${r.adminIncome.toFixed(2)}`);
   L.push(`· 總收入：$${r.income.toFixed(2)}`);
   L.push('【支出】');
@@ -568,7 +578,7 @@ function updateInlineCalcs(){
 
 $('#add-session').onclick = ()=>{
   monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coaches:'AB', duty:'auto',
-    n4: 0, n8: 0, m4: 0, m8: 0, excused: 0 });
+    n4: 0, n8: 0, npt: 0, m4: 0, m8: 0, mpt: 0, excused: 0 });
   save(); renderAll();
 };
 $('#add-rent').onclick = ()=>{
