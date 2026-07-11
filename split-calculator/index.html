@@ -139,7 +139,7 @@
   <div class="card">
     <h2>📅 課堂記錄 <span class="hint">每節一行；收入按「當月實際消耗堂數」入賬（條款2.4）</span></h2>
     <div class="rule">
-      學員時數 = 時長 × 出席人數（條款4.2）。兩位導師同場：出席 &lt; 3人 → 全歸當值導師；≥ 3人 → 學員時數平分（條款4.4）。
+      1堂 = 1小時：消耗堂數 = 人數 × 時長（例：2小時 3人 = 消耗6堂）。學員時數 = 時長 × 出席人數（條款4.2）。兩位導師同場：出席 &lt; 3人 → 全歸當值導師；≥ 3人 → 學員時數平分（條款4.4）。
       「缺席扣堂」= 通知少於兩小時或無故缺席，照扣堂入收入但不計出席（條款1.7.2）。「合規請假」收行政費、不扣堂（條款1.7.1）。
       PT票（例：Simon，$900/4堂）：學員<b>單獨一人上堂</b>嗰節先入「PT票」欄；同其他學員一齊上嗰節照入「4堂票」欄。
     </div>
@@ -255,8 +255,9 @@ function calcSession(sess, s){
   const dur = +sess.dur||0;
   const attendance = n4 + n8 + npt;
 
-  const revenue = (n4+m4)*perClass4(s) + (n8+m8)*perClass8(s) + (npt+mpt)*perClassPT(s) + excused*s.adminFee;
-  const consumed4 = n4+m4, consumed8 = n8+m8, consumedPT = npt+mpt;
+  // 1堂 = 1小時：消耗堂數 = 人數 × 時長
+  const consumed4 = (n4+m4)*dur, consumed8 = (n8+m8)*dur, consumedPT = (npt+mpt)*dur;
+  const revenue = consumed4*perClass4(s) + consumed8*perClass8(s) + consumedPT*perClassPT(s) + excused*s.adminFee;
 
   const sh = dur * attendance;                      // 學員時數（條款4.2）
   let shA = 0, shB = 0, allocNote = '';
