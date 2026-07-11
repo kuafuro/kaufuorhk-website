@@ -90,6 +90,23 @@
   .pay .amt{font-size:1.6rem;font-weight:800;margin:2px 0}
   .pay .sub{font-size:.72rem;color:var(--muted)}
   .notice{font-size:.75rem;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 10px;margin-top:8px}
+  /* 點名 */
+  .att-head{font-size:.72rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px}
+  .att{display:grid;grid-template-columns:1.3fr 1fr .7fr 1fr 34px;gap:6px;align-items:end}
+  @media (max-width:560px){ .att{grid-template-columns:1fr 1fr 34px} }
+  button.mini{border:1px dashed var(--line);background:none;color:var(--muted);border-radius:8px;padding:7px 10px;font-size:.8rem;cursor:pointer;margin-top:2px}
+  button.mini:hover{border-color:var(--ming);color:var(--ming)}
+  button.delatt{border:none;background:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:6px;border-radius:8px;justify-self:end}
+  button.delatt:hover{color:var(--accent);background:var(--accent-soft)}
+  /* 套票追蹤 */
+  .stu-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-right:34px}
+  .stu-head input[type=text]{flex:1;min-width:110px;font-size:.95rem;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .chk{display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--muted);white-space:nowrap}
+  .pkg{display:grid;grid-template-columns:1.1fr 1fr 1fr .7fr .6fr 34px;gap:6px;align-items:end;margin-top:4px}
+  @media (max-width:640px){ .pkg{grid-template-columns:1fr 1fr 1fr} }
+  .pkg-meta{font-size:.74rem;color:var(--muted);display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin-top:2px}
+  .alert-owe{font-size:.78rem;background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600}
+  .alert-info{font-size:.78rem;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:6px 10px;margin-top:6px}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .toolbar button{
     flex:1;min-width:130px;padding:10px;border-radius:10px;border:1px solid var(--line);
@@ -140,15 +157,26 @@
     </details>
   </div>
 
+  <!-- 學員套票追蹤 -->
+  <div class="card">
+    <h2>🎫 學員套票追蹤 <span class="hint">套票由購買日起兩個月有效（條款1.2）；課堂點名自動扣堂</span></h2>
+    <div class="rule">
+      每個學員記錄佢買咗嘅套票（普通4堂 $800／普通8堂 $1,400／PT 4堂 $900）。點名會按日期順序自動由最早買嘅有效套票扣堂；
+      冇票可扣就會顯示「要交錢」。到期仲有剩堂會出「作廢建議」— 確認後自己加落「逾期作廢套票」度（記住下次購票要補返一堂，條款1.2）。
+    </div>
+    <div class="rows" id="tracker"></div>
+    <button class="add" id="add-student">＋ 新增學員</button>
+  </div>
+
   <!-- 課堂 -->
   <div class="card">
-    <h2>📅 課堂記錄 <span class="hint">每節一行；收入按「當月實際消耗堂數」入賬（條款2.4）</span></h2>
+    <h2>📅 課堂記錄 <span class="hint">逐個學員點名；收入按「實際扣堂數」入賬（條款2.4）</span></h2>
     <div class="rule">
-      1堂 = 1小時：消耗堂數 = 人數 × 時長（例：2小時 3人 = 消耗6堂）。學員時數 = 時長 × 出席人數（條款4.2）。
-      每節學員時數<b>全數歸時間表列明之執教導師</b>（ming＝Ming、Tom＝Tom），不設平分；另一方在場亦不分帳（2026年7月修訂版條款4.4）。
-      「缺席扣堂」= 通知少於兩小時或無故缺席，照扣堂入收入但不計出席（條款1.7.2）。「合規請假」收行政費、不扣堂（條款1.7.1）。
-      PT票（例：Simon，$900/4堂）：學員<b>單獨一人上堂</b>嗰節先入「PT票」欄；同其他學員一齊上嗰節照入「4堂票」欄。
-      免費學員（例：Taffy）：唔收錢，但照計出席人數同學員時數（條款4.2）。
+      點名以「<b>扣堂數</b>」做單位：每人每次預設扣 <b>1 堂</b>。學員報咗一個鐘、之後跟大隊 stay 多兩三個鐘 → 照計 1 堂唔加錢；
+      如果嗰次真係傾好收多過一堂，先至改「扣堂」數字。「時長」只係場地時間記錄，唔會自動乘落堂費。
+      每節學員時數（＝所扣堂數，免費學員照計）全數歸時間表列明之執教導師，不設平分（修訂版條款4.4）。
+      狀態：「出席」正常扣堂；「缺席扣堂」照扣但唔計出席（條款1.7.2）；「請假$100」唔扣堂、收行政費（條款1.7.1）。
+      Simon 類雙票學員：單獨一人上堂揀 <b>PT票</b>，同人一齊上揀 <b>普通4堂</b>（修訂版條款2.5）。
     </div>
     <div class="rows" id="sessions"></div>
     <button class="add" id="add-session">＋ 加一節課堂</button>
@@ -225,10 +253,12 @@ function load(){
       const d = JSON.parse(raw);
       d.settings = Object.assign({}, DEFAULT_SETTINGS, d.settings||{});
       d.months = d.months || {};
+      d.students = d.students || [];   // 學員名冊 {id, name, free}
+      d.packages = d.packages || [];   // 套票 {id, studentId, kind, price, classes, buyDate, expiry}
       return d;
     }
   }catch(e){ console.warn('load failed', e); }
-  return { settings: {...DEFAULT_SETTINGS}, months:{} };
+  return { settings: {...DEFAULT_SETTINGS}, months:{}, students:[], packages:[] };
 }
 let DB = load();
 function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
@@ -246,6 +276,23 @@ function perClass4(s){ return s.price4 / s.classes4; }   // 套票均價：$800/
 function perClass8(s){ return s.price8 / s.classes8; }   // $1400/8 = $175
 function perClassPT(s){ return s.pricePT / s.classesPT; } // PT：$900/4 = $225
 
+// 票種：p4 普通4堂、p8 普通8堂、pt PT票、free 免費
+const KIND_LABELS = { p4:'普通4堂', p8:'普通8堂', pt:'PT票', free:'免費' };
+function kindLabel(k){ return KIND_LABELS[k] || k; }
+function kindPer(s,k){ return k==='p4'?perClass4(s) : k==='p8'?perClass8(s) : k==='pt'?perClassPT(s) : 0; }
+function pkgDefaults(s,k){
+  return k==='p8' ? {price:s.price8, classes:s.classes8}
+       : k==='pt' ? {price:s.pricePT, classes:s.classesPT}
+       : {price:s.price4, classes:s.classes4};
+}
+function plus2mo(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setMonth(d.getMonth() + 2);   // 條款1.2：購買日起兩個月有效
+  return d.toISOString().slice(0,10);
+}
+function studentById(id){ return DB.students.find(x=>x.id===id); }
+
 // 當值導師（條款1.4）：六、日 = A（Ming）；一至五 = B（Tom）
 function autoDuty(dateStr){
   if(!dateStr) return 'B';
@@ -256,18 +303,34 @@ function autoDuty(dateStr){
 
 // 單節課堂運算
 function calcSession(sess, s){
-  const n4 = +sess.n4||0, n8 = +sess.n8||0, npt = +sess.npt||0; // 出席（4堂票／8堂票／PT票）
-  const nf = +sess.nf||0;                           // 免費學員（唔收錢，計出席同時數）
-  const m4 = +sess.m4||0, m8 = +sess.m8||0, mpt = +sess.mpt||0; // 缺席扣堂（照收費，不算出席）
-  const excused = +sess.excused||0;                 // 合規請假（行政費）
-  const dur = +sess.dur||0;
-  const attendance = n4 + n8 + npt + nf;
+  let revenue, consumed4, consumed8, consumedPT, excused, attendance, sh;
 
-  // 1堂 = 1小時：消耗堂數 = 人數 × 時長
-  const consumed4 = (n4+m4)*dur, consumed8 = (n8+m8)*dur, consumedPT = (npt+mpt)*dur;
-  const revenue = consumed4*perClass4(s) + consumed8*perClass8(s) + consumedPT*perClassPT(s) + excused*s.adminFee;
-
-  const sh = dur * attendance;                      // 學員時數（條款4.2）
+  if(Array.isArray(sess.attendees)){
+    // 點名模式：以「扣堂數」做單位（stay 耐啲都係扣所寫嘅堂數），時長只係場地記錄
+    revenue = 0; consumed4 = 0; consumed8 = 0; consumedPT = 0; excused = 0; attendance = 0; sh = 0;
+    for(const a of sess.attendees){
+      if(a.status === 'excused'){ excused++; revenue += s.adminFee; continue; }   // 條款1.7.1
+      const cls = +a.classes || 0;
+      revenue += cls * kindPer(s, a.kind);
+      if(a.kind === 'p4') consumed4 += cls;
+      else if(a.kind === 'p8') consumed8 += cls;
+      else if(a.kind === 'pt') consumedPT += cls;
+      if(a.status === 'deduct') continue;           // 缺席扣堂：照收，唔計出席／時數（條款1.7.2）
+      attendance++;
+      sh += cls;                                    // 學員時數 = 扣堂數（免費學員照計，條款4.2）
+    }
+  }else{
+    // 舊格式（人數×時長）向後兼容
+    const n4 = +sess.n4||0, n8 = +sess.n8||0, npt = +sess.npt||0;
+    const nf = +sess.nf||0;
+    const m4 = +sess.m4||0, m8 = +sess.m8||0, mpt = +sess.mpt||0;
+    excused = +sess.excused||0;
+    const dur = +sess.dur||0;
+    attendance = n4 + n8 + npt + nf;
+    consumed4 = (n4+m4)*dur; consumed8 = (n8+m8)*dur; consumedPT = (npt+mpt)*dur;
+    revenue = consumed4*perClass4(s) + consumed8*perClass8(s) + consumedPT*perClassPT(s) + excused*s.adminFee;
+    sh = dur * attendance;
+  }
   // 酬金歸屬：全數歸時間表列明之執教導師，不設平分（2026年7月修訂版條款4.4）
   // 舊資料兼容：coaches 'AB'（舊平分制）視作「自動＝當值導師」
   let coach = sess.coach || sess.coaches || 'auto';
@@ -362,6 +425,98 @@ function fieldNum(label, value, key, id, step, min){
   return `<label class="f">${label}<input type="number" inputmode="decimal" min="${min??0}" step="${step??1}" value="${esc(value??'')}" data-id="${id}" data-key="${key}"></label>`;
 }
 
+/* ---------- 套票扣賬（跨月，按日期順序 FIFO） ---------- */
+function buildLedger(){
+  const events = [];
+  for(const md of Object.values(DB.months)){
+    for(const sess of (md.sessions||[])){
+      if(!Array.isArray(sess.attendees)) continue;
+      for(const a of sess.attendees){
+        if(a.status === 'excused' || a.kind === 'free' || !a.studentId) continue;
+        const cls = +a.classes || 0;
+        if(cls <= 0) continue;
+        events.push({ date: sess.date || '9999-12-31', studentId: a.studentId, kind: a.kind, cls });
+      }
+    }
+  }
+  events.sort((a,b)=> a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const pkgs = DB.packages.map(p=>Object.assign({}, p, { used: 0 }));
+  const owed = {};   // studentId -> { kind: 堂數 }
+  for(const ev of events){
+    let rem = ev.cls;
+    const cand = pkgs
+      .filter(p => p.studentId===ev.studentId && p.kind===ev.kind
+                && (!p.buyDate || p.buyDate <= ev.date)      // 買咗先扣得
+                && (!p.expiry || p.expiry >= ev.date))       // 上堂當日未過期
+      .sort((x,y)=> (x.buyDate||'') < (y.buyDate||'') ? -1 : 1);
+    for(const p of cand){
+      const avail = (+p.classes||0) - p.used;
+      if(avail <= 0) continue;
+      const take = Math.min(avail, rem);
+      p.used += take; rem -= take;
+      if(rem <= 0) break;
+    }
+    if(rem > 0){
+      owed[ev.studentId] = owed[ev.studentId] || {};
+      owed[ev.studentId][ev.kind] = (owed[ev.studentId][ev.kind]||0) + rem;
+    }
+  }
+  return { pkgs, owed };
+}
+
+function renderTracker(){
+  const s = DB.settings, box = $('#tracker');
+  if(!DB.students.length){ box.innerHTML = '<div class="empty">未有學員，撳下面「＋新增學員」</div>'; return; }
+  const { pkgs, owed } = buildLedger();
+  const today = new Date().toISOString().slice(0,10);
+  const soon = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+  box.innerHTML = DB.students.map(stu=>{
+    const myPkgs = pkgs.filter(p=>p.studentId===stu.id);
+    const myOwed = owed[stu.id] || {};
+    const pkgHtml = myPkgs.map(p=>{
+      const remain = (+p.classes||0) - p.used;
+      let chip;
+      if(p.expiry && p.expiry < today && remain > 0){
+        const per = (+p.classes||0) > 0 ? (+p.price||0)/(+p.classes||1) : 0;
+        chip = `<span class="tag warn">已到期，剩 ${fmtH(remain)} 堂（作廢建議 ${fmt$(remain*per)}）</span>`;
+      }
+      else if(remain <= 0) chip = '<span class="tag ok">用完</span>';
+      else if(p.expiry && p.expiry <= soon) chip = `<span class="tag warn">就到期 ${esc(p.expiry)}</span>`;
+      else chip = '<span class="tag ok">有效</span>';
+      return `<div class="pkg">
+        <label class="f">票種
+          <select data-pkg="${p.id}" data-key="kind">
+            <option value="p4" ${p.kind==='p4'?'selected':''}>普通4堂</option>
+            <option value="p8" ${p.kind==='p8'?'selected':''}>普通8堂</option>
+            <option value="pt" ${p.kind==='pt'?'selected':''}>PT 4堂</option>
+          </select></label>
+        <label class="f">購買日<input type="date" value="${esc(p.buyDate||'')}" data-pkg="${p.id}" data-key="buyDate"></label>
+        <label class="f">到期日（自動＋2個月）<input type="date" value="${esc(p.expiry||'')}" data-pkg="${p.id}" data-key="expiry"></label>
+        <label class="f">價錢<input type="number" inputmode="decimal" min="0" step="10" value="${esc(p.price??'')}" data-pkg="${p.id}" data-key="price"></label>
+        <label class="f">堂數<input type="number" inputmode="decimal" min="0" step="1" value="${esc(p.classes??'')}" data-pkg="${p.id}" data-key="classes"></label>
+        <button class="delatt" data-delpkg="${p.id}" title="刪除套票">✕</button>
+        <div class="pkg-meta" style="grid-column:1/-1">已用 ${fmtH(p.used)}／${fmtH(+p.classes||0)} 堂，剩 ${fmtH(remain)} 堂 ${chip}</div>
+      </div>`;
+    }).join('');
+    const owedHtml = Object.entries(myOwed).map(([k,c])=>{
+      const amt = c * kindPer(s,k);
+      return myPkgs.length
+        ? `<div class="alert-owe">💰 要交錢：欠 ${kindLabel(k)} ${fmtH(c)} 堂 ≈ ${fmt$(amt)}</div>`
+        : `<div class="alert-info">📋 未登記套票：累計扣 ${kindLabel(k)} ${fmtH(c)} 堂（≈ ${fmt$(amt)}）— 請補返購買紀錄或收錢</div>`;
+    }).join('');
+    return `<div class="row">
+      <button class="del" data-delstu="${stu.id}" title="刪除學員">✕</button>
+      <div class="stu-head">
+        <input type="text" value="${esc(stu.name)}" placeholder="學員名" data-stu="${stu.id}" data-key="name">
+        <label class="chk"><input type="checkbox" ${stu.free?'checked':''} data-stu="${stu.id}" data-key="free">免費學員</label>
+      </div>
+      ${pkgHtml || '<div class="pkg-meta">未有套票紀錄</div>'}
+      ${owedHtml}
+      <button class="mini" data-addpkg="${stu.id}">＋ 加套票</button>
+    </div>`;
+  }).join('');
+}
+
 function renderSessions(){
   const s = DB.settings, md = monthData(), box = $('#sessions');
   if(!md.sessions.length){ box.innerHTML = '<div class="empty">未有課堂記錄</div>'; return; }
@@ -385,6 +540,33 @@ function renderSessions(){
             <option value="B" ${coachSel==='B'?'selected':''}>${esc(s.nameB)}</option>
           </select></label>
       </div>
+      ${Array.isArray(sess.attendees) ? `
+      <div class="att-head">點名（扣堂做單位；stay 耐啲照計所寫嘅扣堂數）</div>
+      ${sess.attendees.map(a=>`
+        <div class="att">
+          <label class="f">學員
+            <select data-sid="${sess.id}" data-aid="${a.id}" data-key="studentId">
+              ${DB.students.map(stu=>`<option value="${stu.id}" ${a.studentId===stu.id?'selected':''}>${esc(stu.name||'（未命名）')}${stu.free?'（免費）':''}</option>`).join('')}
+              ${a.studentId && !studentById(a.studentId) ? `<option value="${esc(a.studentId)}" selected>（已刪除學員）</option>` : ''}
+            </select></label>
+          <label class="f">票種
+            <select data-sid="${sess.id}" data-aid="${a.id}" data-key="kind">
+              <option value="p4" ${a.kind==='p4'?'selected':''}>普通4堂</option>
+              <option value="p8" ${a.kind==='p8'?'selected':''}>普通8堂</option>
+              <option value="pt" ${a.kind==='pt'?'selected':''}>PT票</option>
+              <option value="free" ${a.kind==='free'?'selected':''}>免費</option>
+            </select></label>
+          <label class="f">扣堂<input type="number" inputmode="decimal" min="0" step="0.5" value="${esc(a.classes??1)}" data-sid="${sess.id}" data-aid="${a.id}" data-key="classes"></label>
+          <label class="f">狀態
+            <select data-sid="${sess.id}" data-aid="${a.id}" data-key="status">
+              <option value="present" ${(!a.status||a.status==='present')?'selected':''}>出席</option>
+              <option value="deduct" ${a.status==='deduct'?'selected':''}>缺席扣堂</option>
+              <option value="excused" ${a.status==='excused'?'selected':''}>請假 $${esc(s.adminFee)}</option>
+            </select></label>
+          <button class="delatt" data-delatt="${a.id}" data-sid="${sess.id}" title="移除">✕</button>
+        </div>`).join('')}
+      <button class="mini" data-addatt="${sess.id}">＋ 點名</button>
+      ` : `
       <div class="grid4">
         ${fieldNum('出席：4堂票（人）', sess.n4, 'n4', sess.id)}
         ${fieldNum('出席：8堂票（人）', sess.n8, 'n8', sess.id)}
@@ -395,10 +577,9 @@ function renderSessions(){
         ${fieldNum('缺席扣堂：4堂票（人）', sess.m4, 'm4', sess.id)}
         ${fieldNum('缺席扣堂：8堂票（人）', sess.m8, 'm8', sess.id)}
         ${fieldNum('缺席扣堂：PT票（人）', sess.mpt, 'mpt', sess.id)}
-      </div>
-      <div class="grid3">
         ${fieldNum('合規請假（人，收$'+esc(s.adminFee)+'）', sess.excused, 'excused', sess.id)}
       </div>
+      `}
       <div class="calc">
         <span>收入 <b>${fmt$(r.revenue)}</b></span>
         <span>學員時數 <b>${fmtH(r.sh)}</b></span>
@@ -507,7 +688,7 @@ function renderResult(){
 }
 
 function renderAll(){
-  renderSessions(); renderRents(); renderExpenses(); renderExpired(); renderResult();
+  renderTracker(); renderSessions(); renderRents(); renderExpenses(); renderExpired(); renderResult();
 }
 
 /* ---------- 月結報表文字 ---------- */
@@ -536,6 +717,28 @@ function reportText(){
   L.push('【應得酬金】');
   L.push(`· ${s.nameA}：$${r.payA.toFixed(2)}`);
   L.push(`· ${s.nameB}：$${r.payB.toFixed(2)}`);
+  // 套票提醒（欠堂／到期）
+  const { pkgs, owed } = buildLedger();
+  const today = new Date().toISOString().slice(0,10);
+  const soon = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+  const remind = [];
+  for(const [sid, kinds] of Object.entries(owed)){
+    const stu = studentById(sid); if(!stu) continue;
+    const parts = Object.entries(kinds).map(([k,c])=>`${kindLabel(k)} ${fmtH(c)}堂 ≈ $${(c*kindPer(s,k)).toFixed(0)}`);
+    remind.push(`· 要交錢：${stu.name || '（未命名）'} — 欠 ${parts.join('、')}`);
+  }
+  for(const p of pkgs){
+    const stu = studentById(p.studentId); if(!stu) continue;
+    const remain = (+p.classes||0) - p.used;
+    if(remain <= 0 || !p.expiry) continue;
+    if(p.expiry < today){
+      const per = (+p.classes||0) > 0 ? (+p.price||0)/(+p.classes||1) : 0;
+      remind.push(`· 已到期：${stu.name} ${kindLabel(p.kind)}（${p.expiry}止）剩 ${fmtH(remain)} 堂 → 作廢建議 $${(remain*per).toFixed(0)}`);
+    }else if(p.expiry <= soon){
+      remind.push(`· 就到期：${stu.name} ${kindLabel(p.kind)} 剩 ${fmtH(remain)} 堂，${p.expiry} 到期`);
+    }
+  }
+  if(remind.length){ L.push('【套票提醒】'); L.push(...remind); }
   L.push('━━━━━━━━━━━━━━');
   L.push('依《踢拳小班教學合辦協議書》條款 2.4／3／4 計算');
   return L.join('\n');
@@ -544,9 +747,40 @@ function reportText(){
 /* ---------- 事件 ---------- */
 function findRow(list, id){ return monthData()[list].find(x=>x.id===id); }
 
+function findAttendee(sid, aid){
+  const sess = findRow('sessions', sid);
+  return sess && Array.isArray(sess.attendees) ? sess.attendees.find(x=>x.id===aid) : null;
+}
+
 document.body.addEventListener('input', e=>{
   const el = e.target;
-  if(!el.dataset || !el.dataset.id || !el.dataset.key) return;
+  if(!el.dataset || !el.dataset.key) return;
+  // 學員名冊
+  if(el.dataset.stu){
+    const stu = studentById(el.dataset.stu);
+    if(stu){
+      stu[el.dataset.key] = el.type==='checkbox' ? el.checked : el.value;
+      save();
+      if(el.type==='checkbox') renderAll();
+    }
+    return;
+  }
+  // 套票（數字／日期即時儲存；kind／buyDate 嘅衍生更新喺 change 度做）
+  if(el.dataset.pkg){
+    const p = DB.packages.find(x=>x.id===el.dataset.pkg);
+    if(p){ p[el.dataset.key] = el.value; save(); renderResult(); }
+    return;
+  }
+  // 課堂點名（扣堂數）
+  if(el.dataset.sid && el.dataset.aid){
+    const a = findAttendee(el.dataset.sid, el.dataset.aid);
+    if(a){
+      a[el.dataset.key] = el.value;
+      save(); updateInlineCalcs(); renderRents(); renderResult(); renderTracker();
+    }
+    return;
+  }
+  if(!el.dataset.id) return;
   for(const list of ['sessions','rents','expenses','expired']){
     const row = findRow(list, el.dataset.id);
     if(row){
@@ -562,17 +796,96 @@ document.body.addEventListener('input', e=>{
 });
 document.body.addEventListener('change', e=>{
   const el = e.target;
+  if(!el.dataset) return;
+  // 套票：轉票種→帶入預設價錢堂數；改購買日→自動+2個月到期
+  if(el.dataset.pkg){
+    const p = DB.packages.find(x=>x.id===el.dataset.pkg);
+    if(p){
+      if(el.dataset.key==='kind'){
+        p.kind = el.value;
+        const d = pkgDefaults(DB.settings, el.value);
+        p.price = d.price; p.classes = d.classes;
+      }else if(el.dataset.key==='buyDate'){
+        p.buyDate = el.value; p.expiry = plus2mo(el.value);
+      }else{
+        p[el.dataset.key] = el.value;
+      }
+      save(); renderTracker(); renderResult();
+    }
+    return;
+  }
+  // 點名 select：轉學員時自動跟免費身份
+  if(el.dataset.sid && el.dataset.aid && el.tagName==='SELECT'){
+    const a = findAttendee(el.dataset.sid, el.dataset.aid);
+    if(a){
+      a[el.dataset.key] = el.value;
+      if(el.dataset.key==='studentId'){
+        const stu = studentById(el.value);
+        if(stu && stu.free) a.kind = 'free';
+      }
+      save(); renderAll();
+    }
+    return;
+  }
   if(el.tagName==='SELECT' && el.dataset.id){ renderAll(); }
 });
 document.body.addEventListener('click', e=>{
-  const btn = e.target.closest('[data-del]');
-  if(btn){
-    const list = btn.dataset.del, id = btn.dataset.id;
+  const del = e.target.closest('[data-del]');
+  if(del){
+    const list = del.dataset.del, id = del.dataset.id;
     const md = monthData();
     md[list] = md[list].filter(x=>x.id!==id);
     save(); renderAll();
+    return;
+  }
+  const addAtt = e.target.closest('[data-addatt]');
+  if(addAtt){
+    const sess = findRow('sessions', addAtt.dataset.addatt);
+    if(sess){
+      if(!Array.isArray(sess.attendees)) sess.attendees = [];
+      const first = DB.students[0];
+      sess.attendees.push({ id: uid(), studentId: first ? first.id : '', kind: (first && first.free) ? 'free' : 'p4', classes: 1, status: 'present' });
+      save(); renderAll();
+    }
+    return;
+  }
+  const delAtt = e.target.closest('[data-delatt]');
+  if(delAtt){
+    const sess = findRow('sessions', delAtt.dataset.sid);
+    if(sess && Array.isArray(sess.attendees)){
+      sess.attendees = sess.attendees.filter(x=>x.id!==delAtt.dataset.delatt);
+      save(); renderAll();
+    }
+    return;
+  }
+  const addPkg = e.target.closest('[data-addpkg]');
+  if(addPkg){
+    const today = new Date().toISOString().slice(0,10);
+    const d = pkgDefaults(DB.settings, 'p4');
+    DB.packages.push({ id: uid(), studentId: addPkg.dataset.addpkg, kind:'p4', price: d.price, classes: d.classes, buyDate: today, expiry: plus2mo(today) });
+    save(); renderTracker(); renderResult();
+    return;
+  }
+  const delPkg = e.target.closest('[data-delpkg]');
+  if(delPkg){
+    DB.packages = DB.packages.filter(x=>x.id!==delPkg.dataset.delpkg);
+    save(); renderTracker(); renderResult();
+    return;
+  }
+  const delStu = e.target.closest('[data-delstu]');
+  if(delStu){
+    const id = delStu.dataset.delstu;
+    DB.students = DB.students.filter(x=>x.id!==id);
+    DB.packages = DB.packages.filter(x=>x.studentId!==id);
+    save(); renderAll();
+    return;
   }
 });
+
+$('#add-student').onclick = ()=>{
+  DB.students.push({ id: uid(), name:'', free:false });
+  save(); renderAll();
+};
 
 function updateInlineCalcs(){
   // 重繪課堂行內小結（保留輸入焦點：只更新 .calc 區）
@@ -591,8 +904,7 @@ function updateInlineCalcs(){
 }
 
 $('#add-session').onclick = ()=>{
-  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coach:'auto', venue:'',
-    n4: 0, n8: 0, npt: 0, nf: 0, m4: 0, m8: 0, mpt: 0, excused: 0 });
+  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coach:'auto', venue:'', attendees: [] });
   save(); renderAll();
 };
 $('#add-rent').onclick = ()=>{
@@ -650,7 +962,8 @@ $('#import-file').addEventListener('change', e=>{
     try{
       const d = JSON.parse(reader.result);
       if(!d.months || !d.settings) throw new Error('格式不符');
-      DB = { settings: Object.assign({}, DEFAULT_SETTINGS, d.settings), months: d.months };
+      DB = { settings: Object.assign({}, DEFAULT_SETTINGS, d.settings), months: d.months,
+             students: d.students||[], packages: d.packages||[] };
       save(); bindSettingsInputs(); renderAll();
       toast('已匯入資料 ✅');
     }catch(err){ toast('匯入失敗：' + err.message); }
