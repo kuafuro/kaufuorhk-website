@@ -3,20 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>登入｜Kuafuor HK</title>
+<title>登入 Login｜Kuafuor HK</title>
 <style>
+  /* 黑白主色 Monochrome */
   :root{
-    --bg:#f5f6f8; --card:#ffffff; --ink:#1c2430; --muted:#66707e;
-    --line:#e3e7ec; --accent:#d32f2f; --accent-soft:#fdecea;
-    --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#9a6a00; --warn-soft:#fff6de;
-    --blue:#1655b8; --blue-soft:#e8f0fd; --purple:#7a3ab8; --purple-soft:#f2eafc;
+    color-scheme: light dark;
+    --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
+    --line:#e2e2e2; --line-strong:#111111;
+    --btn:#111111; --btn-ink:#ffffff;
+    --soft:#f0f0f0; --err-bg:#111111; --err-ink:#ffffff;
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#12161c; --card:#1b212a; --ink:#e8ecf1; --muted:#9aa5b1;
-      --line:#2b3542; --accent:#ff6b60; --accent-soft:#3a2220;
-      --ok:#5fd08d; --ok-soft:#1d3327; --warn:#ffd166; --warn-soft:#3a3018;
-      --blue:#7aa8ff; --blue-soft:#1c2a44; --purple:#c79bf2; --purple-soft:#2e2140;
+      --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a;
+      --line:#333333; --line-strong:#f2f2f2;
+      --btn:#f2f2f2; --btn-ink:#111111;
+      --soft:#242424; --err-bg:#f2f2f2; --err-ink:#111111;
     }
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -25,95 +27,178 @@
     background:var(--bg); color:var(--ink); line-height:1.6; padding:24px 14px 60px;
     display:flex; flex-direction:column; align-items:center; min-height:100vh;
   }
-  .brand{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:4px}
-  .brand a{color:inherit;text-decoration:none}
-  .sub{font-size:.78rem;color:var(--muted);margin-bottom:20px}
+  .topbar{width:100%;max-width:430px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .brand{font-size:1.05rem;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+  .brand a{color:var(--ink);text-decoration:none;border-bottom:2px solid var(--ink)}
+  .lang{display:flex;border:1px solid var(--line-strong);border-radius:99px;overflow:hidden}
+  .lang button{
+    padding:5px 14px;border:none;background:none;color:var(--ink);font-size:.8rem;cursor:pointer;font-weight:600;
+  }
+  .lang button.on{background:var(--btn);color:var(--btn-ink)}
   .card{
-    width:100%; max-width:420px; background:var(--card); border:1px solid var(--line);
+    width:100%; max-width:430px; background:var(--card); border:1px solid var(--line);
     border-radius:16px; padding:22px 18px; margin-bottom:14px;
   }
-  h2{font-size:1rem;margin-bottom:12px}
+  h2{font-size:1.05rem;margin-bottom:6px}
+  .hint{font-size:.82rem;color:var(--muted);margin-bottom:14px}
+  /* 狀態橫條：話你知而家去到邊一步 */
+  .status{
+    font-size:.8rem;border:1px dashed var(--line-strong);border-radius:10px;
+    padding:9px 12px;margin-bottom:14px;background:var(--soft);
+  }
+  .status b{font-weight:800}
+  /* 步驟 */
+  .steps{list-style:none;margin:0 0 14px;display:flex;flex-direction:column;gap:8px}
+  .steps li{display:flex;gap:10px;align-items:flex-start;font-size:.84rem;color:var(--muted)}
+  .steps li .n{
+    flex:0 0 22px;height:22px;border-radius:50%;border:1.5px solid var(--muted);
+    display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;margin-top:1px;
+  }
+  .steps li.now{color:var(--ink);font-weight:600}
+  .steps li.now .n{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+  .steps li.done{color:var(--ink)}
+  .steps li.done .n{border-color:var(--ink)}
   .tabs{display:flex;gap:6px;margin-bottom:16px}
   .tabs button{
-    flex:1;padding:9px;border-radius:10px;border:1px solid var(--line);
-    background:none;color:var(--muted);font-size:.9rem;cursor:pointer;font-weight:600;
+    flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);
+    background:none;color:var(--muted);font-size:.92rem;cursor:pointer;font-weight:700;
   }
-  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  label.f{display:flex;flex-direction:column;gap:4px;font-size:.75rem;color:var(--muted);margin-bottom:10px}
+  .tabs button.on{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:.76rem;color:var(--muted);margin-bottom:10px}
   label.f input{
-    font-size:1rem;padding:10px;border:1px solid var(--line);border-radius:10px;
+    font-size:1rem;padding:11px;border:1px solid var(--line);border-radius:10px;
     background:var(--bg);color:var(--ink);width:100%;
   }
-  label.f input:focus{outline:2px solid var(--blue)}
+  label.f input:focus{outline:2px solid var(--line-strong)}
   button.primary{
-    width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);
-    color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:4px;
+    width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--btn);background:var(--btn);
+    color:var(--btn-ink);font-size:1rem;font-weight:800;cursor:pointer;margin-top:4px;
   }
-  button.primary:disabled{opacity:.6}
-  .aux{font-size:.78rem;color:var(--muted);text-align:center;margin-top:12px}
-  .aux a{color:var(--blue);cursor:pointer;text-decoration:none}
-  .msg{font-size:.82rem;border-radius:10px;padding:10px 12px;margin-top:12px;display:none}
-  .msg.err{background:var(--accent-soft);color:var(--accent);display:block}
-  .msg.ok{background:var(--ok-soft);color:var(--ok);display:block}
-  .msg.info{background:var(--warn-soft);color:var(--warn);display:block}
+  button.primary:disabled{opacity:.55}
+  button.ghost{
+    width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--line-strong);background:none;
+    color:var(--ink);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;
+  }
+  .aux{font-size:.82rem;color:var(--muted);text-align:center;margin-top:14px}
+  .aux a{color:var(--ink);cursor:pointer;text-decoration:underline;font-weight:600}
+  .msg{font-size:.84rem;border-radius:10px;padding:11px 13px;margin-top:12px;display:none;line-height:1.55}
+  .msg.err{background:var(--err-bg);color:var(--err-ink);display:block;font-weight:600}
+  .msg.ok{background:var(--soft);color:var(--ink);display:block;border:1px solid var(--line-strong)}
+  .msg.info{background:var(--soft);color:var(--ink);display:block}
+  .bigmail{font-size:1.6rem;text-align:center;margin:6px 0}
+  .mailaddr{text-align:center;font-weight:800;word-break:break-all;margin-bottom:10px}
   /* profile */
   .who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-  .avatar{width:44px;height:44px;border-radius:50%;background:var(--blue-soft);color:var(--blue);
+  .avatar{width:44px;height:44px;border-radius:50%;background:var(--btn);color:var(--btn-ink);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem}
   .who .email{font-size:.85rem;color:var(--muted);word-break:break-all}
-  .badge{display:inline-block;font-size:.75rem;padding:2px 10px;border-radius:99px;font-weight:700}
-  .badge.member{background:var(--line);color:var(--muted)}
-  .badge.student{background:var(--blue-soft);color:var(--blue)}
-  .badge.coach{background:var(--purple-soft);color:var(--purple)}
-  .badge.admin{background:var(--accent-soft);color:var(--accent)}
+  .badge{display:inline-block;font-size:.74rem;padding:2px 10px;border-radius:99px;font-weight:700;border:1.5px solid var(--ink)}
+  .badge.member{color:var(--muted);border-color:var(--muted)}
+  .badge.student{color:var(--ink);background:var(--soft)}
+  .badge.coach{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+  .badge.admin{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
   .features{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
   .features h3{font-size:.78rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px}
-  .feat{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;font-size:.9rem;border-bottom:1px dashed var(--line)}
+  .feat{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;font-size:.9rem;border-bottom:1px dashed var(--line)}
   .feat:last-child{border-bottom:none}
-  .feat .need{font-size:.7rem;color:var(--muted)}
-  .feat a{color:var(--blue);text-decoration:none;font-weight:600;white-space:nowrap}
-  .feat.locked{opacity:.55}
-  .row2{display:flex;gap:8px}
-  .row2 input{flex:1}
-  button.ghost{
-    padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:none;
-    color:var(--ink);font-size:.85rem;cursor:pointer;
-  }
-  /* admin */
+  .feat .need{font-size:.72rem;color:var(--muted)}
+  .feat a{color:var(--ink);text-decoration:underline;font-weight:700;white-space:nowrap}
+  .feat.locked{opacity:.75}
+  .row2{display:flex;gap:8px;align-items:flex-end}
+  .row2 label.f{flex:1;margin-bottom:0}
+  .row2 button{width:auto;margin-top:0;padding:11px 16px}
   .user-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
   .user-row:last-child{border-bottom:none}
   .user-row .em{flex:1;min-width:150px;word-break:break-all}
-  .user-row select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
-  .foot{font-size:.7rem;color:var(--muted);text-align:center;margin-top:10px}
+  .user-row select{padding:6px 8px;border-radius:8px;border:1px solid var(--line-strong);background:var(--bg);color:var(--ink)}
+  .foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:10px;line-height:1.7}
   .foot a{color:var(--muted)}
   .spin{text-align:center;color:var(--muted);font-size:.85rem;padding:24px 0}
 </style>
 </head>
 <body>
 
-<div class="brand"><a href="/">KUAFUOR HK</a></div>
-<div class="sub">會員系統 — 註冊免費，功能按身份開放</div>
+<div class="topbar">
+  <div class="brand"><a href="/">KUAFUOR HK</a></div>
+  <div class="lang">
+    <button id="langZh">廣東話</button>
+    <button id="langEn">English</button>
+  </div>
+</div>
 
-<div class="card" id="loading"><div class="spin">載入緊…</div></div>
+<div class="card" id="loading"><div class="spin" data-t="loading"></div></div>
 
 <!-- 未登入 -->
 <div class="card" id="authCard" style="display:none">
-  <div class="tabs">
-    <button id="tabLogin" class="on">登入</button>
-    <button id="tabSignup">註冊</button>
+  <div class="status" id="statusBar"></div>
+
+  <!-- view: login / signup -->
+  <div id="viewAuth">
+    <div class="tabs">
+      <button id="tabLogin" class="on" data-t="tabLogin"></button>
+      <button id="tabSignup" data-t="tabSignup"></button>
+    </div>
+    <ol class="steps" id="signupSteps" style="display:none">
+      <li class="now"><span class="n">1</span><span data-t="step1"></span></li>
+      <li><span class="n">2</span><span data-t="step2"></span></li>
+      <li><span class="n">3</span><span data-t="step3"></span></li>
+    </ol>
+    <div id="signupName" style="display:none">
+      <label class="f"><span data-t="nameLabel"></span><input type="text" id="name" autocomplete="name"></label>
+    </div>
+    <label class="f"><span data-t="emailLabel"></span><input type="email" id="email" autocomplete="email" placeholder="you@example.com"></label>
+    <label class="f"><span data-t="passLabel"></span><input type="password" id="password" autocomplete="current-password"></label>
+    <button class="primary" id="submitBtn"></button>
+    <div class="aux"><a id="forgot" data-t="forgotLink"></a></div>
   </div>
-  <div id="signupName" style="display:none">
-    <label class="f">名（俾教練認得你）<input type="text" id="name" autocomplete="name" placeholder="例：阿明"></label>
+
+  <!-- view: 確認電郵（第2步） -->
+  <div id="viewCheckMail" style="display:none">
+    <div class="bigmail">✉️</div>
+    <h2 style="text-align:center" data-t="checkMailTitle"></h2>
+    <div class="mailaddr" id="sentTo"></div>
+    <ol class="steps">
+      <li class="done"><span class="n">✓</span><span data-t="step1"></span></li>
+      <li class="now"><span class="n">2</span><span data-t="checkMailStep2"></span></li>
+      <li><span class="n">3</span><span data-t="step3"></span></li>
+    </ol>
+    <p class="hint" data-t="checkMailSpam"></p>
+    <button class="ghost" id="resendBtn" data-t="resendBtn"></button>
+    <button class="ghost" id="backToLogin1" data-t="backToLogin"></button>
   </div>
-  <label class="f">電郵<input type="email" id="email" autocomplete="email" placeholder="you@example.com"></label>
-  <label class="f">密碼（至少6位）<input type="password" id="password" autocomplete="current-password"></label>
-  <button class="primary" id="submitBtn">登入</button>
-  <div class="aux"><a id="forgot">唔記得密碼？</a></div>
+
+  <!-- view: 唔記得密碼 -->
+  <div id="viewForgot" style="display:none">
+    <h2 data-t="forgotTitle"></h2>
+    <ol class="steps">
+      <li class="now"><span class="n">1</span><span data-t="forgotStep1"></span></li>
+      <li><span class="n">2</span><span data-t="forgotStep2"></span></li>
+      <li><span class="n">3</span><span data-t="forgotStep3"></span></li>
+    </ol>
+    <label class="f"><span data-t="emailLabel"></span><input type="email" id="forgotEmail" autocomplete="email" placeholder="you@example.com"></label>
+    <button class="primary" id="sendResetBtn" data-t="sendResetBtn"></button>
+    <button class="ghost" id="backToLogin2" data-t="backToLogin"></button>
+  </div>
+
+  <!-- view: 設定新密碼（由重設連結入嚟） -->
+  <div id="viewRecovery" style="display:none">
+    <h2 data-t="recoveryTitle"></h2>
+    <ol class="steps">
+      <li class="done"><span class="n">✓</span><span data-t="forgotStep1"></span></li>
+      <li class="done"><span class="n">✓</span><span data-t="forgotStep2"></span></li>
+      <li class="now"><span class="n">3</span><span data-t="forgotStep3"></span></li>
+    </ol>
+    <label class="f"><span data-t="newPassLabel"></span><input type="password" id="newPassword" autocomplete="new-password"></label>
+    <button class="primary" id="setPassBtn" data-t="setPassBtn"></button>
+    <button class="ghost" id="backToLogin3" data-t="backToLogin"></button>
+  </div>
+
   <div class="msg" id="authMsg"></div>
 </div>
 
 <!-- 已登入 -->
 <div class="card" id="profileCard" style="display:none">
+  <div class="status" id="statusIn"></div>
   <div class="who">
     <div class="avatar" id="avatar">?</div>
     <div style="flex:1">
@@ -124,164 +209,403 @@
     </div>
   </div>
   <div class="row2">
-    <label class="f" style="flex:1;margin-bottom:0">改顯示名<input type="text" id="editName"></label>
-    <button class="ghost" id="saveName" style="align-self:flex-end">儲存</button>
+    <label class="f"><span data-t="editNameLabel"></span><input type="text" id="editName"></label>
+    <button class="ghost" id="saveName" data-t="saveBtn"></button>
   </div>
   <div class="features">
-    <h3>功能權限</h3>
+    <h3 data-t="featTitle"></h3>
     <div id="featList"></div>
   </div>
   <div class="msg" id="profMsg"></div>
-  <button class="ghost" id="logout" style="width:100%;margin-top:14px">登出</button>
+  <button class="ghost" id="logout" data-t="logoutBtn" style="margin-top:14px"></button>
 </div>
 
 <!-- admin 用戶管理 -->
 <div class="card" id="adminCard" style="display:none">
-  <h2>👥 用戶管理（管理員）</h2>
-  <div id="userList"><div class="spin">載入緊…</div></div>
+  <h2 data-t="adminTitle"></h2>
+  <p class="hint" data-t="adminHint"></p>
+  <div id="userList"><div class="spin" data-t="loading"></div></div>
 </div>
 
 <div class="foot">
-  註冊後預設係「普通會員」；學生／教練身份由管理員開通。<br>
-  <a href="/">← 返回主頁</a>
+  <span data-t="footNote"></span><br>
+  <a href="/" data-t="backHome"></a>
 </div>
 
 <script type="module">
 const SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
 const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable key — 前端可公開
-const ROLE_NAMES = { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" };
 
-// 每頁一行 guard 就鎖到；喺呢度列返俾用戶睇
+/* ================= i18n ================= */
+const I18N = {
+  zh: {
+    loading: "載入緊…",
+    tabLogin: "登入", tabSignup: "註冊",
+    step1: "填名、電郵同密碼，撳「建立帳戶」",
+    step2: "去你嘅電郵信箱，撳確認連結",
+    step3: "返嚟呢頁登入，即可使用",
+    nameLabel: "名（俾教練認得你）", emailLabel: "電郵", passLabel: "密碼（至少6位）",
+    loginBtn: "登入", signupBtn: "建立帳戶（第1步）",
+    forgotLink: "唔記得密碼？撳呢度重設",
+    statusLoginTitle: "你而家：未登入。",
+    statusLogin: "已有帳戶就直接登入；未有帳戶請撳「註冊」，3 步搞掂。",
+    statusSignup: "你而家：註冊 第1步（共3步）。填好資料撳「建立帳戶」。",
+    statusCheckMail: "你而家：註冊 第2步（共3步）— 等你確認電郵。",
+    statusForgot: "你而家：重設密碼 第1步（共3步）。",
+    statusRecovery: "你而家：重設密碼 第3步（共3步）— 設定新密碼。",
+    statusIn: "你已經登入。身份：",
+    checkMailTitle: "第2步：確認你嘅電郵",
+    checkMailStep2: "我哋寄咗封確認信去上面嘅地址 — 去信箱撳入面條連結",
+    checkMailSpam: "搵唔到封信？睇埋「垃圾郵件」；幾分鐘都未收到就撳下面「寄多次」。",
+    resendBtn: "寄多次確認信", backToLogin: "← 返回登入",
+    forgotTitle: "重設密碼",
+    forgotStep1: "入你註冊嗰個電郵，撳「寄重設連結」",
+    forgotStep2: "去電郵信箱撳連結（會帶你返嚟呢頁）",
+    forgotStep3: "設定新密碼，之後用新密碼登入",
+    sendResetBtn: "寄重設連結（第1步）",
+    resetSent: "✔ 重設連結已寄去 {email}。第2步：去你個信箱（連埋垃圾郵件）撳連結，佢會帶你返嚟呢頁設定新密碼。",
+    recoveryTitle: "設定新密碼",
+    newPassLabel: "新密碼（至少6位）", setPassBtn: "確認新密碼",
+    passUpdated: "✔ 密碼改好喇！你而家已經登入。",
+    signupOk: "✔ 帳戶建立咗！而家去到第2步。",
+    resendOk: "✔ 已再寄一次確認信，記得睇埋垃圾郵件。",
+    editNameLabel: "改顯示名", saveBtn: "儲存", saved: "✔ 已儲存",
+    featTitle: "功能權限", open: "開啟 →", needs: "需要：",
+    logoutBtn: "登出",
+    adminTitle: "👥 用戶管理（管理員）",
+    adminHint: "喺下拉揀身份即刻生效。唔可以改自己。",
+    cantChangeSelf: "唔可以改自己",
+    footNote: "註冊後預設係「普通會員」；學生／教練身份由管理員開通。",
+    backHome: "← 返回主頁",
+    fillEmailPass: "請入電郵，密碼至少6位。",
+    fillEmail: "請先入你嘅電郵。",
+    passTooShort: "新密碼至少要6位。",
+    nextNoRole: "你想去嘅頁面（{next}）需要 {roles} 身份，你而家係「{role}」。想開通請聯絡 Ming。",
+    roleNames: { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" },
+    errInvalidLogin: "電郵或密碼唔啱。未註冊過？撳上面「註冊」開個新帳戶；唔記得密碼就撳下面「唔記得密碼」重設。",
+    errNotConfirmed: "你仲未完成第2步（確認電郵）。去你個信箱撳確認連結；搵唔到封信就撳下面「寄多次確認信」。",
+    errExists: "呢個電郵已經註冊咗 — 請直接登入；唔記得密碼就用「唔記得密碼」重設。",
+    errRateLimit: "寄信太密，請等一分鐘再試。",
+    errWeakPass: "密碼太短，至少要6位。",
+    errGeneric: "出錯：",
+    saveFail: "儲存失敗：", changeFail: "改唔到：", loadFail: "讀取失敗：",
+    bootFail: "載入唔到雲端服務 — 請檢查網絡，然後撳下面重試。",
+    reloadBtn: "重新載入",
+    errLinkExpired: "呢條電郵連結已經過期或者用咗。想重設密碼就撳「唔記得密碼」寄過封新嘅；想確認電郵就登入時撳「寄多次確認信」。",
+  },
+  en: {
+    loading: "Loading…",
+    tabLogin: "Log in", tabSignup: "Register",
+    step1: "Fill in your name, email and password, then tap “Create account”",
+    step2: "Open your email inbox and click the confirmation link",
+    step3: "Come back to this page and log in",
+    nameLabel: "Name (so coaches recognise you)", emailLabel: "Email", passLabel: "Password (min. 6 characters)",
+    loginBtn: "Log in", signupBtn: "Create account (Step 1)",
+    forgotLink: "Forgot your password? Reset it here",
+    statusLoginTitle: "You are: not logged in.",
+    statusLogin: "Have an account? Log in. New here? Tap “Register” — 3 easy steps.",
+    statusSignup: "You are on: Register, Step 1 of 3. Fill in the form and tap “Create account”.",
+    statusCheckMail: "You are on: Register, Step 2 of 3 — waiting for email confirmation.",
+    statusForgot: "You are on: Password reset, Step 1 of 3.",
+    statusRecovery: "You are on: Password reset, Step 3 of 3 — set a new password.",
+    statusIn: "You are logged in. Role: ",
+    checkMailTitle: "Step 2: Confirm your email",
+    checkMailStep2: "We sent a confirmation email to the address above — open it and click the link",
+    checkMailSpam: "Can't find it? Check your spam folder. Still nothing after a few minutes? Tap “Resend”.",
+    resendBtn: "Resend confirmation email", backToLogin: "← Back to log in",
+    forgotTitle: "Reset your password",
+    forgotStep1: "Enter the email you registered with and tap “Send reset link”",
+    forgotStep2: "Open the link in your inbox (it brings you back to this page)",
+    forgotStep3: "Set a new password, then log in with it",
+    sendResetBtn: "Send reset link (Step 1)",
+    resetSent: "✔ Reset link sent to {email}. Step 2: open your inbox (check spam too) and click the link — it will bring you back here to set a new password.",
+    recoveryTitle: "Set a new password",
+    newPassLabel: "New password (min. 6 characters)", setPassBtn: "Confirm new password",
+    passUpdated: "✔ Password updated! You are now logged in.",
+    signupOk: "✔ Account created! You are now on Step 2.",
+    resendOk: "✔ Confirmation email re-sent. Remember to check spam.",
+    editNameLabel: "Display name", saveBtn: "Save", saved: "✔ Saved",
+    featTitle: "Feature access", open: "Open →", needs: "Requires: ",
+    logoutBtn: "Log out",
+    adminTitle: "👥 User management (admin)",
+    adminHint: "Pick a role from the dropdown — it applies immediately. You can't change your own.",
+    cantChangeSelf: "You can't change yourself",
+    footNote: "New accounts start as “Member”; Student / Coach roles are granted by an admin.",
+    backHome: "← Back to home",
+    fillEmailPass: "Enter your email; password needs at least 6 characters.",
+    fillEmail: "Enter your email first.",
+    passTooShort: "New password needs at least 6 characters.",
+    nextNoRole: "The page you wanted ({next}) requires {roles}. You are currently “{role}”. Contact Ming to upgrade.",
+    roleNames: { member:"Member", student:"Student", coach:"Coach", admin:"Admin" },
+    errInvalidLogin: "Wrong email or password. New here? Tap “Register” above. Forgot your password? Use the reset link below.",
+    errNotConfirmed: "You haven't finished Step 2 (email confirmation). Click the link in your inbox; can't find it? Tap “Resend confirmation email” below.",
+    errExists: "This email is already registered — log in instead, or use “Forgot your password” to reset.",
+    errRateLimit: "Too many emails sent — wait a minute and try again.",
+    errWeakPass: "Password too short — at least 6 characters.",
+    errGeneric: "Error: ",
+    saveFail: "Save failed: ", changeFail: "Change failed: ", loadFail: "Load failed: ",
+    bootFail: "Couldn't load the cloud service — check your connection and tap reload below.",
+    reloadBtn: "Reload",
+    errLinkExpired: "This email link has expired or was already used. To reset your password, use “Forgot your password” to send a fresh one; to confirm your email, log in and tap “Resend confirmation email”.",
+  },
+};
+
+let lang = "zh";
+try { lang = localStorage.getItem("kf-lang") || "zh"; } catch (e) {}
+if (!I18N[lang]) lang = "zh";
+const t = (k, vars) => {
+  const dict = I18N[lang] || I18N.zh;
+  let s = dict[k] ?? I18N.zh[k] ?? k;
+  if (vars) for (const [kk, vv] of Object.entries(vars)) s = s.replace("{"+kk+"}", vv);
+  return s;
+};
+const roleName = r => (I18N[lang] || I18N.zh).roleNames[r] || r;
+
+/* ================= state ================= */
 const FEATURES = [
-  { name:"Motion Lab 動作分析", url:"/motion-lab/", roles:["student","coach","admin"] },
-  { name:"分成計算器（財務）", url:"/split-calculator/", roles:["coach","admin"] },
+  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["student","coach","admin"] },
+  { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","admin"] },
 ];
-
 const $ = s => document.querySelector(s);
-const esc = s => { const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; };
-let sb=null, user=null, profile=null, mode='login';
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+let sb=null, user=null, profile=null, mode="login", view="auth", lastSignupEmail="";
 
-function msg(el, text, cls){ el.className='msg '+cls; el.textContent=text; }
-function clearMsg(el){ el.className='msg'; el.textContent=''; }
+function msg(el, text, cls){ el.className="msg "+cls; el.textContent=text; }
+function clearMsg(el){ el.className="msg"; el.textContent=""; }
 
-const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-sb = createClient(SB_URL, SB_KEY);
+function friendlyError(error){
+  const m = (error && error.message || "").toLowerCase();
+  if (m.includes("invalid login credentials")) return t("errInvalidLogin");
+  if (m.includes("not confirmed")) return t("errNotConfirmed");
+  if (m.includes("already registered") || m.includes("already been registered")) return t("errExists");
+  if (m.includes("rate limit") || (error && error.status === 429)) return t("errRateLimit");
+  if (m.includes("at least 6")) return t("errWeakPass");
+  return t("errGeneric") + (error && error.message || "unknown");
+}
 
-sb.auth.onAuthStateChange((_ev, session)=>{ user = session?.user || null; render(); });
-user = (await sb.auth.getSession()).data.session?.user || null;
-render();
+/* ================= render ================= */
+function applyStatic(){
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.getAttribute("data-t")); });
+  $("#langZh").classList.toggle("on", lang==="zh");
+  $("#langEn").classList.toggle("on", lang==="en");
+  $("#submitBtn").textContent = mode==="signup" ? t("signupBtn") : t("loginBtn");
+  document.documentElement.lang = lang==="zh" ? "zh-Hant-HK" : "en";
+  updateStatus();
+}
+function updateStatus(){
+  const bar = $("#statusBar");
+  if (view==="checkmail") bar.textContent = t("statusCheckMail");
+  else if (view==="forgot") bar.textContent = t("statusForgot");
+  else if (view==="recovery") bar.textContent = t("statusRecovery");
+  else if (mode==="signup") bar.textContent = t("statusSignup");
+  else bar.textContent = t("statusLoginTitle") + " " + t("statusLogin");
+}
+function showView(v){
+  view = v;
+  $("#viewAuth").style.display = v==="auth" ? "" : "none";
+  $("#viewCheckMail").style.display = v==="checkmail" ? "" : "none";
+  $("#viewForgot").style.display = v==="forgot" ? "" : "none";
+  $("#viewRecovery").style.display = v==="recovery" ? "" : "none";
+  clearMsg($("#authMsg"));
+  updateStatus();
+}
+function setMode(m){
+  mode = m;
+  $("#tabLogin").classList.toggle("on", m==="login");
+  $("#tabSignup").classList.toggle("on", m==="signup");
+  $("#signupName").style.display = m==="signup" ? "" : "none";
+  $("#signupSteps").style.display = m==="signup" ? "" : "none";
+  $("#submitBtn").textContent = m==="signup" ? t("signupBtn") : t("loginBtn");
+  $("#password").autocomplete = m==="signup" ? "new-password" : "current-password";
+  clearMsg($("#authMsg"));
+  updateStatus();
+}
 
 async function render(){
-  $('#loading').style.display='none';
+  $("#loading").style.display = "none";
+  applyStatic();
   if(!user){
-    profile=null;
-    $('#authCard').style.display='';
-    $('#profileCard').style.display='none';
-    $('#adminCard').style.display='none';
+    profile = null;
+    $("#authCard").style.display = "";
+    $("#profileCard").style.display = "none";
+    $("#adminCard").style.display = "none";
     return;
   }
-  $('#authCard').style.display='none';
-  $('#profileCard').style.display='';
-  const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  profile = data || { role:'member', name:'', email:user.email };
-  const role = profile.role || 'member';
-  $('#pName').textContent = profile.name || (user.email||'').split('@')[0];
-  $('#pEmail').textContent = user.email || '';
-  $('#editName').value = profile.name || '';
-  $('#avatar').textContent = (profile.name || user.email || '?').trim().charAt(0).toUpperCase();
-  const badge = $('#pRole');
-  badge.textContent = ROLE_NAMES[role] || role;
-  badge.className = 'badge ' + role;
-  $('#featList').innerHTML = FEATURES.map(f=>{
+  if (view === "recovery") { $("#authCard").style.display = ""; $("#profileCard").style.display = "none"; $("#adminCard").style.display = "none"; return; }
+  $("#authCard").style.display = "none";
+  $("#profileCard").style.display = "";
+  const { data } = await sb.from("profiles").select("*").eq("id", user.id).single();
+  profile = data || { role:"member", name:"", email:user.email };
+  const role = profile.role || "member";
+  $("#statusIn").innerHTML = esc(t("statusIn")) + "<b>" + esc(roleName(role)) + "</b>";
+  $("#pName").textContent = profile.name || (user.email||"").split("@")[0];
+  $("#pEmail").textContent = user.email || "";
+  $("#editName").value = profile.name || "";
+  $("#avatar").textContent = (profile.name || user.email || "?").trim().charAt(0).toUpperCase();
+  const badge = $("#pRole");
+  badge.textContent = roleName(role);
+  badge.className = "badge " + role;
+  $("#featList").innerHTML = FEATURES.map(f=>{
     const ok = f.roles.includes(role);
-    return `<div class="feat ${ok?'':'locked'}">
-      <span>${esc(f.name)}<div class="need">需要：${f.roles.map(r=>ROLE_NAMES[r]).join('／')}</div></span>
-      ${ok ? `<a href="${f.url}">開啟 →</a>` : '<span>🔒</span>'}
+    return `<div class="feat ${ok?"":"locked"}">
+      <span>${esc(lang==="zh"?f.zh:f.en)}<div class="need">${esc(t("needs"))}${f.roles.map(roleName).join(" / ")}</div></span>
+      ${ok ? `<a href="${f.url}">${esc(t("open"))}</a>` : "<span>🔒</span>"}
     </div>`;
-  }).join('');
-  // 登入後有 ?next= 就跳返去（角色啱先跳，唔啱留喺度俾佢睇原因）
-  const next = new URLSearchParams(location.search).get('next');
-  if(next && next.startsWith('/')){
+  }).join("");
+  const next = new URLSearchParams(location.search).get("next");
+  if(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")){
     const feat = FEATURES.find(f=>next.startsWith(f.url));
     if(!feat || feat.roles.includes(role)){ location.replace(next); return; }
-    msg($('#profMsg'), `你想去嘅頁面（${next}）需要 ${feat.roles.map(r=>ROLE_NAMES[r]).join('／')} 身份，你而家係「${ROLE_NAMES[role]}」。想開通請聯絡 Ming。`, 'info');
+    msg($("#profMsg"), t("nextNoRole", { next, roles: feat.roles.map(roleName).join(" / "), role: roleName(role) }), "info");
   }
-  if(role==='admin') renderAdmin(); else $('#adminCard').style.display='none';
+  if(role==="admin") renderAdmin(); else $("#adminCard").style.display="none";
 }
 
 async function renderAdmin(){
-  $('#adminCard').style.display='';
-  const { data, error } = await sb.from('profiles').select('*').order('created_at');
-  if(error){ $('#userList').innerHTML = '<div class="spin">讀取失敗：'+esc(error.message)+'</div>'; return; }
-  $('#userList').innerHTML = data.map(p=>`
+  $("#adminCard").style.display = "";
+  const { data, error } = await sb.from("profiles").select("*").order("created_at");
+  if(error){ $("#userList").innerHTML = '<div class="spin">'+esc(t("loadFail"))+esc(error.message)+"</div>"; return; }
+  $("#userList").innerHTML = data.map(p=>`
     <div class="user-row">
-      <span class="em">${esc(p.name||'')} <span style="color:var(--muted)">${esc(p.email||'')}</span></span>
-      <select data-uid="${p.id}" ${p.id===user.id?'disabled title="唔可以改自己"':''}>
-        ${Object.entries(ROLE_NAMES).map(([k,v])=>`<option value="${k}" ${p.role===k?'selected':''}>${v}</option>`).join('')}
+      <span class="em">${esc(p.name||"")} <span style="color:var(--muted)">${esc(p.email||"")}</span></span>
+      <select data-uid="${p.id}" ${p.id===user.id?`disabled title="${esc(t("cantChangeSelf"))}"`:""}>
+        ${["member","student","coach","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
       </select>
-    </div>`).join('');
-  $('#userList').querySelectorAll('select[data-uid]').forEach(sel=>{
-    sel.addEventListener('change', async ()=>{
-      const { error } = await sb.rpc('set_user_role', { target_id: sel.dataset.uid, new_role: sel.value });
-      if(error){ alert('改唔到：'+error.message); renderAdmin(); return; }
-      sel.style.outline='2px solid var(--ok)';
-      setTimeout(()=>sel.style.outline='', 1200);
+    </div>`).join("");
+  $("#userList").querySelectorAll("select[data-uid]").forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const { error } = await sb.rpc("set_user_role", { target_id: sel.dataset.uid, new_role: sel.value });
+      if(error){ alert(t("changeFail")+error.message); renderAdmin(); return; }
+      sel.style.outline = "2px solid var(--line-strong)";
+      setTimeout(()=>sel.style.outline="", 1200);
     });
   });
 }
 
-function setMode(m){
-  mode=m; clearMsg($('#authMsg'));
-  $('#tabLogin').classList.toggle('on', m==='login');
-  $('#tabSignup').classList.toggle('on', m==='signup');
-  $('#signupName').style.display = m==='signup' ? '' : 'none';
-  $('#submitBtn').textContent = m==='signup' ? '建立帳戶' : '登入';
-  $('#password').autocomplete = m==='signup' ? 'new-password' : 'current-password';
+/* ================= events ================= */
+function setLang(l){
+  lang = l;
+  try { localStorage.setItem("kf-lang", l); } catch (e) {}
+  clearMsg($("#authMsg")); clearMsg($("#profMsg"));   // 唔留低舊語言嘅訊息
+  render();
 }
-$('#tabLogin').onclick = ()=>setMode('login');
-$('#tabSignup').onclick = ()=>setMode('signup');
+$("#langZh").onclick = ()=>setLang("zh");
+$("#langEn").onclick = ()=>setLang("en");
+$("#tabLogin").onclick = ()=>setMode("login");
+$("#tabSignup").onclick = ()=>setMode("signup");
+$("#backToLogin1").onclick = ()=>{ showView("auth"); setMode("login"); };
+$("#backToLogin2").onclick = ()=>{ showView("auth"); setMode("login"); };
+$("#backToLogin3").onclick = ()=>{ showView("auth"); setMode("login"); };
+$("#forgot").onclick = ()=>{ $("#forgotEmail").value = $("#email").value.trim(); showView("forgot"); };
 
-$('#submitBtn').onclick = async ()=>{
-  const email = $('#email').value.trim(), password = $('#password').value;
-  const box = $('#authMsg');
-  if(!email || password.length < 6){ msg(box,'請輸入電郵，密碼至少6位','err'); return; }
-  $('#submitBtn').disabled = true;
+$("#submitBtn").onclick = async ()=>{
+  const email = $("#email").value.trim(), password = $("#password").value;
+  const box = $("#authMsg");
+  if(!email || password.length < 6){ msg(box, t("fillEmailPass"), "err"); return; }
+  $("#submitBtn").disabled = true;
   try{
-    if(mode==='signup'){
-      const name = $('#name').value.trim();
+    if(mode==="signup"){
+      const name = $("#name").value.trim();
       const { data, error } = await sb.auth.signUp({
         email, password,
-        options: { data: { name }, emailRedirectTo: location.origin + '/login/' }
+        options: { data: { name }, emailRedirectTo: location.origin + "/login/" }
       });
-      if(error){ msg(box,'註冊失敗：'+error.message,'err'); return; }
-      if(data.session){ return; } // 有 session 即已登入（無需確認電郵）
-      msg(box,'註冊成功 ✔ 已寄確認信去 '+email+'，撳咗連結再返嚟登入。','ok');
+      if(error){ msg(box, friendlyError(error), "err"); return; }
+      if(data.session){ return; } // 唔使確認電郵嘅情況：已直接登入
+      // Supabase 對已註冊電郵回傳「假成功」（identities 空）做私隱保護 — 唔會寄信
+      if(data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0){
+        setMode("login");
+        msg(box, t("errExists"), "err");
+        return;
+      }
+      lastSignupEmail = email;
+      $("#sentTo").textContent = email;
+      showView("checkmail");
+      msg($("#authMsg"), t("signupOk"), "ok");
     }else{
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if(error){ msg(box,'登入失敗：'+error.message,'err'); return; }
+      if(error){
+        if((error.message||"").toLowerCase().includes("not confirmed")){
+          // 帶用戶返去第2步畫面，度度有「寄多次確認信」掣
+          lastSignupEmail = email;
+          $("#sentTo").textContent = email;
+          showView("checkmail");
+          msg(box, t("errNotConfirmed"), "err");
+          return;
+        }
+        msg(box, friendlyError(error), "err"); return;
+      }
     }
-  } finally { $('#submitBtn').disabled = false; }
+  } finally { $("#submitBtn").disabled = false; }
 };
-$('#password').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#submitBtn').click(); });
+$("#password").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#submitBtn").click(); });
 
-$('#forgot').onclick = async ()=>{
-  const email = $('#email').value.trim();
-  const box = $('#authMsg');
-  if(!email){ msg(box,'先喺上面填低你嘅電郵，再撳「唔記得密碼」','info'); return; }
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/login/' });
-  if(error){ msg(box,'寄唔到重設信：'+error.message,'err'); return; }
-  msg(box,'已寄密碼重設信去 '+email,'ok');
+$("#resendBtn").onclick = async ()=>{
+  const box = $("#authMsg");
+  const { error } = await sb.auth.resend({ type:"signup", email: lastSignupEmail, options:{ emailRedirectTo: location.origin + "/login/" } });
+  if(error){ msg(box, friendlyError(error), "err"); return; }
+  msg(box, t("resendOk"), "ok");
 };
 
-$('#saveName').onclick = async ()=>{
-  const name = $('#editName').value.trim();
-  const { error } = await sb.from('profiles').update({ name }).eq('id', user.id);
-  const box = $('#profMsg');
-  if(error){ msg(box,'儲存失敗：'+error.message,'err'); return; }
-  msg(box,'已儲存 ✔','ok'); render();
+$("#sendResetBtn").onclick = async ()=>{
+  const email = $("#forgotEmail").value.trim();
+  const box = $("#authMsg");
+  if(!email){ msg(box, t("fillEmail"), "err"); return; }
+  $("#sendResetBtn").disabled = true;
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/login/" });
+    if(error){ msg(box, friendlyError(error), "err"); return; }
+    msg(box, t("resetSent", { email }), "ok");
+  } finally { $("#sendResetBtn").disabled = false; }
 };
 
-$('#logout').onclick = async ()=>{ await sb.auth.signOut(); };
+$("#setPassBtn").onclick = async ()=>{
+  const box = $("#authMsg");
+  const pw = $("#newPassword").value;
+  if(pw.length < 6){ msg(box, t("passTooShort"), "err"); return; }
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if(error){ msg(box, friendlyError(error), "err"); return; }
+  showView("auth");
+  await render();
+  msg($("#profMsg"), t("passUpdated"), "ok");
+};
+
+$("#saveName").onclick = async ()=>{
+  const name = $("#editName").value.trim();
+  const { error } = await sb.from("profiles").update({ name }).eq("id", user.id);
+  const box = $("#profMsg");
+  if(error){ msg(box, t("saveFail")+error.message, "err"); return; }
+  msg(box, t("saved"), "ok"); render();
+};
+$("#logout").onclick = async ()=>{ await sb.auth.signOut(); showView("auth"); setMode("login"); };
+
+/* ================= boot ================= */
+applyStatic();
+try{
+  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+  sb = createClient(SB_URL, SB_KEY);
+  sb.auth.onAuthStateChange((event, session)=>{
+    user = session?.user || null;
+    if(event === "PASSWORD_RECOVERY"){ showView("recovery"); render(); return; }
+    if(event === "SIGNED_OUT"){ showView("auth"); setMode("login"); }
+    render();
+  });
+  user = (await sb.auth.getSession()).data.session?.user || null;
+  render();
+  // 過期／用過嘅電郵連結：GoTrue 會經 #error_code=otp_expired 呢類 param 彈返嚟 — 要話返俾用戶知
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const errCode = hashParams.get("error_code") || new URLSearchParams(location.search).get("error_code");
+  if(errCode){
+    const desc = hashParams.get("error_description") || "";
+    msg($("#authMsg"), /expired|otp/i.test(errCode + desc) ? t("errLinkExpired") : t("errGeneric") + (desc || errCode), "err");
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}catch(e){
+  console.warn("boot failed", e);
+  const box = $("#loading");
+  box.innerHTML = '<div class="spin">' + esc(t("bootFail")) + '</div><button class="ghost" id="bootReload">' + esc(t("reloadBtn")) + "</button>";
+  box.querySelector("#bootReload").onclick = ()=>location.reload();
+}
 </script>
 </body>
 </html>
