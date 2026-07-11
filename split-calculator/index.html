@@ -144,7 +144,8 @@
   <div class="card">
     <h2>📅 課堂記錄 <span class="hint">每節一行；收入按「當月實際消耗堂數」入賬（條款2.4）</span></h2>
     <div class="rule">
-      1堂 = 1小時：消耗堂數 = 人數 × 時長（例：2小時 3人 = 消耗6堂）。學員時數 = 時長 × 出席人數（條款4.2）。兩位導師同場：出席 &lt; 3人 → 全歸當值導師；≥ 3人 → 學員時數平分（條款4.4）。
+      1堂 = 1小時：消耗堂數 = 人數 × 時長（例：2小時 3人 = 消耗6堂）。學員時數 = 時長 × 出席人數（條款4.2）。
+      每節學員時數<b>全數歸時間表列明之執教導師</b>（ming＝Ming、Tom＝Tom），不設平分；另一方在場亦不分帳（2026年7月修訂版條款4.4）。
       「缺席扣堂」= 通知少於兩小時或無故缺席，照扣堂入收入但不計出席（條款1.7.2）。「合規請假」收行政費、不扣堂（條款1.7.1）。
       PT票（例：Simon，$900/4堂）：學員<b>單獨一人上堂</b>嗰節先入「PT票」欄；同其他學員一齊上嗰節照入「4堂票」欄。
       免費學員（例：Taffy）：唔收錢，但照計出席人數同學員時數（條款4.2）。
@@ -267,17 +268,15 @@ function calcSession(sess, s){
   const revenue = consumed4*perClass4(s) + consumed8*perClass8(s) + consumedPT*perClassPT(s) + excused*s.adminFee;
 
   const sh = dur * attendance;                      // 學員時數（條款4.2）
-  let shA = 0, shB = 0, allocNote = '';
-  const duty = sess.duty === 'auto' || !sess.duty ? autoDuty(sess.date) : sess.duty;
-
-  if(sess.coaches === 'A'){ shA = sh; allocNote = '只有A執教'; }
-  else if(sess.coaches === 'B'){ shB = sh; allocNote = '只有B執教'; }
-  else { // 兩位導師同場（條款4.4）
-    if(attendance >= s.threshold){ shA = sh/2; shB = sh/2; allocNote = '≥'+s.threshold+'人，時數平分（4.4.2）'; }
-    else if(duty === 'A'){ shA = sh; allocNote = '<'+s.threshold+'人，全歸當值導師A（4.4.1）'; }
-    else { shB = sh; allocNote = '<'+s.threshold+'人，全歸當值導師B（4.4.1）'; }
-  }
-  return { revenue, consumed4, consumed8, consumedPT, excused, attendance, sh, shA, shB, duty, allocNote };
+  // 酬金歸屬：全數歸時間表列明之執教導師，不設平分（2026年7月修訂版條款4.4）
+  // 舊資料兼容：coaches 'AB'（舊平分制）視作「自動＝當值導師」
+  let coach = sess.coach || sess.coaches || 'auto';
+  if(coach === 'AB') coach = (sess.duty && sess.duty !== 'auto') ? sess.duty : 'auto';
+  const resolved = coach === 'auto' ? autoDuty(sess.date) : coach;
+  let shA = 0, shB = 0;
+  if(resolved === 'A') shA = sh; else shB = sh;
+  const allocNote = '全歸執教導師' + (resolved === 'A' ? 'A' : 'B') + (coach === 'auto' ? '（按當值自動）' : '（時間表）');
+  return { revenue, consumed4, consumed8, consumedPT, excused, attendance, sh, shA, shB, duty: resolved, allocNote };
 }
 
 // 場租入賬（條款3）：上限按該日最高出席人數
@@ -368,7 +367,9 @@ function renderSessions(){
   if(!md.sessions.length){ box.innerHTML = '<div class="empty">未有課堂記錄</div>'; return; }
   box.innerHTML = md.sessions.map(sess=>{
     const r = calcSession(sess, s);
-    const dutyName = r.duty === 'A' ? s.nameA : s.nameB;
+    const dutyName = autoDuty(sess.date) === 'A' ? s.nameA : s.nameB;
+    let coachSel = sess.coach || sess.coaches || 'auto';
+    if(coachSel === 'AB') coachSel = (sess.duty && sess.duty !== 'auto') ? sess.duty : 'auto';
     return `<div class="row" data-id="${sess.id}">
       <button class="del" data-del="sessions" data-id="${sess.id}" title="刪除">✕</button>
       <div class="grid3">
@@ -377,17 +378,11 @@ function renderSessions(){
         <label class="f">地點（KT=觀塘、MK=旺角）<input type="text" value="${esc(sess.venue||'')}" placeholder="KT" data-id="${sess.id}" data-key="venue"></label>
       </div>
       <div class="grid2">
-        <label class="f">在場導師
-          <select data-id="${sess.id}" data-key="coaches">
-            <option value="AB" ${sess.coaches==='AB'?'selected':''}>兩位同場</option>
-            <option value="A" ${sess.coaches==='A'?'selected':''}>${esc(s.nameA)}</option>
-            <option value="B" ${sess.coaches==='B'?'selected':''}>${esc(s.nameB)}</option>
-          </select></label>
-        <label class="f">當值導師（條款1.4）
-          <select data-id="${sess.id}" data-key="duty">
-            <option value="auto" ${(!sess.duty||sess.duty==='auto')?'selected':''}>自動（${esc(dutyName)}）</option>
-            <option value="A" ${sess.duty==='A'?'selected':''}>${esc(s.nameA)}</option>
-            <option value="B" ${sess.duty==='B'?'selected':''}>${esc(s.nameB)}</option>
+        <label class="f">執教導師（跟時間表 header）
+          <select data-id="${sess.id}" data-key="coach">
+            <option value="auto" ${coachSel==='auto'?'selected':''}>自動（當值：${esc(dutyName)}）</option>
+            <option value="A" ${coachSel==='A'?'selected':''}>${esc(s.nameA)}</option>
+            <option value="B" ${coachSel==='B'?'selected':''}>${esc(s.nameB)}</option>
           </select></label>
       </div>
       <div class="grid4">
@@ -596,7 +591,7 @@ function updateInlineCalcs(){
 }
 
 $('#add-session').onclick = ()=>{
-  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coaches:'AB', duty:'auto', venue:'',
+  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coach:'auto', venue:'',
     n4: 0, n8: 0, npt: 0, nf: 0, m4: 0, m8: 0, mpt: 0, excused: 0 });
   save(); renderAll();
 };
