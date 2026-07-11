@@ -126,6 +126,11 @@
         <label class="f">8堂套票價（HK$）<input type="number" id="s-price8" min="0" step="10"></label>
         <label class="f">PT套票價（HK$／4堂）<input type="number" id="s-pricePT" min="0" step="10"></label>
         <label class="f">請假行政費（HK$／次）<input type="number" id="s-adminFee" min="0" step="10"></label>
+        <label class="f">場租計法
+          <select id="s-rentMode">
+            <option value="flat">劃一實報（2026年5月起 $150/小時）</option>
+            <option value="cap">按人數上限（協議條款3）</option>
+          </select></label>
         <label class="f">場租上限：少於3人（$／小時）<input type="number" id="s-rentLow" min="0" step="10"></label>
         <label class="f">場租上限：3人或以上（$／小時）<input type="number" id="s-rentHigh" min="0" step="10"></label>
         <label class="f">大班門檻（人數 ≥）<input type="number" id="s-threshold" min="2" step="1"></label>
@@ -142,6 +147,7 @@
       1堂 = 1小時：消耗堂數 = 人數 × 時長（例：2小時 3人 = 消耗6堂）。學員時數 = 時長 × 出席人數（條款4.2）。兩位導師同場：出席 &lt; 3人 → 全歸當值導師；≥ 3人 → 學員時數平分（條款4.4）。
       「缺席扣堂」= 通知少於兩小時或無故缺席，照扣堂入收入但不計出席（條款1.7.2）。「合規請假」收行政費、不扣堂（條款1.7.1）。
       PT票（例：Simon，$900/4堂）：學員<b>單獨一人上堂</b>嗰節先入「PT票」欄；同其他學員一齊上嗰節照入「4堂票」欄。
+      免費學員（例：Taffy）：唔收錢，但照計出席人數同學員時數（條款4.2）。
     </div>
     <div class="rows" id="sessions"></div>
     <button class="add" id="add-session">＋ 加一節課堂</button>
@@ -149,10 +155,9 @@
 
   <!-- 場租 -->
   <div class="card">
-    <h2>🏟️ 場地租金 <span class="hint">認可成本上限按「該日最高出席人數」全日統一計（條款3）</span></h2>
+    <h2>🏟️ 場地租金 <span class="hint">而家用「劃一實報」：入賬 = 實付（2026年5月起劃一 $150/小時）</span></h2>
     <div class="rule">
-      該日任何一小時出席 ≥ 3人 → 上限 $<span data-bind="rentHigh"></span>/小時；全日 &lt; 3人 → 上限 $<span data-bind="rentLow"></span>/小時。
-      入賬支出 = min（實付租金，上限 × 時數）。超出上限部分不入公數。
+      如改用協議條款3嘅「按人數上限」模式（喺協議參數切換）：該日任何一小時出席 ≥ 3人 → 上限 $<span data-bind="rentHigh"></span>/小時；全日 &lt; 3人 → 上限 $<span data-bind="rentLow"></span>/小時，超出部分不入公數。
     </div>
     <div class="rows" id="rents"></div>
     <button class="add" id="add-rent">＋ 加一日場租</button>
@@ -203,6 +208,7 @@ const DEFAULT_SETTINGS = {
   price8: 1400, classes8: 8,
   pricePT: 900, classesPT: 4,   // Simon：單獨上堂計PT
   adminFee: 100,
+  rentMode: 'flat',             // flat = 劃一實報（2026年5月起 $150/小時）；cap = 協議條款3人數上限
   rentLow: 100, rentHigh: 150,
   threshold: 3,
   nameA: 'Ming',   // Cheng Chun Ming — 週六日當值（條款1.4.2）
@@ -250,10 +256,11 @@ function autoDuty(dateStr){
 // 單節課堂運算
 function calcSession(sess, s){
   const n4 = +sess.n4||0, n8 = +sess.n8||0, npt = +sess.npt||0; // 出席（4堂票／8堂票／PT票）
+  const nf = +sess.nf||0;                           // 免費學員（唔收錢，計出席同時數）
   const m4 = +sess.m4||0, m8 = +sess.m8||0, mpt = +sess.mpt||0; // 缺席扣堂（照收費，不算出席）
   const excused = +sess.excused||0;                 // 合規請假（行政費）
   const dur = +sess.dur||0;
-  const attendance = n4 + n8 + npt;
+  const attendance = n4 + n8 + npt + nf;
 
   // 1堂 = 1小時：消耗堂數 = 人數 × 時長
   const consumed4 = (n4+m4)*dur, consumed8 = (n8+m8)*dur, consumedPT = (npt+mpt)*dur;
@@ -277,6 +284,10 @@ function calcSession(sess, s){
 function calcRent(rent, s, maxAttByDate){
   const hours = +rent.hours||0, paid = +rent.paid||0;
   const maxAtt = maxAttByDate[rent.date] || 0;
+  if(s.rentMode !== 'cap'){
+    // 劃一實報：入賬 = 實付
+    return { maxAtt, rate: null, cap: null, chargeable: paid, over: 0 };
+  }
   const rate = maxAtt >= s.threshold ? s.rentHigh : s.rentLow;
   const cap = rate * hours;
   const chargeable = Math.min(paid, cap);
@@ -336,7 +347,7 @@ function toast(msg){
 /* ---------- 介面渲染 ---------- */
 function bindSettingsInputs(){
   const map = { 'price4':'s-price4','price8':'s-price8','pricePT':'s-pricePT','adminFee':'s-adminFee',
-    'rentLow':'s-rentLow','rentHigh':'s-rentHigh','threshold':'s-threshold',
+    'rentMode':'s-rentMode','rentLow':'s-rentLow','rentHigh':'s-rentHigh','threshold':'s-threshold',
     'nameA':'s-nameA','nameB':'s-nameB' };
   for(const [key,id] of Object.entries(map)){
     const el = document.getElementById(id);
@@ -360,9 +371,12 @@ function renderSessions(){
     const dutyName = r.duty === 'A' ? s.nameA : s.nameB;
     return `<div class="row" data-id="${sess.id}">
       <button class="del" data-del="sessions" data-id="${sess.id}" title="刪除">✕</button>
-      <div class="grid4">
+      <div class="grid3">
         <label class="f">日期<input type="date" value="${esc(sess.date)}" data-id="${sess.id}" data-key="date"></label>
         <label class="f">時長（小時）<input type="number" inputmode="decimal" min="0" step="0.5" value="${esc(sess.dur)}" data-id="${sess.id}" data-key="dur"></label>
+        <label class="f">地點（KT=觀塘、MK=旺角）<input type="text" value="${esc(sess.venue||'')}" placeholder="KT" data-id="${sess.id}" data-key="venue"></label>
+      </div>
+      <div class="grid2">
         <label class="f">在場導師
           <select data-id="${sess.id}" data-key="coaches">
             <option value="AB" ${sess.coaches==='AB'?'selected':''}>兩位同場</option>
@@ -376,10 +390,11 @@ function renderSessions(){
             <option value="B" ${sess.duty==='B'?'selected':''}>${esc(s.nameB)}</option>
           </select></label>
       </div>
-      <div class="grid3">
+      <div class="grid4">
         ${fieldNum('出席：4堂票（人）', sess.n4, 'n4', sess.id)}
         ${fieldNum('出席：8堂票（人）', sess.n8, 'n8', sess.id)}
         ${fieldNum('出席：PT票（人）', sess.npt, 'npt', sess.id)}
+        ${fieldNum('出席：免費（人）', sess.nf, 'nf', sess.id)}
       </div>
       <div class="grid3">
         ${fieldNum('缺席扣堂：4堂票（人）', sess.m4, 'm4', sess.id)}
@@ -407,15 +422,18 @@ function renderRents(){
     const r = calcRent(rent, s, maxAttByDate);
     return `<div class="row" data-id="${rent.id}">
       <button class="del" data-del="rents" data-id="${rent.id}" title="刪除">✕</button>
-      <div class="grid3">
+      <div class="grid4">
         <label class="f">日期<input type="date" value="${esc(rent.date)}" data-id="${rent.id}" data-key="date"></label>
+        <label class="f">地點（KT/MK）<input type="text" value="${esc(rent.venue||'')}" placeholder="KT" data-id="${rent.id}" data-key="venue"></label>
         ${fieldNum('租用時數（小時）', rent.hours, 'hours', rent.id, 0.5)}
         ${fieldNum('實付租金（HK$）', rent.paid, 'paid', rent.id, 10)}
       </div>
       <div class="calc">
-        <span>當日最高出席 <b>${r.maxAtt}</b> 人 → 上限 <b>$${r.rate}/小時</b>（上限總額 ${fmt$(r.cap)}）</span>
-        <span>入賬 <b>${fmt$(r.chargeable)}</b></span>
-        ${r.over > 0 ? `<span class="tag warn">超上限 ${fmt$(r.over)} 不入公數</span>` : '<span class="tag ok">上限內</span>'}
+        ${s.rentMode !== 'cap'
+          ? `<span>入賬 <b>${fmt$(r.chargeable)}</b></span> <span class="tag ok">劃一實報</span>`
+          : `<span>當日最高出席 <b>${r.maxAtt}</b> 人 → 上限 <b>$${r.rate}/小時</b>（上限總額 ${fmt$(r.cap)}）</span>
+             <span>入賬 <b>${fmt$(r.chargeable)}</b></span>
+             ${r.over > 0 ? `<span class="tag warn">超上限 ${fmt$(r.over)} 不入公數</span>` : '<span class="tag ok">上限內</span>'}`}
       </div>
     </div>`;
   }).join('');
@@ -462,7 +480,7 @@ function renderResult(){
     </div>
     <div class="block">
       <h3>支出</h3>
-      <div class="li"><span>場地租金（認可入賬）</span><span>${fmt$(r.rentChargeable)}</span></div>
+      <div class="li"><span>場地租金${s.rentMode==='cap'?'（認可入賬）':'（實報）'}</span><span>${fmt$(r.rentChargeable)}</span></div>
       ${r.rentOver>0?`<div class="li"><span>　·實付 ${fmt$(r.rentPaid)}，超上限 ${fmt$(r.rentOver)} 不入公數</span><span></span></div>`:''}
       <div class="li"><span>其他認可支出</span><span>${fmt$(r.otherExpense)}</span></div>
       <div class="li total"><span>總支出</span><span>${fmt$(r.totalExpense)}</span></div>
@@ -512,7 +530,7 @@ function reportText(){
   L.push(`· 請假行政費：${r.excusedCount} 次 × $${s.adminFee} = $${r.adminIncome.toFixed(2)}`);
   L.push(`· 總收入：$${r.income.toFixed(2)}`);
   L.push('【支出】');
-  L.push(`· 場地租金（認可）：$${r.rentChargeable.toFixed(2)}${r.rentOver>0?`（實付 $${r.rentPaid.toFixed(2)}，超上限 $${r.rentOver.toFixed(2)} 不入公數）`:''}`);
+  L.push(`· 場地租金${s.rentMode==='cap'?'（認可）':'（實報）'}：$${r.rentChargeable.toFixed(2)}${r.rentOver>0?`（實付 $${r.rentPaid.toFixed(2)}，超上限 $${r.rentOver.toFixed(2)} 不入公數）`:''}`);
   L.push(`· 其他支出：$${r.otherExpense.toFixed(2)}`);
   L.push(`· 總支出：$${r.totalExpense.toFixed(2)}`);
   L.push('【分配】');
@@ -578,12 +596,12 @@ function updateInlineCalcs(){
 }
 
 $('#add-session').onclick = ()=>{
-  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coaches:'AB', duty:'auto',
-    n4: 0, n8: 0, npt: 0, m4: 0, m8: 0, mpt: 0, excused: 0 });
+  monthData().sessions.push({ id: uid(), date: defaultDate(), dur: 1, coaches:'AB', duty:'auto', venue:'',
+    n4: 0, n8: 0, npt: 0, nf: 0, m4: 0, m8: 0, mpt: 0, excused: 0 });
   save(); renderAll();
 };
 $('#add-rent').onclick = ()=>{
-  monthData().rents.push({ id: uid(), date: defaultDate(), hours: 1, paid: '' });
+  monthData().rents.push({ id: uid(), date: defaultDate(), venue:'', hours: 1, paid: '' });
   save(); renderAll();
 };
 $('#add-expense').onclick = ()=>{
