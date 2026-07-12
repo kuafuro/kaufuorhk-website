@@ -99,6 +99,7 @@ section.tab-panel.active{display:block}
   position:relative;background:#000;border-radius:var(--radius);overflow:hidden;
   border:1px solid var(--border);min-height:280px;
   display:flex;align-items:center;justify-content:center;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;   /* long-press = 指定拳手B, not text selection */
 }
 .stage video,.stage canvas{display:block;max-width:100%;height:auto}
 .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -380,7 +381,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <button class="btn" id="mResetBtn">↺ 重設數據</button>
       <button class="btn" id="mStopBtn" style="display:none">⏹ 停止</button>
     </div>
-    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。畫面有多人時，<b>撳一下你想分析嘅人物</b>即可切換。</p>
+    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。畫面有多人時，<b>撳一下人物＝鎖定做拳手A</b>；<b>長撳（按住半秒）＝指定做拳手B</b>；撳橙色B＝A/B對調。</p>
   </div>
 
   <div class="grid-2">
@@ -563,7 +564,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <li>鏡頭放側面 45°–90°，全身入鏡</li>
         <li>輸入體重（用作估算出拳動能）</li>
         <li>開鏡頭即時分析，或上載訓練影片——「⚡ 快速分析」會全速逐格處理，唔使睇住佢播</li>
-        <li>多人模式<b>預設開啟</b>——每人有個號碼牌，撳你想分析嘅人物即可鎖定做 A（單人操練可以較返做單人模式，更快更省電）</li>
+        <li>多人模式<b>預設開啟</b>——每人有個號碼牌，撳你想分析嘅人物即可鎖定做 A；<b>長撳（按住半秒）另一位＝指定佢做 B</b>，AI 認錯人時可以即場糾正（單人操練可以較返做單人模式，更快更省電）</li>
         <li><b>身份記憶🔒</b>：AI 會記住 A/B 兩人嘅樣貌＋衣着特徵，成場跟實——就算交叉、纏抱之後調轉咗都會自動糾正（兩人著唔同顏色衫效果最好）</li>
         <li>對打／對練：兩人入鏡自動分 A（紅）/ B（橙），兩邊數據並排——拳、踢、膝全計，命中分頭/腹/腿（low kick）、防守、閃避、承受重擊</li>
         <li><b>WAKO 計分準則</b>：出擊分「有效命中／輕觸／被格擋／落空」——無效攻擊都計入出擊總數；技法自動分類（直拳/擺拳/上擊/轉身鞭拳/正蹬/迴旋踢/低掃/高踢/斧劈踢/後旋踢/膝擊）；對方落空時你方會計「格擋／閃避／距離防禦」</li>
@@ -673,7 +674,10 @@ function coreVisOf(lm){
 /* order people biggest-first; drop tiny spurious detections unless nothing else remains */
 function rankPeople(people){
   const order = people.map((lm,i)=>({ lm, i, h: heightOf(lm) })).sort((a,b)=>b.h-a.h);
-  const solid = order.filter(o=>o.h > 0.12);
+  // noise floor is RELATIVE to the biggest person — a hard cut used to make
+  // the smaller/further fighter in wide outdoor shots untappable
+  const big = order.length ? order[0].h : 0;
+  const solid = order.filter(o=>o.h > 0.055 && o.h > big*0.22);
   return solid.length ? solid : order.slice(0,1);
 }
 function drawPersonBadge(ctx, lm, W, H, mirrored, label, bg){
@@ -1871,6 +1875,7 @@ let mRun = { on:false, source:null, facing:"environment", raf:0, lastTs:-1, last
              subjectId:null, oppId:null, lastSubjectPos:null, lastCands:null,
              subjectSig:null, oppSig:null, lastOppPos:null, lastFullScan:-9,
              manualPick:null /* coach's tapped choice — the background audit must never override it */,
+             manualPickB:null /* coach's long-pressed choice of fighter B — same protection */,
              subjSeenT:null, oppSeenT:null, bgAuditT:null };
 mState = freshSession();
 
@@ -1907,7 +1912,7 @@ $("mMultiBtn").addEventListener("click", async ()=>{
   mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
-  mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
+  mRun.manualPick = null; mRun.manualPickB = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
   tracker.reset();
   if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
   updateSparCard();
@@ -1916,53 +1921,107 @@ $("mMultiBtn").addEventListener("click", async ()=>{
     : "單人模式：自動鎖定畫面中最大嘅人物（最快最順）", 4200);
 });
 
-/* tap a person on the stage to make them the analysis subject (主角) */
-$("mStage").addEventListener("click", e=>{
-  if(!mRun.on) return;
+/* tap a person = lock fighter A · LONG-PRESS a person = lock fighter B ·
+   tap the current B = swap A↔B. The long-press is the only manual way to
+   correct B when auto-pick grabs the wrong person (bystander/reflection). */
+function stageNorm(e){
   const rect = mCanvas.getBoundingClientRect();
-  if(!rect.width) return;
+  if(!rect.width) return null;
   let x = (e.clientX - rect.left)/rect.width;
   const y = (e.clientY - rect.top)/rect.height;
   if($("mStage").classList.contains("mirrored")) x = 1 - x;
+  return { x, y };
+}
+/* distance from a tap to a person: ~0 anywhere inside their bounding box —
+   mid-hip-only matching mis-picks when fighters overlap or you tap a head */
+function tapDist(x, y, lm, pos, box){
+  const p = pos || midHipOf(lm);
+  const dC = Math.hypot(p.x - x, p.y - y);
+  const b = box || tracker.bboxOf(lm);
+  if(!b) return dC;
+  const dx = Math.max(b.x0 - 0.02 - x, 0, x - (b.x1 + 0.02));
+  const dy = Math.max(b.y0 - 0.02 - y, 0, y - (b.y1 + 0.02));
+  return Math.hypot(dx, dy) + dC*0.05;   // tiny centre bias breaks overlapping-box ties
+}
+function swapAB(tappedPos){
+  const tid = mRun.subjectId, tsg = mRun.subjectSig, tps = mRun.lastSubjectPos;
+  mRun.subjectId = mRun.oppId;  mRun.subjectSig = mRun.oppSig;  mRun.lastSubjectPos = tappedPos || mRun.lastOppPos;
+  mRun.oppId = tid;             mRun.oppSig = tsg;              mRun.lastOppPos = tps;
+  mRun.manualPick = mRun.subjectId; mRun.manualPickB = mRun.oppId;   // coach confirmed BOTH
+  const tmp = mState.A; mState.A = mState.B; mState.B = tmp;
+  identity.swap();
+  toast("已對調 A↔B（數據跟人走，冇重設）");
+}
+function pickFighter(x, y, role){
+  if(!(mRun.multi && mRun.lastCands?.length)) return false;
+  let best = null, bestD = 1e9;
+  for(const c of mRun.lastCands){
+    const d = tapDist(x, y, c.lm, c.pos, c.box);
+    if(d < bestD){ bestD = d; best = c; }
+  }
+  if(!best || bestD > 0.22){ toast("呢個位置未偵測到人物——請撳落有骨架嘅人身上"); return true; }
+  if(role === "B"){
+    if(best.trackId === mRun.oppId){ toast("呢位已經係拳手 B（橙）"); return true; }
+    if(best.trackId === mRun.subjectId){ swapAB(best.pos); return true; }
+    mRun.oppId = best.trackId;
+    mRun.lastOppPos = best.pos;
+    mRun.oppSig = best.sig ? best.sig.slice() : null;
+    mRun.manualPickB = best.trackId;   // coach's explicit choice — audits keep off
+    identity.B.proto = null;           // re-learn B's appearance from the right person
+    mState.B = freshFighter();         // the wrong person's stats are noise; A keeps everything
+    toast(`已鎖定人物 ${best.trackId} 做拳手 B ✔（A 數據保留）`);
+    return true;
+  }
+  if(best.trackId === mRun.subjectId){ toast("呢位已經係拳手 A（紅）。長撳其他人物可指定拳手 B"); return true; }
+  if(best.trackId === mRun.oppId){ swapAB(best.pos); return true; }
+  mRun.subjectId = best.trackId;
+  mRun.lastSubjectPos = best.pos;
+  mRun.subjectSig = best.sig ? best.sig.slice() : null;
+  mRun.manualPick = best.trackId;                  // coach's explicit choice
+  mRun.oppId = null; mRun.oppSig = null;           // B re-resolves next frame
+  mRun.lastOppPos = null; mRun.manualPickB = null; // …with no stale memory of the old B
+  mState = freshSession();                         // pairing changed — restart stats
+  identity.reset();
+  $("techCard").style.display = "none";
+  updateTiles();
+  toast(`已鎖定人物 ${best.trackId} 做拳手 A，本節數據重新開始`);
+  return true;
+}
+const mPress = { timer:0, x0:0, y0:0, fired:false };
+$("mStage").addEventListener("pointerdown", e=>{
+  if(!mRun.on || !mRun.multi) return;
+  mPress.x0 = e.clientX; mPress.y0 = e.clientY; mPress.fired = false;
+  clearTimeout(mPress.timer);
+  mPress.timer = setTimeout(()=>{
+    const pt = stageNorm(e);
+    if(!pt) return;
+    mPress.fired = true;                             // swallow the click that follows
+    try{ navigator.vibrate?.(30); }catch(_){}
+    pickFighter(pt.x, pt.y, "B");
+  }, 550);
+});
+$("mStage").addEventListener("pointermove", e=>{
+  if(Math.hypot(e.clientX - mPress.x0, e.clientY - mPress.y0) > 12) clearTimeout(mPress.timer);
+});
+for(const ev of ["pointerup","pointercancel","pointerleave"])
+  $("mStage").addEventListener(ev, ()=>clearTimeout(mPress.timer));
+$("mStage").addEventListener("contextmenu", e=>{ if(mRun.on && mRun.multi) e.preventDefault(); });
 
-  if(mRun.multi && mRun.lastCands?.length){
-    let best = null, bestD = 1e9;
-    for(const c of mRun.lastCands){
-      const d = Math.hypot(c.pos.x - x, c.pos.y - y);
-      if(d < bestD){ bestD = d; best = c; }
-    }
-    if(!best || bestD > 0.45) return;
-    if(best.trackId === mRun.subjectId) return;      // already fighter A
-    if(best.trackId === mRun.oppId){
-      // tapped fighter B — swap A↔B, keeping BOTH fighters' stats
-      const oldSubj = mRun.subjectId, oldSig = mRun.subjectSig;
-      mRun.subjectId = mRun.oppId; mRun.oppId = oldSubj;
-      mRun.subjectSig = mRun.oppSig; mRun.oppSig = oldSig;
-      mRun.lastSubjectPos = best.pos;
-      mRun.manualPick = mRun.subjectId;
-      const tmp = mState.A; mState.A = mState.B; mState.B = tmp;
-      identity.swap();
-      toast("已對調 A↔B（數據跟人走，冇重設）");
-      return;
-    }
-    mRun.subjectId = best.trackId;
-    mRun.lastSubjectPos = best.pos;
-    mRun.subjectSig = best.sig ? best.sig.slice() : null;
-    mRun.manualPick = best.trackId;                  // coach's explicit choice
-    mRun.oppId = null; mRun.oppSig = null;           // B re-resolves next frame
-    mState = freshSession();                         // pairing changed — restart stats
-    identity.reset();
-    $("techCard").style.display = "none";
-    updateTiles();
-    toast(`已鎖定人物 ${best.trackId} 做拳手 A，本節數據重新開始`);
-  }else if(mRun.lastRanked?.length){
+$("mStage").addEventListener("click", e=>{
+  if(!mRun.on) return;
+  if(mPress.fired){ mPress.fired = false; return; }  // this click ends a long-press
+  const pt = stageNorm(e);
+  if(!pt) return;
+  const x = pt.x, y = pt.y;
+
+  if(pickFighter(x, y, "A")) return;
+  if(mRun.lastRanked?.length){
     let best = null, bestD = 1e9, bestRank = 0;
     mRun.lastRanked.forEach((o, rank)=>{
-      const c = midHipOf(o.lm);
-      const d = Math.hypot(c.x - x, c.y - y);
+      const d = tapDist(x, y, o.lm, null, null);
       if(d < bestD){ bestD = d; best = o; bestRank = rank; }
     });
-    if(!best || bestD > 0.45) return;
+    if(!best || bestD > 0.22){ toast("呢個位置未偵測到人物——請撳落有骨架嘅人身上"); return; }
     const c = midHipOf(best.lm);
     const already = mRun.targetPos && Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y) < 0.08;
     mRun.targetPos = c;
@@ -2104,7 +2163,7 @@ async function autoDetectMulti(){
       $("mMultiBtn").textContent = "👥 多人模式：開";
       mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
       mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
-      mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
+      mRun.manualPick = null; mRun.manualPickB = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
       tracker.reset();
       toast(`偵測到 ${n} 人 — 已自動開啟多人模式，計算對戰數據`, 4200);
     }
@@ -2124,7 +2183,7 @@ async function batchAnalyze(){
   mRun.targetPos = null; mRun.lastRanked = null; mRun.lastCands = null;
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null;
   mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
-  mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
+  mRun.manualPick = null; mRun.manualPickB = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
   mRun.detMs = null; mRun.lastDetTs = null; mRun.fpsWarned = false;
   tracker.reset();
   identity.lastCheck = -1; identity.lastFix = -1;
@@ -2204,7 +2263,7 @@ async function startMotion(source){
   mRun.targetPos = null; mRun.lastRanked = null;   // re-lock onto the most prominent person
   mRun.subjectId = null; mRun.oppId = null; mRun.lastSubjectPos = null; mRun.lastCands = null;
   mRun.subjectSig = null; mRun.oppSig = null; mRun.lastOppPos = null; mRun.lastFullScan = -9;
-  mRun.manualPick = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
+  mRun.manualPick = null; mRun.manualPickB = null; mRun.subjSeenT = null; mRun.oppSeenT = null; mRun.bgAuditT = null;
   mRun.detMs = null; mRun.lastDetTs = null;
   tracker.reset();
   identity.lastCheck = -1; identity.lastFix = -1;
@@ -2636,6 +2695,7 @@ function handleDetections(res, tSec, mirrored, W, H){
         identity.lastFix = tSec;
         const tid = mRun.subjectId; mRun.subjectId = mRun.oppId; mRun.oppId = tid;
         const tsg = mRun.subjectSig; mRun.subjectSig = mRun.oppSig; mRun.oppSig = tsg;
+        const tmk = mRun.manualPick; mRun.manualPick = mRun.manualPickB; mRun.manualPickB = tmk;   // marks follow the people
         const tmp = subj; subj = oppCand; oppCand = tmp;
         mRun.lastSubjectPos = subj.pos;
         if(oppCand) mRun.lastOppPos = oppCand.pos;
@@ -2664,6 +2724,7 @@ function handleDetections(res, tSec, mirrored, W, H){
           // swap bindings AND this frame's local roles so stats keep following the person
           const tid = mRun.subjectId; mRun.subjectId = mRun.oppId; mRun.oppId = tid;
           const tsg = mRun.subjectSig; mRun.subjectSig = mRun.oppSig; mRun.oppSig = tsg;
+          const tmk = mRun.manualPick; mRun.manualPick = mRun.manualPickB; mRun.manualPickB = tmk;   // marks follow the people
           const tmp = subj; subj = oppCand; oppCand = tmp;
           mRun.lastSubjectPos = subj.pos;
           if(oppCand) mRun.lastOppPos = oppCand.pos;
@@ -2702,7 +2763,7 @@ function handleDetections(res, tSec, mirrored, W, H){
       const humanB = oppCand && oppCand.humanStrong && !phantom(mRun.oppId);
       if((spare || humanB) && mRun.subjectId != null && mRun.subjectId !== mRun.manualPick &&
          (phantom(mRun.subjectId) || vanished(mRun.subjectId, mRun.subjSeenT, identity.A.proto))){
-        if(humanB){
+        if(humanB && mRun.oppId !== mRun.manualPickB){
           // the real fighter is sitting in the B slot — promote them to A
           // (stats follow the person, exactly like the tap-swap), and let a
           // real second fighter claim the now-free B slot next frame
@@ -2718,7 +2779,7 @@ function handleDetections(res, tSec, mirrored, W, H){
         }
         mRun.adopt = null;
         toast("🌿 偵測到 A 鎖錯背景／目標消失，重新搵拳手");
-      }else if(spare && mRun.oppId != null &&
+      }else if(spare && mRun.oppId != null && mRun.oppId !== mRun.manualPickB &&
          (phantom(mRun.oppId) || vanished(mRun.oppId, mRun.oppSeenT, identity.B.proto))){
         mRun.oppId = null; mRun.lastOppPos = null; mRun.oppSig = null;
         identity.B.proto = null; oppCand = null;
@@ -2794,7 +2855,7 @@ function refreshMotionUI(out){
   }
   if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人" + fpsTag; lbl.style.display = "block"; }
   else if(mRun.multi && out.opp){
-    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 撳B對調" + fpsTag;
+    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 撳B對調 · 長撳=指定B" + fpsTag;
     lbl.style.display = "block";
   }
   else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象` + fpsTag; lbl.style.display = "block"; }
