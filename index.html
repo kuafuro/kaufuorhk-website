@@ -1,315 +1,588 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant-HK">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuafuor HK | Professional Services</title>
-    <style>
-        /* --- General Reset --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kuafuor HK｜企業方案 × 運動分析 Business Solutions × Motion Lab</title>
+<meta name="description" content="Kuafuor HK — 企業顧問及系統開發 · AI 運動姿態分析 Motion Lab。Consulting, development and AI-powered motion analysis in Hong Kong.">
+<style>
+  /* ===== 黑白主色 Monochrome design system ===== */
+  :root{
+    color-scheme: light dark;
+    --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
+    --line:#e2e2e2; --line-strong:#111111;
+    --btn:#111111; --btn-ink:#ffffff;
+    --soft:#f0f0f0; --ok:#1e7d46; --ok-soft:#e6f4ec;
+    --shadow:0 10px 30px rgba(0,0,0,.08);
+    --shadow-lift:0 16px 40px rgba(0,0,0,.14);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a;
+      --line:#333333; --line-strong:#f2f2f2;
+      --btn:#f2f2f2; --btn-ink:#111111;
+      --soft:#242424; --ok:#5fd08d; --ok-soft:#1d3327;
+      --shadow:0 10px 30px rgba(0,0,0,.5);
+      --shadow-lift:0 16px 40px rgba(0,0,0,.65);
+    }
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,"PingFang HK","Noto Sans TC","Segoe UI","Microsoft JhengHei",sans-serif;
+    line-height:1.65; color:var(--ink); background:var(--bg);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  img{max-width:100%}
+  section{scroll-margin-top:76px}
 
-        body {
-            line-height: 1.6;
-            color: #333;
-            background-color: #f9f9f9;
-        }
+  /* ===== Nav ===== */
+  header.site{
+    position:fixed; top:0; width:100%; z-index:1000;
+    background:var(--card); border-bottom:1px solid var(--line);
+  }
+  nav.bar{
+    max-width:1100px; margin:0 auto; padding:12px 18px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .logo{font-size:1.15rem; font-weight:800; letter-spacing:2px; text-transform:uppercase; margin-right:auto; text-decoration:none; color:var(--ink)}
+  .nav-links{list-style:none; display:flex; gap:4px; align-items:center}
+  .nav-links a{
+    display:block; padding:10px 12px; border-radius:10px;
+    text-decoration:none; color:var(--ink); font-weight:600; font-size:.9rem;
+  }
+  .nav-links a:hover{background:var(--soft)}
+  .nav-links a.account{border:1.5px solid var(--line-strong); font-weight:800}
+  .lang{display:flex; border:1px solid var(--line-strong); border-radius:99px; overflow:hidden; flex:none}
+  .lang button{padding:6px 12px; border:none; background:none; color:var(--ink); font-size:.78rem; font-weight:700; cursor:pointer; min-height:32px}
+  .lang button.on{background:var(--btn); color:var(--btn-ink)}
+  #hamburger{
+    display:none; border:1px solid var(--line-strong); background:none; color:var(--ink);
+    border-radius:10px; font-size:1.15rem; width:44px; height:44px; cursor:pointer; flex:none;
+  }
+  #mobileMenu{
+    display:none; position:fixed; top:69px; left:0; right:0; z-index:999;
+    background:var(--card); border-bottom:1px solid var(--line); box-shadow:var(--shadow);
+  }
+  #mobileMenu a{
+    display:flex; align-items:center; min-height:48px; padding:0 22px;
+    text-decoration:none; color:var(--ink); font-weight:700; border-top:1px solid var(--line);
+  }
+  #mobileMenu.open{display:block}
+  @media (max-width:840px){
+    .nav-links{display:none}
+    #hamburger{display:block}
+  }
 
-        /* --- Header & Navigation --- */
-        header {
-            background-color: #ffffff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 1000;
-        }
+  /* ===== Hero + 分流 ===== */
+  .hero{
+    position:relative; padding:150px 18px 70px; text-align:center; overflow:hidden; isolation:isolate;
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; z-index:-1;
+    background:linear-gradient(rgba(0,0,0,.66),rgba(0,0,0,.66)),
+      url('https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') center/cover;
+    filter:grayscale(1);
+  }
+  .hero h1{color:#fff; font-size:clamp(1.7rem,5vw,3rem); letter-spacing:1px; margin-bottom:10px}
+  .hero p.sub{color:#ddd; font-size:clamp(.95rem,2.5vw,1.15rem); margin-bottom:34px}
+  .split{
+    max-width:860px; margin:0 auto;
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; text-align:left;
+  }
+  @media (max-width:640px){ .split{grid-template-columns:1fr} }
+  .split a{
+    display:block; background:var(--card); color:var(--ink); text-decoration:none;
+    border:1px solid var(--line); border-radius:16px; padding:22px 20px;
+    box-shadow:var(--shadow); transition:transform .22s ease, box-shadow .22s ease;
+  }
+  .split a:hover{transform:translateY(-4px); box-shadow:var(--shadow-lift)}
+  .split .ico{font-size:1.7rem}
+  .split h2{font-size:1.12rem; margin:8px 0 4px}
+  .split p{font-size:.85rem; color:var(--muted)}
+  .split .go{display:inline-block; margin-top:12px; font-weight:800; font-size:.88rem; border-bottom:2px solid var(--ink)}
 
-        nav {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 2rem;
-        }
+  /* ===== Sections ===== */
+  .container{max-width:1100px; margin:0 auto; padding:64px 18px}
+  .kicker{font-size:.75rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); text-align:center}
+  .section-title{text-align:center; font-size:clamp(1.4rem,3.5vw,2rem); margin:6px 0 8px}
+  .section-sub{text-align:center; color:var(--muted); font-size:.92rem; max-width:640px; margin:0 auto 36px}
+  .grid3{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px}
+  .svc{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px 22px;
+    transition:transform .22s ease, box-shadow .22s ease;
+  }
+  .svc:hover{transform:translateY(-4px); box-shadow:var(--shadow-lift)}
+  .svc .ico{font-size:1.5rem}
+  .svc h3{margin:8px 0 10px; font-size:1.05rem}
+  .svc ul{list-style:none}
+  .svc li{
+    font-size:.88rem; color:var(--muted); padding:5px 0 5px 26px; position:relative;
+  }
+  .svc li::before{content:"✅"; position:absolute; left:0; font-size:.8rem}
+  .band{background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #111; /* monochrome accent */
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
+  /* Motion Lab teaser */
+  .ml{
+    max-width:860px; margin:0 auto; display:grid; grid-template-columns:1.1fr .9fr; gap:26px; align-items:center;
+  }
+  @media (max-width:700px){ .ml{grid-template-columns:1fr} }
+  .ml ul{list-style:none; margin:14px 0 20px}
+  .ml li{font-size:.92rem; padding:6px 0 6px 28px; position:relative}
+  .ml li::before{content:"🥊"; position:absolute; left:0; font-size:.85rem}
+  .btn{
+    display:inline-block; background:var(--btn); color:var(--btn-ink);
+    padding:13px 28px; border:1.5px solid var(--btn); border-radius:12px;
+    text-decoration:none; font-weight:800; font-size:.95rem; cursor:pointer;
+    transition:transform .15s ease, opacity .15s ease;
+  }
+  .btn:hover{transform:translateY(-2px)}
+  .btn.ghost{background:none; color:var(--ink); border-color:var(--line-strong)}
+  .ml-visual{
+    border:1px solid var(--line); border-radius:16px; background:var(--soft);
+    aspect-ratio:4/3; display:flex; align-items:center; justify-content:center;
+    font-size:3.4rem;
+  }
 
-        .nav-links {
-            list-style: none;
-            display: flex;
-        }
+  /* ===== Contact form ===== */
+  form.contact{
+    max-width:560px; margin:0 auto; background:var(--card);
+    border:1px solid var(--line); border-radius:16px; padding:26px 22px;
+  }
+  label.f{display:block; font-size:.78rem; color:var(--muted); margin-bottom:14px}
+  label.f > span{display:block; margin-bottom:5px; font-weight:600}
+  input, select, textarea{
+    width:100%; font-size:1rem; padding:12px; min-height:48px;
+    border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--ink); font-family:inherit;
+  }
+  textarea{min-height:96px; resize:vertical}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--line-strong)}
+  .phone-wrap{display:flex; gap:8px}
+  .phone-wrap .cc{flex:0 0 84px}
+  .reveal-grp{
+    display:none; border-left:3px solid var(--line-strong);
+    padding-left:14px; margin-bottom:6px;
+  }
+  .reveal-grp.show{display:block; animation:fadeUp .35s ease}
+  .hp{position:absolute; left:-9999px; opacity:0; height:0; overflow:hidden}
+  #submitBtn{width:100%; margin-top:4px}
+  #submitBtn:disabled{opacity:.6; cursor:wait}
+  .spinner{
+    display:inline-block; width:16px; height:16px; vertical-align:-3px; margin-right:8px;
+    border:2px solid var(--btn-ink); border-top-color:transparent; border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .formmsg{display:none; margin-top:14px; border-radius:10px; padding:12px 14px; font-size:.88rem}
+  .formmsg.ok{display:block; background:var(--ok-soft); color:var(--ok); font-weight:700}
+  .formmsg.err{display:block; background:var(--btn); color:var(--btn-ink); font-weight:600}
 
-        .nav-links li {
-            margin-left: 20px;
-        }
+  /* ===== Footer & sticky CTA ===== */
+  footer{border-top:1px solid var(--line); text-align:center; padding:26px 18px 110px; color:var(--muted); font-size:.8rem}
+  footer a{color:var(--muted)}
+  #stickyCta{
+    display:none; position:fixed; left:0; right:0; bottom:0; z-index:998;
+    background:var(--card); border-top:1px solid var(--line);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    grid-template-columns:1fr 1fr; gap:10px;
+  }
+  #stickyCta a{
+    display:flex; align-items:center; justify-content:center; min-height:48px;
+    border-radius:12px; text-decoration:none; font-weight:800; font-size:.92rem;
+  }
+  #stickyCta .primary{background:var(--btn); color:var(--btn-ink)}
+  #stickyCta .second{border:1.5px solid var(--line-strong); color:var(--ink)}
+  @media (max-width:840px){ #stickyCta{display:grid} }
+  @media (min-width:841px){ footer{padding-bottom:26px} }
 
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: #111;
-        }
-
-        /* --- Hero Section --- */
-        .hero {
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
-            background-size: cover;
-            background-position: center;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            color: white;
-            padding: 0 20px;
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            margin-bottom: 20px;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-        }
-
-        .btn {
-            display: inline-block;
-            background-color: #111;
-            color: white;
-            padding: 10px 30px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-
-        .btn:hover {
-            background-color: #333;
-        }
-
-        /* --- Services/About Section --- */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 60px 20px;
-        }
-
-        .section-title {
-            text-align: center;
-            margin-bottom: 40px;
-            font-size: 2rem;
-            color: #222;
-        }
-
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .card h3 {
-            margin-bottom: 15px;
-            color: #111;
-        }
-
-        /* --- Contact Section --- */
-        .contact-section {
-            background-color: #e0e0e0;
-            padding: 60px 20px;
-            text-align: center;
-        }
-
-        form {
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: left;
-        }
-
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        /* --- Footer --- */
-        footer {
-            background-color: #222;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-
-        /* --- Mobile Responsiveness --- */
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none; 
-            }
-            .hero h1 {
-                font-size: 2rem;
-            }
-        }
-    </style>
+  /* ===== 滾動漸現（尊重 reduced motion） ===== */
+  .fade{opacity:0; transform:translateY(22px); transition:opacity .5s ease, transform .5s ease}
+  .fade.in{opacity:1; transform:none}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    .fade{opacity:1; transform:none; transition:none}
+    .split a, .svc, .btn{transition:none}
+  }
+</style>
 </head>
 <body>
 
-    <!-- Navigation -->
-    <header>
-        <nav>
-            <div class="logo">Kuafuor HK</div>
-            <ul class="nav-links">
-                <li><a href="#home">Home</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#services">Services</a></li>
-                <li><a href="motion-lab/">Motion Lab</a></li>
-                <li><a href="#account" id="navAccount" style="color:#111;font-weight:800;border-bottom:2px solid #111">登入 Log in</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
+<header class="site">
+  <nav class="bar">
+    <a class="logo" href="#top">Kuafuor HK</a>
+    <ul class="nav-links">
+      <li><a href="#business" data-t="navBiz"></a></li>
+      <li><a href="#motionlab">Motion Lab</a></li>
+      <li><a href="#contact" data-t="navContact"></a></li>
+      <li><a class="account" id="navAccount" href="login/" data-t="navLogin"></a></li>
+    </ul>
+    <div class="lang" role="group" data-taria="ariaLang">
+      <button id="langZh">廣東話</button>
+      <button id="langEn">English</button>
+    </div>
+    <button id="hamburger" data-taria="ariaMenu" aria-expanded="false">☰</button>
+  </nav>
+  <div id="mobileMenu">
+    <a href="#business" data-t="navBiz"></a>
+    <a href="#motionlab">Motion Lab</a>
+    <a href="#contact" data-t="navContact"></a>
+    <a id="navAccountM" href="login/" data-t="navLogin"></a>
+  </div>
+</header>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-content">
-            <h1>Welcome to Kuafuor HK</h1>
-            <p>Your trusted partner in Hong Kong for excellence and innovation.</p>
-            <a href="#contact" class="btn">Get in Touch</a>
-        </div>
-    </section>
+<!-- ===== Hero：雙受眾分流 ===== -->
+<section class="hero" id="top">
+  <h1 data-t="heroTitle"></h1>
+  <p class="sub" data-t="heroSub"></p>
+  <div class="split">
+    <a href="#business" id="ctaBiz">
+      <div class="ico">🏢</div>
+      <h2 data-t="splitBizTitle"></h2>
+      <p data-t="splitBizDesc"></p>
+      <span class="go" data-t="splitBizGo"></span>
+    </a>
+    <a href="#motionlab" id="ctaMl">
+      <div class="ico">🥊</div>
+      <h2 data-t="splitMlTitle"></h2>
+      <p data-t="splitMlDesc"></p>
+      <span class="go" data-t="splitMlGo"></span>
+    </a>
+  </div>
+</section>
 
-    <!-- About / Services Section -->
-    <section id="services" class="container">
-        <h2 class="section-title">What We Do</h2>
-        <div class="services-grid">
-            <div class="card">
-                <h3>Consulting</h3>
-                <p>Providing expert advice tailored to the unique Hong Kong market environment.</p>
-            </div>
-            <div class="card">
-                <h3>Development</h3>
-                <p>Building robust solutions with a focus on quality, efficiency, and sustainability.</p>
-            </div>
-            <div class="card">
-                <h3>Local Expertise</h3>
-                <p>Deep understanding of the local culture and business landscape.</p>
-            </div>
-            <div class="card">
-                <h3>Motion Lab 運動科學分析</h3>
-                <p>AI 體態檢查與搏擊動作分析——結合運動科學、物理治療與職業治療視角，監測身體對齊與運動表現。</p>
-                <p style="margin-top:12px"><a href="motion-lab/" class="btn">進入 Motion Lab</a></p>
-            </div>
-        </div>
-    </section>
+<!-- ===== 企業服務 ===== -->
+<section id="business" class="container">
+  <div class="kicker" data-t="bizKicker"></div>
+  <h2 class="section-title" data-t="bizTitle"></h2>
+  <p class="section-sub" data-t="bizSub"></p>
+  <div class="grid3">
+    <div class="svc fade">
+      <div class="ico">🧭</div>
+      <h3 data-t="svc1Title"></h3>
+      <ul>
+        <li data-t="svc1a"></li>
+        <li data-t="svc1b"></li>
+        <li data-t="svc1c"></li>
+      </ul>
+    </div>
+    <div class="svc fade">
+      <div class="ico">⚙️</div>
+      <h3 data-t="svc2Title"></h3>
+      <ul>
+        <li data-t="svc2a"></li>
+        <li data-t="svc2b"></li>
+        <li data-t="svc2c"></li>
+      </ul>
+    </div>
+    <div class="svc fade">
+      <div class="ico">📍</div>
+      <h3 data-t="svc3Title"></h3>
+      <ul>
+        <li data-t="svc3a"></li>
+        <li data-t="svc3b"></li>
+        <li data-t="svc3c"></li>
+      </ul>
+    </div>
+  </div>
+</section>
 
-    <!-- About Section -->
-    <section id="about" class="container" style="background-color: #fff;">
-        <h2 class="section-title">About Us</h2>
-        <p style="text-align: center; max-width: 800px; margin: 0 auto;">
-            Kuafuor HK is dedicated to delivering high-quality services to our clients. 
-            Whether you are looking for business solutions or local partnerships, 
-            we are here to assist you.
-        </p>
-    </section>
+<!-- ===== Motion Lab ===== -->
+<section id="motionlab" class="band">
+  <div class="container">
+    <div class="kicker">MOTION LAB</div>
+    <h2 class="section-title" data-t="mlTitle"></h2>
+    <p class="section-sub" data-t="mlSub"></p>
+    <div class="ml">
+      <div class="fade">
+        <ul>
+          <li data-t="ml1"></li>
+          <li data-t="ml2"></li>
+          <li data-t="ml3"></li>
+          <li data-t="ml4"></li>
+        </ul>
+        <a class="btn" href="motion-lab/" data-t="mlCta"></a>
+        <a class="btn ghost" href="#contact" style="margin-left:8px" data-t="mlBook"></a>
+      </div>
+      <div class="ml-visual fade" aria-hidden="true">🥊</div>
+    </div>
+  </div>
+</section>
 
-    <!-- Account Section -->
-    <section id="account" class="container" style="background-color:#fff">
-        <h2 class="section-title">會員登入 Member Account</h2>
-        <div style="max-width:480px;margin:0 auto">
-            <div id="acOut" style="text-align:center">
-                <p style="color:#666;font-size:.95rem;line-height:1.8">
-                    一個帳戶通行成個 Kuafuor 平台（Motion Lab、會員功能）。<br>
-                    One account for the whole Kuafuor platform.
-                </p>
-                <p style="margin-top:16px">
-                    <a class="btn" href="login/">登入／註冊 Log in / Register</a>
-                </p>
-                <p style="margin-top:10px;color:#666;font-size:.8rem">
-                    登入頁有齊註冊步驟同「唔記得密碼」重設 · Registration steps &amp; password reset inside
-                </p>
-            </div>
-            <div id="acIn" style="display:none;text-align:center">
-                <p style="font-size:1.1rem">✅ 已登入 Logged in：<b id="acWho"></b></p>
-                <p style="margin-top:16px">
-                    <a class="btn" href="motion-lab/">進入 Motion Lab</a>
-                    <a class="btn" href="login/" style="margin-left:8px">帳戶與權限 Account</a>
-                    <button type="button" class="btn" id="acLogout" style="border:none;cursor:pointer;background-color:#555;margin-left:8px">登出 Log out</button>
-                </p>
-            </div>
-        </div>
-    </section>
+<!-- ===== 聯絡表單 ===== -->
+<section id="contact" class="container">
+  <div class="kicker" data-t="ctKicker"></div>
+  <h2 class="section-title" data-t="ctTitle"></h2>
+  <p class="section-sub" data-t="ctSub"></p>
 
-    <!-- Contact Section -->
-    <section id="contact" class="contact-section">
-        <h2 class="section-title">Contact Us</h2>
-        <form>
-            <label for="name">Name</label>
-            <input type="text" id="name" placeholder="Your Name">
-            
-            <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Your Email">
-            
-            <label for="message">Message</label>
-            <textarea id="message" rows="5" placeholder="How can we help you?"></textarea>
-            
-            <button type="submit" class="btn" style="border:none; cursor:pointer;">Send Message</button>
-        </form>
-    </section>
+  <form class="contact fade" id="contactForm" novalidate>
+    <label class="f">
+      <span data-t="fService"></span>
+      <select id="fService">
+        <option value="" data-t="fServicePick"></option>
+        <option value="consulting" data-t="fServiceBiz"></option>
+        <option value="motionlab" data-t="fServiceMl"></option>
+        <option value="other" data-t="fServiceOther"></option>
+      </select>
+    </label>
 
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2025 Kuafuorhk.com. All Rights Reserved.</p>
-    </footer>
+    <label class="f">
+      <span data-t="fName"></span>
+      <input id="fName" type="text" autocomplete="name" maxlength="100" required>
+    </label>
+    <label class="f">
+      <span data-t="fEmail"></span>
+      <input id="fEmail" type="email" autocomplete="email" inputmode="email" maxlength="200">
+    </label>
+    <label class="f">
+      <span data-t="fPhone"></span>
+      <div class="phone-wrap">
+        <input class="cc" value="+852" readonly data-taria="ariaCc" tabindex="-1">
+        <input id="fPhone" type="tel" autocomplete="tel-national" inputmode="tel" maxlength="30" placeholder="9123 4567">
+      </div>
+    </label>
 
-    <script type="module">
-    /* Kuafuor platform account — shared with Motion Lab (same Supabase project,
-       same origin, so the login session carries across the whole site) */
-    const SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
-    const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O";
-    const $ = id => document.getElementById(id);
-    let sb = null, user = null;
-    function render(){
-        $("acOut").style.display = user ? "none" : "";
-        $("acIn").style.display = user ? "" : "none";
-        if(user) $("acWho").textContent = user.email || "";
-        $("navAccount").textContent = user ? `👤 ${(user.email || "").split("@")[0]}` : "登入 Log in";
-    }
-    try{
-        const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-        sb = createClient(SB_URL, SB_KEY);
-        sb.auth.onAuthStateChange((_ev, session)=>{ user = session?.user || null; render(); });
-        const { data } = await sb.auth.getSession();
-        user = data?.session?.user || null;
-        render();
-    }catch(e){ console.warn("account service unavailable", e); }
-    $("acLogout").addEventListener("click", async ()=>{ await sb?.auth.signOut(); });
-    </script>
+    <!-- 揀「顧問/開發」先出現 -->
+    <div class="reveal-grp" id="grpBiz">
+      <label class="f">
+        <span data-t="fCompany"></span>
+        <input id="fCompany" type="text" autocomplete="organization" maxlength="150">
+      </label>
+      <label class="f">
+        <span data-t="fBudget"></span>
+        <select id="fBudget">
+          <option value="" data-t="fBudgetPick"></option>
+          <option value="<50k">&lt; HK$50k</option>
+          <option value="50-200k">HK$50k – 200k</option>
+          <option value=">200k">&gt; HK$200k</option>
+          <option value="tbd" data-t="fBudgetTbd"></option>
+        </select>
+      </label>
+    </div>
 
+    <!-- 揀「Motion Lab」先出現 -->
+    <div class="reveal-grp" id="grpMl">
+      <label class="f">
+        <span data-t="fWhen"></span>
+        <input id="fWhen" type="datetime-local">
+      </label>
+    </div>
+
+    <label class="f">
+      <span data-t="fMsg"></span>
+      <textarea id="fMsg" maxlength="2000"></textarea>
+    </label>
+
+    <!-- honeypot 防機械人 -->
+    <input class="hp" id="fWebsite" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+    <button class="btn" id="submitBtn" type="submit"><span data-t="fSend"></span></button>
+    <div class="formmsg" id="formMsg" role="status"></div>
+  </form>
+</section>
+
+<footer>
+  <span data-t="footCopy"></span> · <a href="login/" data-t="navLogin"></a>
+</footer>
+
+<!-- 手機置底 CTA（拇指位） -->
+<div id="stickyCta">
+  <a class="primary" href="#contact" data-t="stickyEnquire"></a>
+  <a class="second" href="motion-lab/">Motion Lab</a>
+</div>
+
+<script type="module">
+const SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
+const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable key — 前端可公開
+
+/* ================= i18n ================= */
+const I18N = {
+  zh: {
+    navBiz:"企業服務", navContact:"聯絡我哋", navLogin:"登入",
+    heroTitle:"Kuafuor HK", heroSub:"企業方案 × 運動科學 — 揀你想要嘅，直接開始。",
+    splitBizTitle:"企業解決方案", splitBizDesc:"顧問、系統開發、雲端架構 — 為香港企業度身訂造。", splitBizGo:"了解企業服務 →",
+    splitMlTitle:"個人運動分析", splitMlDesc:"AI 姿態追蹤同搏擊動作分析，配合教練訓練紀錄。", splitMlGo:"進入 Motion Lab →",
+    bizKicker:"BUSINESS", bizTitle:"企業服務", bizSub:"由策略到落地，一條龍幫你諗、幫你起、幫你維護。",
+    svc1Title:"企業顧問", svc1a:"數碼轉型策略", svc1b:"流程自動化評估", svc1c:"本地市場合規建議",
+    svc2Title:"系統開發", svc2a:"企業系統架構", svc2b:"雲端遷移", svc2c:"高效能 App 開發",
+    svc3Title:"在地專業", svc3a:"熟悉香港營商環境", svc3b:"中英雙語支援", svc3c:"長期維護與迭代",
+    mlTitle:"AI 運動姿態分析", mlSub:"用電腦視覺幫你睇清楚每一拳、每一個動作 — 教練同學員都用得。",
+    ml1:"AI 姿態追蹤 · 即時動作捕捉", ml2:"WAKO 標準搏擊評分同技術分類", ml3:"拳手檔案、訓練紀錄雲端同步", ml4:"生物力學錯誤檢測同精華片段",
+    mlCta:"進入 Motion Lab", mlBook:"預約體驗",
+    ctKicker:"CONTACT", ctTitle:"聯絡我哋", ctSub:"揀返你想查詢嘅服務，表格會即刻變返簡單啲。",
+    fService:"你對咩服務有興趣？", fServicePick:"— 請揀一項 —", fServiceBiz:"顧問／系統開發", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
+    fName:"稱呼", fEmail:"電郵", fPhone:"電話（香港）",
+    fCompany:"公司名稱", fBudget:"預算範圍", fBudgetPick:"— 請揀 —", fBudgetTbd:"未定",
+    fWhen:"希望預約嘅日期／時間",
+    fMsg:"想講多啲？（可留空）",
+    fSend:"送出查詢", fSending:"送緊…",
+    fOk:"✔ 收到你嘅查詢！我哋會盡快覆你。",
+    fErrName:"請填返個稱呼。", fErrService:"請先揀你想查詢嘅服務。", fErrContact:"電郵同電話最少填一樣，等我哋搵到你。",
+    fErrSend:"送出失敗，請遲啲再試，或者直接 email 我哋。",
+    stickyEnquire:"✉️ 快速查詢",
+    ariaLang:"語言", ariaMenu:"選單", ariaCc:"區號",
+    fErrEmail:"電郵格式唔啱，睇下有冇打錯。",
+    footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
+  },
+  en: {
+    navBiz:"Business", navContact:"Contact", navLogin:"Log in",
+    heroTitle:"Kuafuor HK", heroSub:"Business solutions × sports science — pick your path and dive in.",
+    splitBizTitle:"Business Solutions", splitBizDesc:"Consulting, systems development and cloud architecture, tailored for Hong Kong companies.", splitBizGo:"Explore business services →",
+    splitMlTitle:"Personal Motion Analysis", splitMlDesc:"AI posture tracking and combat-sports motion analysis, with coach-grade training records.", splitMlGo:"Enter Motion Lab →",
+    bizKicker:"BUSINESS", bizTitle:"Business Services", bizSub:"From strategy to shipping — we plan it, build it, and keep it running.",
+    svc1Title:"Consulting", svc1a:"Digital transformation strategy", svc1b:"Process automation assessment", svc1c:"Local compliance guidance",
+    svc2Title:"Development", svc2a:"Enterprise system architecture", svc2b:"Cloud migration", svc2c:"High-performance app development",
+    svc3Title:"Local Expertise", svc3a:"Deep knowledge of the HK market", svc3b:"Bilingual (EN / 中文) support", svc3c:"Long-term maintenance & iteration",
+    mlTitle:"AI Motion Analysis", mlSub:"Computer vision that sees every strike and every movement — built for coaches and athletes alike.",
+    ml1:"AI posture tracking · real-time motion capture", ml2:"WAKO-standard strike scoring & technique taxonomy", ml3:"Athlete profiles & training records synced to the cloud", ml4:"Biomechanics fault detection & highlight reels",
+    mlCta:"Enter Motion Lab", mlBook:"Book a session",
+    ctKicker:"CONTACT", ctTitle:"Get in Touch", ctSub:"Pick the service you're interested in — the form adapts so you only fill in what matters.",
+    fService:"What are you interested in?", fServicePick:"— Please choose —", fServiceBiz:"Consulting / Development", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
+    fName:"Name", fEmail:"Email", fPhone:"Phone (HK)",
+    fCompany:"Company name", fBudget:"Budget range", fBudgetPick:"— Choose —", fBudgetTbd:"Not decided yet",
+    fWhen:"Preferred date / time",
+    fMsg:"Anything else? (optional)",
+    fSend:"Send enquiry", fSending:"Sending…",
+    fOk:"✔ Got it! We'll get back to you shortly.",
+    fErrName:"Please tell us your name.", fErrService:"Please choose a service first.", fErrContact:"Leave at least an email or a phone number so we can reach you.",
+    fErrSend:"Couldn't send — please try again later or email us directly.",
+    stickyEnquire:"✉️ Quick enquiry",
+    ariaLang:"Language", ariaMenu:"Menu", ariaCc:"Area code",
+    fErrEmail:"That email doesn't look right — please double-check.",
+    footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
+  },
+};
+
+let lang = "zh";
+try {
+  lang = localStorage.getItem("kf-lang")
+      || ((navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en");
+} catch (e) {}
+if (!I18N[lang]) lang = "zh";
+const t = k => (I18N[lang] || I18N.zh)[k] ?? I18N.zh[k] ?? k;
+const $ = s => document.querySelector(s);
+
+function applyLang(){
+  const sending = $("#submitBtn") && $("#submitBtn").disabled;
+  document.querySelectorAll("[data-t]").forEach(el => {
+    if (sending && el.closest("#submitBtn")) return;   // 送緊嘢：唔好剷走 spinner
+    el.textContent = t(el.getAttribute("data-t"));
+  });
+  document.documentElement.querySelectorAll("[data-taria]").forEach(el => {
+    el.setAttribute("aria-label", t(el.getAttribute("data-taria")));
+  });
+  $("#langZh").classList.toggle("on", lang === "zh");
+  $("#langEn").classList.toggle("on", lang === "en");
+  document.documentElement.lang = lang === "zh" ? "zh-Hant-HK" : "en";
+  renderAccount();
+}
+function setLang(l){
+  lang = l;
+  try { localStorage.setItem("kf-lang", l); } catch (e) {}
+  const fm = $("#formMsg");
+  if (fm) { fm.className = "formmsg"; fm.textContent = ""; }   // 唔留低舊語言嘅訊息
+  applyLang();
+}
+$("#langZh").onclick = ()=>setLang("zh");
+$("#langEn").onclick = ()=>setLang("en");
+
+/* ================= 手機選單 ================= */
+const menu = $("#mobileMenu"), burger = $("#hamburger");
+burger.onclick = ()=>{
+  const open = !menu.classList.contains("open");
+  menu.classList.toggle("open", open);
+  burger.setAttribute("aria-expanded", String(open));
+  burger.textContent = open ? "✕" : "☰";
+};
+menu.addEventListener("click", e=>{
+  if(e.target.tagName === "A"){ menu.classList.remove("open"); burger.textContent = "☰"; }
+});
+
+/* ================= 滾動漸現 ================= */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); } });
+}, { threshold: .15 });
+document.querySelectorAll(".fade").forEach(el=>io.observe(el));
+
+/* ================= 漸進式表單 ================= */
+const svcSel = $("#fService");
+function revealGroups(){
+  $("#grpBiz").classList.toggle("show", svcSel.value === "consulting");
+  $("#grpMl").classList.toggle("show", svcSel.value === "motionlab");
+}
+svcSel.addEventListener("change", revealGroups);
+
+function formMsg(text, cls){
+  const el = $("#formMsg");
+  el.className = "formmsg " + cls;
+  el.textContent = text;
+}
+
+$("#contactForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const btn = $("#submitBtn");
+  if($("#fWebsite").value){ formMsg(t("fOk"), "ok"); e.target.reset(); revealGroups(); return; } // honeypot：假成功
+  if(!svcSel.value){ formMsg(t("fErrService"), "err"); svcSel.focus(); return; }
+  const name = $("#fName").value.trim();
+  if(!name){ formMsg(t("fErrName"), "err"); $("#fName").focus(); return; }
+  const email = $("#fEmail").value.trim();
+  let phone = $("#fPhone").value.trim().replace(/^\+?852[\s-]*/, "");   // 用戶自己打咗 +852 就唔好重複
+  if(!email && !phone){ formMsg(t("fErrContact"), "err"); $("#fEmail").focus(); return; }
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ formMsg(t("fErrEmail"), "err"); $("#fEmail").focus(); return; }
+
+  const row = {
+    service: svcSel.value,
+    name,
+    email: email || null,
+    phone: phone ? "+852 " + phone : null,
+    company: svcSel.value === "consulting" ? ($("#fCompany").value.trim() || null) : null,
+    budget: svcSel.value === "consulting" ? ($("#fBudget").value || null) : null,
+    preferred_time: svcSel.value === "motionlab" ? ($("#fWhen").value || null) : null,
+    message: $("#fMsg").value.trim() || null,
+    lang,
+  };
+
+  btn.disabled = true;
+  const label = btn.querySelector("span");
+  label.innerHTML = '<span class="spinner"></span>' + t("fSending");
+  try{
+    const resp = await fetch(SB_URL + "/rest/v1/contact_requests", {
+      method: "POST",
+      headers: { apikey: SB_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(row),
+      signal: AbortSignal.timeout(15000),
+    });
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    formMsg(t("fOk"), "ok");
+    e.target.reset();
+    revealGroups();
+  }catch(err){
+    console.warn("enquiry failed", err);
+    formMsg(t("fErrSend"), "err");
+  }finally{
+    btn.disabled = false;
+    label.textContent = t("fSend");   // 用當前語言還原（send 期間可能切咗語言）
+  }
+});
+
+/* ================= 帳戶狀態（同 /login/ 共用 session） ================= */
+let userEmail = null;
+function renderAccount(){
+  const text = userEmail ? "👤 " + userEmail.split("@")[0] : t("navLogin");
+  const a = $("#navAccount"), m = $("#navAccountM");
+  if(a) a.textContent = text;
+  if(m) m.textContent = text;
+}
+applyLang();
+(async ()=>{
+  try{
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    const sb = createClient(SB_URL, SB_KEY);
+    sb.auth.onAuthStateChange((_ev, session)=>{ userEmail = session?.user?.email || null; renderAccount(); });
+    userEmail = (await sb.auth.getSession()).data.session?.user?.email || null;
+    renderAccount();
+  }catch(e){ console.warn("account service unavailable", e); }
+})();
+</script>
 </body>
 </html>
