@@ -114,6 +114,10 @@
   .foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:10px;line-height:1.7}
   .foot a{color:var(--muted)}
   .spin{text-align:center;color:var(--muted);font-size:.85rem;padding:24px 0}
+  .enq{padding:9px 0;border-bottom:1px dashed var(--line);font-size:.86rem}
+  .enq:last-child{border-bottom:none}
+  .enq .mu{color:var(--muted)}
+  .enq .sm{font-size:.78rem;margin-top:2px}
 </style>
 </head>
 <body>
@@ -227,6 +231,13 @@
   <div id="userList"><div class="spin" data-t="loading"></div></div>
 </div>
 
+<!-- admin 網站查詢 -->
+<div class="card" id="enquiryCard" style="display:none">
+  <h2 data-t="enqTitle"></h2>
+  <p class="hint" data-t="enqHint"></p>
+  <div id="enqList"><div class="spin" data-t="loading"></div></div>
+</div>
+
 <div class="foot">
   <span data-t="footNote"></span><br>
   <a href="/" data-t="backHome"></a>
@@ -285,12 +296,17 @@ const I18N = {
     errInvalidLogin: "電郵或密碼唔啱。未註冊過？撳上面「註冊」開個新帳戶；唔記得密碼就撳下面「唔記得密碼」重設。",
     errNotConfirmed: "你仲未完成第2步（確認電郵）。去你個信箱撳確認連結；搵唔到封信就撳下面「寄多次確認信」。",
     errExists: "呢個電郵已經註冊咗 — 請直接登入；唔記得密碼就用「唔記得密碼」重設。",
-    errRateLimit: "寄信太密，請等一分鐘再試。",
+    errRateLimit: "今個鐘嘅寄信額度用晒（內置電郵服務每小時得幾封）。請等大約一個鐘再試；急嘅話直接搵 Ming 幫你手動開通。",
+    errCooldown: "安全起見，每 {secs} 秒先可以寄一次 — 唞{secs}秒再撳。",
     errWeakPass: "密碼太短，至少要6位。",
-    errGeneric: "出錯：",
+    errGeneric: "出錯：", errUnknown: "未知錯誤，請重試。",
     saveFail: "儲存失敗：", changeFail: "改唔到：", loadFail: "讀取失敗：",
     bootFail: "載入唔到雲端服務 — 請檢查網絡，然後撳下面重試。",
     reloadBtn: "重新載入",
+    enqTitle: "📬 網站查詢（管理員）",
+    enqHint: "嚟自主頁聯絡表單，最近 20 個。",
+    enqEmpty: "未有查詢。",
+    svcConsulting: "顧問／開發", svcMotionlab: "Motion Lab 預約", svcOther: "其他",
     errLinkExpired: "呢條電郵連結已經過期或者用咗。想重設密碼就撳「唔記得密碼」寄過封新嘅；想確認電郵就登入時撳「寄多次確認信」。",
   },
   en: {
@@ -340,12 +356,17 @@ const I18N = {
     errInvalidLogin: "Wrong email or password. New here? Tap “Register” above. Forgot your password? Use the reset link below.",
     errNotConfirmed: "You haven't finished Step 2 (email confirmation). Click the link in your inbox; can't find it? Tap “Resend confirmation email” below.",
     errExists: "This email is already registered — log in instead, or use “Forgot your password” to reset.",
-    errRateLimit: "Too many emails sent — wait a minute and try again.",
+    errRateLimit: "This hour's email quota is used up (the built-in mail service only sends a few per hour). Try again in about an hour, or contact Ming directly.",
+    errCooldown: "For security, one email per {secs} seconds — wait {secs}s and tap again.",
     errWeakPass: "Password too short — at least 6 characters.",
-    errGeneric: "Error: ",
+    errGeneric: "Error: ", errUnknown: "unknown error — please try again.",
     saveFail: "Save failed: ", changeFail: "Change failed: ", loadFail: "Load failed: ",
     bootFail: "Couldn't load the cloud service — check your connection and tap reload below.",
     reloadBtn: "Reload",
+    enqTitle: "📬 Website enquiries (admin)",
+    enqHint: "From the homepage contact form — latest 20.",
+    enqEmpty: "No enquiries yet.",
+    svcConsulting: "Consulting / Development", svcMotionlab: "Motion Lab booking", svcOther: "Other",
     errLinkExpired: "This email link has expired or was already used. To reset your password, use “Forgot your password” to send a fresh one; to confirm your email, log in and tap “Resend confirmation email”.",
   },
 };
@@ -356,7 +377,7 @@ if (!I18N[lang]) lang = "zh";
 const t = (k, vars) => {
   const dict = I18N[lang] || I18N.zh;
   let s = dict[k] ?? I18N.zh[k] ?? k;
-  if (vars) for (const [kk, vv] of Object.entries(vars)) s = s.replace("{"+kk+"}", vv);
+  if (vars) for (const [kk, vv] of Object.entries(vars)) s = s.replaceAll("{"+kk+"}", vv);
   return s;
 };
 const roleName = r => (I18N[lang] || I18N.zh).roleNames[r] || r;
@@ -378,9 +399,13 @@ function friendlyError(error){
   if (m.includes("invalid login credentials")) return t("errInvalidLogin");
   if (m.includes("not confirmed")) return t("errNotConfirmed");
   if (m.includes("already registered") || m.includes("already been registered")) return t("errExists");
+  if (m.includes("once every")) {
+    const secs = (m.match(/(\d+)\s*seconds?/) || [])[1] || "60";
+    return t("errCooldown", { secs });
+  }
   if (m.includes("rate limit") || (error && error.status === 429)) return t("errRateLimit");
   if (m.includes("at least 6")) return t("errWeakPass");
-  return t("errGeneric") + (error && error.message || "unknown");
+  return t("errGeneric") + (error && error.message || t("errUnknown"));
 }
 
 /* ================= render ================= */
@@ -409,6 +434,20 @@ function showView(v){
   clearMsg($("#authMsg"));
   updateStatus();
 }
+async function renderEnquiries(){
+  $("#enquiryCard").style.display = "";
+  const { data, error } = await sb.from("contact_requests").select("*").order("created_at", { ascending:false }).limit(20);
+  if(error){ $("#enqList").innerHTML = '<div class="spin">'+esc(t("loadFail"))+esc(error.message)+"</div>"; return; }
+  if(!data || !data.length){ $("#enqList").innerHTML = '<div class="spin">'+esc(t("enqEmpty"))+"</div>"; return; }
+  const svcKey = { consulting:"svcConsulting", motionlab:"svcMotionlab", other:"svcOther" };
+  $("#enqList").innerHTML = data.map(q=>`
+    <div class="enq">
+      <div><b>${esc(q.name)}</b> · ${esc(t(svcKey[q.service]||"svcOther"))} <span class="mu">· ${esc((q.created_at||"").slice(0,16).replace("T"," "))}</span></div>
+      <div class="mu sm">${esc([q.email, q.phone, q.company, q.budget, q.preferred_time].filter(Boolean).join(" · "))}</div>
+      ${q.message ? `<div class="sm">${esc(q.message)}</div>` : ""}
+    </div>`).join("");
+}
+
 function setMode(m){
   mode = m;
   $("#tabLogin").classList.toggle("on", m==="login");
@@ -421,7 +460,20 @@ function setMode(m){
   updateStatus();
 }
 
+let bootFailed = false;
+function showBootFail(){
+  const box = $("#loading");
+  box.style.display = "";
+  $("#authCard").style.display = "none";
+  $("#profileCard").style.display = "none";
+  $("#adminCard").style.display = "none";
+  $("#enquiryCard").style.display = "none";
+  box.innerHTML = '<div class="spin">' + esc(t("bootFail")) + '</div><button class="ghost" id="bootReload">' + esc(t("reloadBtn")) + "</button>";
+  box.querySelector("#bootReload").onclick = ()=>location.reload();
+}
+
 async function render(){
+  if (bootFailed) { showBootFail(); return; }
   $("#loading").style.display = "none";
   applyStatic();
   if(!user){
@@ -429,9 +481,10 @@ async function render(){
     $("#authCard").style.display = "";
     $("#profileCard").style.display = "none";
     $("#adminCard").style.display = "none";
+    $("#enquiryCard").style.display = "none";
     return;
   }
-  if (view === "recovery") { $("#authCard").style.display = ""; $("#profileCard").style.display = "none"; $("#adminCard").style.display = "none"; return; }
+  if (view === "recovery") { $("#authCard").style.display = ""; $("#profileCard").style.display = "none"; $("#adminCard").style.display = "none"; $("#enquiryCard").style.display = "none"; return; }
   $("#authCard").style.display = "none";
   $("#profileCard").style.display = "";
   const { data } = await sb.from("profiles").select("*").eq("id", user.id).single();
@@ -458,7 +511,8 @@ async function render(){
     if(!feat || feat.roles.includes(role)){ location.replace(next); return; }
     msg($("#profMsg"), t("nextNoRole", { next, roles: feat.roles.map(roleName).join(" / "), role: roleName(role) }), "info");
   }
-  if(role==="admin") renderAdmin(); else $("#adminCard").style.display="none";
+  if(role==="admin"){ renderAdmin(); renderEnquiries(); }
+  else { $("#adminCard").style.display="none"; $("#enquiryCard").style.display="none"; }
 }
 
 async function renderAdmin(){
@@ -602,9 +656,8 @@ try{
   }
 }catch(e){
   console.warn("boot failed", e);
-  const box = $("#loading");
-  box.innerHTML = '<div class="spin">' + esc(t("bootFail")) + '</div><button class="ghost" id="bootReload">' + esc(t("reloadBtn")) + "</button>";
-  box.querySelector("#bootReload").onclick = ()=>location.reload();
+  bootFailed = true;
+  showBootFail();
 }
 </script>
 </body>
