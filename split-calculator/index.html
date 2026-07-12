@@ -12,6 +12,7 @@
     --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
     --line:#e2e2e2; --accent:#111111; --accent-ink:#ffffff; --accent-soft:#eeeeee;
     --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#7a5400; --warn-soft:#fff6de;
+    --bad:#b3261e; --bad-soft:#fdecea;
     --ming:#1655b8; --ming-soft:#e8f0fd; --tom:#7a3ab8; --tom-soft:#f2eafc;
   }
   @media (prefers-color-scheme: dark){
@@ -19,6 +20,7 @@
       --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a;
       --line:#333333; --accent:#f2f2f2; --accent-ink:#111111; --accent-soft:#2a2a2a;
       --ok:#5fd08d; --ok-soft:#1d3327; --warn:#ffd166; --warn-soft:#3a3018;
+      --bad:#ff8a80; --bad-soft:#3a1d1a;
       --ming:#7aa8ff; --ming-soft:#1c2a44; --tom:#c79bf2; --tom-soft:#2e2140;
     }
   }
@@ -125,6 +127,53 @@
     font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;
   }
   .toast.show{opacity:1}
+  /* 即時總覽（sticky quickbar） */
+  .quickbar{
+    position:sticky;top:8px;z-index:40;
+    display:grid;grid-template-columns:repeat(5,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,.08);
+  }
+  .quickbar .q{background:var(--card);padding:8px 4px;text-align:center;min-width:0}
+  .quickbar .q .k{font-size:.62rem;color:var(--muted);letter-spacing:.5px}
+  .quickbar .q .v{font-size:.88rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .quickbar .q.ming .v{color:var(--ming)} .quickbar .q.tom .v{color:var(--tom)}
+  .quickbar .q .v.neg{color:var(--bad)}
+  @media (max-width:520px){ .quickbar .q .v{font-size:.72rem} .quickbar .q{padding:7px 2px} }
+  /* 自動對數 check */
+  .balance{font-size:.8rem;border-radius:10px;padding:8px 12px;margin-top:10px;font-weight:600}
+  .balance.ok{background:var(--ok-soft);color:var(--ok)}
+  .balance.bad{background:var(--bad-soft);color:var(--bad)}
+  /* 計法拆解 */
+  details.explain{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:8px 12px}
+  details.explain summary{cursor:pointer;font-size:.85rem;font-weight:600;color:var(--muted)}
+  details.explain[open] summary{color:var(--ink);margin-bottom:6px}
+  details.explain ol{margin:4px 0 4px 20px;font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+  details.explain ol b{color:var(--ink)}
+  details.explain .exp-note{font-size:.72rem;color:var(--muted);margin-top:6px}
+  /* 學員搜尋／篩選 */
+  .stu-tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .stu-tools input[type=search]{
+    flex:2;min-width:150px;font-size:.95rem;padding:9px 12px;border:1px solid var(--line);
+    border-radius:10px;background:var(--card);color:var(--ink);
+  }
+  .stu-tools select{
+    flex:1;min-width:120px;font-size:.88rem;padding:9px;border:1px solid var(--line);
+    border-radius:10px;background:var(--card);color:var(--ink);
+  }
+  .stu-count{font-size:.72rem;color:var(--muted);margin-bottom:8px}
+  /* 列印／存 PDF：淨係印月結報告 */
+  @media print{
+    body{background:#fff;color:#000;padding:0;font-size:12px}
+    .no-print,.quickbar,.toast,.month-pick{display:none !important}
+    .wrap{max-width:none}
+    .card{border:none;padding:0;margin:0}
+    header.top{margin-bottom:10px}
+    .payout{break-inside:avoid}
+    details.explain{border-color:#bbb}
+    .balance.ok{background:none;border:1px solid #999;color:#000}
+    .balance.bad{background:none;border:2px solid #000;color:#000}
+  }
 </style>
 </head>
 <body>
@@ -137,8 +186,11 @@
     </div>
   </header>
 
+  <!-- 即時總覽 -->
+  <div class="quickbar" id="quickbar" aria-label="即時總覽"></div>
+
   <!-- 參數 -->
-  <div class="card">
+  <div class="card no-print">
     <details class="settings">
       <summary>⚙️ 協議參數（跟協議書預設，可改）</summary>
       <div class="grid3">
@@ -161,18 +213,29 @@
   </div>
 
   <!-- 學員套票追蹤 -->
-  <div class="card">
+  <div class="card no-print">
     <h2>🎫 學員套票追蹤 <span class="hint">套票由購買日起兩個月有效（條款1.2）；課堂點名自動扣堂</span></h2>
     <div class="rule">
       每個學員記錄佢買咗嘅套票（普通4堂 $800／普通8堂 $1,400／PT 4堂 $900）。點名會按日期順序自動由最早買嘅有效套票扣堂；
       冇票可扣就會顯示「要交錢」。到期仲有剩堂會出「作廢建議」— 確認後自己加落「逾期作廢套票」度（記住下次購票要補返一堂，條款1.2）。
     </div>
+    <div class="stu-tools">
+      <input type="search" id="stuSearch" placeholder="🔍 搜尋學員名…" autocomplete="off">
+      <select id="stuFilter" aria-label="篩選學員">
+        <option value="all">全部學員</option>
+        <option value="owe">💰 要交錢</option>
+        <option value="expiring">⏳ 就到期／已到期</option>
+        <option value="active">✅ 有有效套票</option>
+        <option value="free">🆓 免費學員</option>
+      </select>
+    </div>
+    <div class="stu-count" id="stuCount"></div>
     <div class="rows" id="tracker"></div>
     <button class="add" id="add-student">＋ 新增學員</button>
   </div>
 
   <!-- 課堂 -->
-  <div class="card">
+  <div class="card no-print">
     <h2>📅 課堂記錄 <span class="hint">逐個學員點名；收入按「實際扣堂數」入賬（條款2.4）</span></h2>
     <div class="rule">
       點名以「<b>扣堂數</b>」做單位：每人每次預設扣 <b>1 堂</b>。學員報咗一個鐘、之後跟大隊 stay 多兩三個鐘 → 照計 1 堂唔加錢；
@@ -186,7 +249,7 @@
   </div>
 
   <!-- 場租 -->
-  <div class="card">
+  <div class="card no-print">
     <h2>🏟️ 場地租金 <span class="hint">而家用「劃一實報」：入賬 = 實付（2026年5月起劃一 $150/小時）</span></h2>
     <div class="rule">
       如改用協議條款3嘅「按人數上限」模式（喺協議參數切換）：該日任何一小時出席 ≥ 3人 → 上限 $<span data-bind="rentHigh"></span>/小時；全日 &lt; 3人 → 上限 $<span data-bind="rentLow"></span>/小時，超出部分不入公數。
@@ -196,14 +259,14 @@
   </div>
 
   <!-- 其他支出 -->
-  <div class="card">
+  <div class="card no-print">
     <h2>🧾 其他認可營運支出 <span class="hint">器材、消耗品等；須雙方認可（條款2.2）</span></h2>
     <div class="rows" id="expenses"></div>
     <button class="add" id="add-expense">＋ 加一項支出</button>
   </div>
 
   <!-- 逾期套票 -->
-  <div class="card">
+  <div class="card no-print">
     <h2>⏳ 逾期作廢套票 <span class="hint">未耗用預收款視作額外純利，雙方各 50%（條款4.5）</span></h2>
     <div class="rows" id="expired"></div>
     <button class="add" id="add-expired">＋ 加一筆作廢金額</button>
@@ -212,16 +275,17 @@
   <!-- 結果 -->
   <div class="card result" id="result"></div>
 
-  <div class="card">
+  <div class="card no-print">
     <div class="toolbar">
       <button class="primary" id="copy-report">📋 複製月結報表（WhatsApp 格式）</button>
+      <button id="print-report">🖨️ 列印／存 PDF</button>
       <button id="export">⬇️ 匯出資料（JSON）</button>
       <button id="import">⬆️ 匯入資料</button>
     </div>
     <input type="file" id="import-file" accept="application/json" hidden>
   </div>
 
-  <div class="foot">
+  <div class="foot no-print">
     資料只儲存喺本機瀏覽器（localStorage），唔會上傳。換機前請先匯出 JSON。<br>
     計法依據《踢拳小班教學合辦協議書》條款 1.4、1.7、2.4、3、4。
   </div>
@@ -469,11 +533,34 @@ function buildLedger(){
 
 function renderTracker(){
   const s = DB.settings, box = $('#tracker');
-  if(!DB.students.length){ box.innerHTML = '<div class="empty">未有學員，撳下面「＋新增學員」</div>'; return; }
+  if(!DB.students.length){ box.innerHTML = '<div class="empty">未有學員，撳下面「＋新增學員」</div>'; $('#stuCount').textContent=''; return; }
   const { pkgs, owed } = buildLedger();
   const today = new Date().toISOString().slice(0,10);
   const soon = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
-  box.innerHTML = DB.students.map(stu=>{
+  // 搜尋＋篩選
+  const q = ($('#stuSearch').value || '').trim().toLowerCase();
+  const filter = $('#stuFilter').value || 'all';
+  const shown = DB.students.filter(stu=>{
+    if(q && !String(stu.name||'').toLowerCase().includes(q)) return false;
+    if(filter === 'all') return true;
+    if(filter === 'free') return !!stu.free;
+    const myPkgs = pkgs.filter(p=>p.studentId===stu.id);
+    if(filter === 'owe') return !!owed[stu.id];
+    if(filter === 'expiring') return myPkgs.some(p=>{
+      const remain = (+p.classes||0) - p.used;
+      return remain > 0 && p.expiry && p.expiry <= soon;   // 已到期或7日內到期
+    });
+    if(filter === 'active') return myPkgs.some(p=>{
+      const remain = (+p.classes||0) - p.used;
+      return remain > 0 && (!p.expiry || p.expiry >= today);
+    });
+    return true;
+  });
+  $('#stuCount').textContent = (q || filter!=='all')
+    ? `顯示 ${shown.length}／共 ${DB.students.length} 個學員`
+    : `共 ${DB.students.length} 個學員`;
+  if(!shown.length){ box.innerHTML = '<div class="empty">冇符合嘅學員 — 試下清走搜尋字眼或者揀返「全部學員」</div>'; return; }
+  box.innerHTML = shown.map(stu=>{
     const myPkgs = pkgs.filter(p=>p.studentId===stu.id);
     const myOwed = owed[stu.id] || {};
     const pkgHtml = myPkgs.map(p=>{
@@ -647,6 +734,45 @@ function renderExpired(){
 function renderResult(){
   const s = DB.settings, md = monthData();
   const r = calcMonth(md, s);
+
+  // 自動對數 check：總收入 − 總支出 ＋ 逾期套票 要等於 兩位導師應得總和
+  const totalPay = r.payA + r.payB;
+  const target = r.pool + r.expiredTotal;
+  const diff = totalPay - target;
+  const balanced = Math.abs(diff) < 0.01;
+  const balanceHtml = balanced
+    ? `<div class="balance ok">✅ 自動對數：總收入 ${fmt$(r.income)} − 總支出 ${fmt$(r.totalExpense)} ＋ 逾期套票 ${fmt$(r.expiredTotal)} ＝ 兩邊應得總和 ${fmt$(totalPay)}，數啱。</div>`
+    : `<div class="balance bad">🚨 數唔平，差 ${fmt$(Math.abs(diff))} — 兩邊應得總和 ${fmt$(totalPay)}，但純利＋逾期套票應該係 ${fmt$(target)}。請檢查課堂／支出輸入。</div>`;
+
+  // 即時總覽（sticky）
+  const expl = r.pool + r.expiredTotal;
+  $('#quickbar').innerHTML = `
+    <div class="q"><div class="k">總收入</div><div class="v">${fmt$(r.income)}</div></div>
+    <div class="q"><div class="k">總支出</div><div class="v">${fmt$(r.totalExpense)}</div></div>
+    <div class="q"><div class="k">純利${r.expiredTotal>0?'＋作廢':''}</div><div class="v${expl<0?' neg':''}">${fmt$(expl)}</div></div>
+    <div class="q ming"><div class="k">${esc(s.nameA)}</div><div class="v${r.payA<0?' neg':''}">${fmt$(r.payA)}</div></div>
+    <div class="q tom"><div class="k">${esc(s.nameB)}</div><div class="v${r.payB<0?' neg':''}">${fmt$(r.payB)}</div></div>`;
+
+  // 計法拆解（每步都代入實數）
+  const explainHtml = `
+    <details class="explain" id="explain">
+      <summary>🔍 計法拆解（一步步睇條數點嚟）</summary>
+      <ol>
+        <li>總收入 ＝ 4堂票 ${fmt$(r.consumed4*perClass4(s))} ＋ 8堂票 ${fmt$(r.consumed8*perClass8(s))} ＋ PT ${fmt$(r.consumedPT*perClassPT(s))} ＋ 請假行政費 ${fmt$(r.adminIncome)} ＝ <b>${fmt$(r.income)}</b></li>
+        <li>總支出 ＝ 場租 ${fmt$(r.rentChargeable)} ＋ 其他支出 ${fmt$(r.otherExpense)} ＝ <b>${fmt$(r.totalExpense)}</b></li>
+        <li>可分配純利 ＝ 總收入 − 總支出 ＝ ${fmt$(r.income)} − ${fmt$(r.totalExpense)} ＝ <b>${fmt$(r.pool)}</b>（條款4.1／4.3）</li>
+        <li>學員時數 ＝ ${esc(s.nameA)} ${fmtH(r.shA)} ＋ ${esc(s.nameB)} ${fmtH(r.shB)} ＝ <b>${fmtH(r.H)} 小時</b>（每節全歸執教導師，修訂版條款4.4）</li>
+        ${r.H>0 ? `
+        <li>每學員小時單價 ＝ 純利 ÷ 總時數 ＝ ${fmt$(r.pool)} ÷ ${fmtH(r.H)} ＝ <b>${fmt$(r.unit)}</b></li>
+        <li>${esc(s.nameA)} ＝ ${fmt$(r.unit)} × ${fmtH(r.shA)} ＋ 逾期套票一半 ${fmt$(r.expiredTotal/2)} ＝ <b>${fmt$(r.payA)}</b></li>
+        <li>${esc(s.nameB)} ＝ ${fmt$(r.unit)} × ${fmtH(r.shB)} ＋ 逾期套票一半 ${fmt$(r.expiredTotal/2)} ＝ <b>${fmt$(r.payB)}</b></li>
+        ` : `
+        <li>本月冇學員時數 → 純利暫按 50/50 ＋ 逾期套票各半：每人 <b>${fmt$(r.pool/2 + r.expiredTotal/2)}</b>（請雙方確認）</li>
+        `}
+      </ol>
+      <div class="exp-note">依《踢拳小班教學合辦協議書（2026年7月修訂版）》條款 2.4／3／4。逾期套票純利雙方各 50%（條款4.5）。</div>
+    </details>`;
+
   $('#result').innerHTML = `
     <h2>📊 ${currentMonth.replace('-','年')}月 結算</h2>
     <div class="block">
@@ -685,7 +811,13 @@ function renderResult(){
     </div>
     ${r.splitNote?`<div class="notice">⚠️ ${esc(r.splitNote)}</div>`:''}
     ${r.pool<0?`<div class="notice">⚠️ 本月蝕錢（純利為負），酬金按比例攤分虧損。</div>`:''}
+    ${balanceHtml}
+    ${explainHtml}
   `;
+  // 保留用戶打開咗嘅拆解狀態
+  if(renderResult._explainOpen) { const d = $('#explain'); if(d) d.open = true; }
+  const d = $('#explain');
+  if(d) d.addEventListener('toggle', ()=>{ renderResult._explainOpen = d.open; });
   document.querySelectorAll('[data-bind="rentHigh"]').forEach(el=>el.textContent=s.rentHigh);
   document.querySelectorAll('[data-bind="rentLow"]').forEach(el=>el.textContent=s.rentLow);
 }
@@ -720,6 +852,12 @@ function reportText(){
   L.push('【應得酬金】');
   L.push(`· ${s.nameA}：$${r.payA.toFixed(2)}`);
   L.push(`· ${s.nameB}：$${r.payB.toFixed(2)}`);
+  {
+    const totalPay = r.payA + r.payB, target = r.pool + r.expiredTotal, diff = totalPay - target;
+    L.push(Math.abs(diff) < 0.01
+      ? `· 對數 ✅：收入−支出＋作廢 $${target.toFixed(2)} ＝ 兩邊總和 $${totalPay.toFixed(2)}`
+      : `· 對數 🚨：數唔平，差 $${Math.abs(diff).toFixed(2)}（兩邊總和 $${totalPay.toFixed(2)}，應為 $${target.toFixed(2)}）`);
+  }
   // 套票提醒（欠堂／到期）
   const { pkgs, owed } = buildLedger();
   const today = new Date().toISOString().slice(0,10);
@@ -887,6 +1025,9 @@ document.body.addEventListener('click', e=>{
 
 $('#add-student').onclick = ()=>{
   DB.students.push({ id: uid(), name:'', free:false });
+  // 清走搜尋／篩選，確保新學員一定即刻見到
+  $('#stuSearch').value = '';
+  $('#stuFilter').value = 'all';
   save(); renderAll();
 };
 
@@ -949,8 +1090,23 @@ $('#copy-report').onclick = async ()=>{
   }
 };
 
+// 列印（掣或 Ctrl+P 都一樣）：印之前自動打開「計法拆解」，印完還原返
+let _explainBeforePrint = null;
+window.addEventListener('beforeprint', ()=>{
+  const d = $('#explain');
+  if(d){ _explainBeforePrint = d.open; d.open = true; }
+});
+window.addEventListener('afterprint', ()=>{
+  const d = $('#explain');
+  if(d && _explainBeforePrint !== null){ d.open = _explainBeforePrint; _explainBeforePrint = null; }
+});
+$('#print-report').onclick = ()=> window.print();
+
+$('#stuSearch').addEventListener('input', renderTracker);
+$('#stuFilter').addEventListener('change', renderTracker);
+
 $('#export').onclick = ()=>{
-  const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify(Object.assign({version:2}, DB), null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `split-calc-backup-${new Date().toISOString().slice(0,10)}.json`;

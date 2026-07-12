@@ -57,9 +57,10 @@
   .lang button{padding:6px 12px; border:none; background:none; color:var(--ink); font-size:.78rem; font-weight:700; cursor:pointer; min-height:32px}
   .lang button.on{background:var(--btn); color:var(--btn-ink)}
   #hamburger{
-    display:none; border:1px solid var(--line-strong); background:none; color:var(--ink);
+    display:block; border:1px solid var(--line-strong); background:none; color:var(--ink);
     border-radius:10px; font-size:1.15rem; width:44px; height:44px; cursor:pointer; flex:none;
   }
+  #hamburger:hover{background:var(--soft)}
   #mobileMenu{
     display:none; position:fixed; top:69px; left:0; right:0; z-index:999;
     background:var(--card); border-bottom:1px solid var(--line); box-shadow:var(--shadow);
@@ -68,10 +69,19 @@
     display:flex; align-items:center; min-height:48px; padding:0 22px;
     text-decoration:none; color:var(--ink); font-weight:700; border-top:1px solid var(--line);
   }
+  #mobileMenu a:hover{background:var(--soft)}
   #mobileMenu.open{display:block}
+  @media (min-width:841px){
+    /* 桌面：漢堡＝Tree 2 下拉面板（貼齊漢堡右邊），Tree 1 項目唔使重複 */
+    #mobileMenu{
+      left:auto; right:max(18px, calc((100% - 1100px)/2 + 18px)); width:280px;
+      border:1px solid var(--line); border-radius:0 0 16px 16px; overflow:hidden;
+    }
+    #mobileMenu a:first-child{border-top:none}
+    #mobileMenu .m-only{display:none}
+  }
   @media (max-width:840px){
     .nav-links{display:none}
-    #hamburger{display:block}
   }
 
   /* ===== Hero + 分流 ===== */
@@ -211,27 +221,26 @@
 <header class="site">
   <nav class="bar">
     <a class="logo" href="#top">Kuafuor HK</a>
+    <!-- Tree 1：核心（公司方向／聯絡／登入＋語言） -->
     <ul class="nav-links">
       <li><a href="#business" data-t="navBiz"></a></li>
-      <li><a href="#motionlab">Motion Lab</a></li>
-      <li><a href="cantonese-subtitle/" data-t="navSub"></a></li>
       <li><a href="#contact" data-t="navContact"></a></li>
-      <li id="navCalcLi" style="display:none"><a href="split-calculator/" data-t="navCalc"></a></li>
       <li><a class="account" id="navAccount" href="login/" data-t="navLogin"></a></li>
     </ul>
     <div class="lang" role="group" data-taria="ariaLang">
       <button id="langZh">廣東話</button>
       <button id="langEn">English</button>
     </div>
-    <button id="hamburger" data-taria="ariaMenu" aria-expanded="false">☰</button>
+    <button id="hamburger" data-taria="ariaMenu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
   </nav>
+  <!-- Tree 2：其他功能（漢堡選單，桌面都有）；.m-only = 細屏先補返 Tree 1 -->
   <div id="mobileMenu">
-    <a href="#business" data-t="navBiz"></a>
     <a href="#motionlab">Motion Lab</a>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
-    <a href="#contact" data-t="navContact"></a>
     <a id="navCalcM" href="split-calculator/" style="display:none" data-t="navCalc"></a>
-    <a id="navAccountM" href="login/" data-t="navLogin"></a>
+    <a class="m-only" href="#business" data-t="navBiz"></a>
+    <a class="m-only" href="#contact" data-t="navContact"></a>
+    <a class="m-only" id="navAccountM" href="login/" data-t="navLogin"></a>
   </div>
 </header>
 
@@ -406,7 +415,7 @@ const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable 
 /* ================= i18n ================= */
 const I18N = {
   zh: {
-    navBiz:"企業服務", navContact:"聯絡我哋", navLogin:"登入",
+    navBiz:"公司方向", navContact:"聯絡我哋", navLogin:"登入",
     heroTitle:"Kuafuor HK", heroSub:"企業方案 × 運動科學 — 揀你想要嘅，直接開始。",
     splitBizTitle:"企業解決方案", splitBizDesc:"顧問、系統開發、雲端架構 — 為香港企業度身訂造。", splitBizGo:"了解企業服務 →",
     splitMlTitle:"個人運動分析", splitMlDesc:"AI 姿態追蹤同搏擊動作分析，配合教練訓練紀錄。", splitMlGo:"進入 Motion Lab →",
@@ -428,7 +437,7 @@ const I18N = {
     fErrName:"請填返個稱呼。", fErrService:"請先揀你想查詢嘅服務。", fErrContact:"電郵同電話最少填一樣，等我哋搵到你。",
     fErrSend:"送出失敗，請遲啲再試，或者直接 email 我哋。",
     stickyEnquire:"✉️ 快速查詢",
-    ariaLang:"語言", ariaMenu:"選單", ariaCc:"區號",
+    ariaLang:"語言", ariaMenu:"更多功能", ariaCc:"區號",
     navSub:"轉字幕",
     subTeaser:"仲有免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）→",
     navCalc:"🧮 分成計數機",
@@ -436,7 +445,7 @@ const I18N = {
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
   en: {
-    navBiz:"Business", navContact:"Contact", navLogin:"Log in",
+    navBiz:"What We Do", navContact:"Contact", navLogin:"Log in",
     heroTitle:"Kuafuor HK", heroSub:"Business solutions × sports science — pick your path and dive in.",
     splitBizTitle:"Business Solutions", splitBizDesc:"Consulting, systems development and cloud architecture, tailored for Hong Kong companies.", splitBizGo:"Explore business services →",
     splitMlTitle:"Personal Motion Analysis", splitMlDesc:"AI posture tracking and combat-sports motion analysis, with coach-grade training records.", splitMlGo:"Enter Motion Lab →",
@@ -458,7 +467,7 @@ const I18N = {
     fErrName:"Please tell us your name.", fErrService:"Please choose a service first.", fErrContact:"Leave at least an email or a phone number so we can reach you.",
     fErrSend:"Couldn't send — please try again later or email us directly.",
     stickyEnquire:"✉️ Quick enquiry",
-    ariaLang:"Language", ariaMenu:"Menu", ariaCc:"Area code",
+    ariaLang:"Language", ariaMenu:"More features", ariaCc:"Area code",
     navSub:"Subtitles",
     subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser) →",
     navCalc:"🧮 Split calculator",
@@ -508,8 +517,20 @@ burger.onclick = ()=>{
   burger.setAttribute("aria-expanded", String(open));
   burger.textContent = open ? "✕" : "☰";
 };
+function closeMenu(){
+  menu.classList.remove("open");
+  burger.textContent = "☰";
+  burger.setAttribute("aria-expanded", "false");
+}
 menu.addEventListener("click", e=>{
-  if(e.target.tagName === "A"){ menu.classList.remove("open"); burger.textContent = "☰"; }
+  if(e.target.tagName === "A") closeMenu();
+});
+// 撳選單以外任何地方（包括 Tree 1 連結）→ 自動閂
+document.addEventListener("click", e=>{
+  if(menu.classList.contains("open") && !e.target.closest("#mobileMenu, #hamburger, .lang")) closeMenu();
+});
+document.addEventListener("keydown", e=>{
+  if(e.key === "Escape" && menu.classList.contains("open")){ closeMenu(); burger.focus(); }
 });
 
 /* ================= 滾動漸現 ================= */
@@ -586,10 +607,9 @@ function renderAccount(){
   const a = $("#navAccount"), m = $("#navAccountM");
   if(a) a.textContent = text;
   if(m) m.textContent = text;
-  // 計數機入口：只有教練/管理員登入咗先顯示（街客睇唔到）
+  // 計數機入口（Tree 2 漢堡入面）：只有教練/管理員登入咗先顯示（街客睇唔到）
   const canCalc = userRole === "coach" || userRole === "admin";
-  const li = $("#navCalcLi"), mc = $("#navCalcM");
-  if(li) li.style.display = canCalc ? "" : "none";
+  const mc = $("#navCalcM");
   if(mc) mc.style.display = canCalc ? "flex" : "none";
 }
 async function refreshRole(session){
