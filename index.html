@@ -216,6 +216,7 @@
       <li><a href="#motionlab">Motion Lab</a></li>
       <li><a href="cantonese-subtitle/" data-t="navSub"></a></li>
       <li><a href="#contact" data-t="navContact"></a></li>
+      <li id="navCalcLi" style="display:none"><a href="split-calculator/" data-t="navCalc"></a></li>
       <li><a class="account" id="navAccount" href="login/" data-t="navLogin"></a></li>
     </ul>
     <div class="lang" role="group" data-taria="ariaLang">
@@ -229,6 +230,7 @@
     <a href="#motionlab">Motion Lab</a>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
     <a href="#contact" data-t="navContact"></a>
+    <a id="navCalcM" href="split-calculator/" style="display:none" data-t="navCalc"></a>
     <a id="navAccountM" href="login/" data-t="navLogin"></a>
   </div>
 </header>
@@ -429,6 +431,7 @@ const I18N = {
     ariaLang:"語言", ariaMenu:"選單", ariaCc:"區號",
     navSub:"轉字幕",
     subTeaser:"仲有免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）→",
+    navCalc:"🧮 分成計數機",
     fErrEmail:"電郵格式唔啱，睇下有冇打錯。",
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
@@ -458,6 +461,7 @@ const I18N = {
     ariaLang:"Language", ariaMenu:"Menu", ariaCc:"Area code",
     navSub:"Subtitles",
     subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser) →",
+    navCalc:"🧮 Split calculator",
     fErrEmail:"That email doesn't look right — please double-check.",
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
@@ -576,21 +580,36 @@ $("#contactForm").addEventListener("submit", async e=>{
 });
 
 /* ================= 帳戶狀態（同 /login/ 共用 session） ================= */
-let userEmail = null;
+let userEmail = null, userRole = null, _sb = null;
 function renderAccount(){
   const text = userEmail ? "👤 " + userEmail.split("@")[0] : t("navLogin");
   const a = $("#navAccount"), m = $("#navAccountM");
   if(a) a.textContent = text;
   if(m) m.textContent = text;
+  // 計數機入口：只有教練/管理員登入咗先顯示（街客睇唔到）
+  const canCalc = userRole === "coach" || userRole === "admin";
+  const li = $("#navCalcLi"), mc = $("#navCalcM");
+  if(li) li.style.display = canCalc ? "" : "none";
+  if(mc) mc.style.display = canCalc ? "flex" : "none";
+}
+async function refreshRole(session){
+  userEmail = session?.user?.email || null;
+  userRole = null;
+  if(session?.user && _sb){
+    try{
+      const { data } = await _sb.from("profiles").select("role").eq("id", session.user.id).single();
+      userRole = data?.role || "member";
+    }catch(e){ userRole = "member"; }
+  }
+  renderAccount();
 }
 applyLang();
 (async ()=>{
   try{
     const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-    const sb = createClient(SB_URL, SB_KEY);
-    sb.auth.onAuthStateChange((_ev, session)=>{ userEmail = session?.user?.email || null; renderAccount(); });
-    userEmail = (await sb.auth.getSession()).data.session?.user?.email || null;
-    renderAccount();
+    _sb = createClient(SB_URL, SB_KEY);
+    _sb.auth.onAuthStateChange((_ev, session)=>{ refreshRole(session); });
+    await refreshRole((await _sb.auth.getSession()).data.session);
   }catch(e){ console.warn("account service unavailable", e); }
 })();
 </script>
