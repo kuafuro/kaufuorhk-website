@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Kuafuor HK｜企業方案 × 運動分析 Business Solutions × Motion Lab</title>
-<meta name="description" content="Kuafuor HK — 企業顧問及系統開發 · AI 運動姿態分析 Motion Lab。Consulting, development and AI-powered motion analysis in Hong Kong.">
+<title>Kuafuor HK｜企業流程自動化 Enterprise Process Automation</title>
+<meta name="description" content="Kuafuor HK — 幫香港企業做流程自動化：客服自動化、自動報表、自動審批流程。Motion Lab AI 運動分析係其中一個自動化實例。Process automation for Hong Kong businesses — customer service, reporting and approval workflows.">
 <meta name="theme-color" content="#f3f2f2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -135,12 +135,14 @@
   .plate img{width:100%; height:100%; object-fit:cover; object-position:center; display:block}
 
   /* ── 雙路分流（兩欄，中間豎髮絲線） ── */
-  .dual{display:grid; grid-template-columns:1fr 1fr}
+  .dual{display:grid; grid-template-columns:1.5fr 1fr}
   .dual > a{
     display:block; text-decoration:none; color:var(--color-text); padding:40px 48px 40px 0;
   }
   .dual > a + a{padding:40px 0 40px 48px; border-left:1px solid var(--color-divider)}
   .dual .path-ico{color:var(--color-accent)}
+  .dual .ptag{display:block; font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--color-accent); margin:0 0 2px; font-feature-settings:'tnum'}
+  .dual .ptag.ex{color:var(--color-neutral-500)}
   .dual h3{font-size:26px; margin:12px 0 8px}
   .dual p{font-size:14px; line-height:1.75; text-align:justify; color:var(--color-neutral-700); margin:0 0 16px}
   .dual .go{font-size:14px; color:var(--color-accent); border-bottom:1px solid var(--color-accent); padding-bottom:2px}
@@ -342,12 +344,14 @@
   <div class="wrap dual">
     <a href="#business" id="ctaBiz">
       <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>
+      <span class="ptag" data-t="pathBizTag"></span>
       <h3 data-t="pathBizTitle"></h3>
       <p data-t="pathBizDesc"></p>
       <span class="go"><span data-t="ctaBiz"></span> →</span>
     </a>
     <a href="#motionlab" id="ctaMl">
       <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span>
+      <span class="ptag ex" data-t="pathMlTag"></span>
       <h3 data-t="pathMlTitle"></h3>
       <p data-t="pathMlDesc"></p>
       <span class="go"><span data-t="ctaMl"></span> →</span>
@@ -355,11 +359,11 @@
   </div>
 </section>
 
-<!-- ═══ 企業服務 ═══ -->
+<!-- ═══ 流程自動化 ═══ -->
 <section id="business">
   <div class="wrap sec-pad">
     <div class="sec-head">
-      <div class="kicker">BUSINESS</div>
+      <div class="kicker">AUTOMATION</div>
       <h2 data-t="bizTitle"></h2>
       <p class="sub" data-t="bizSub"></p>
     </div>
@@ -534,32 +538,32 @@ const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable 
 /* ════════════ i18n（書卷版文案，沿用現有機制） ════════════ */
 const I18N = {
   zh: {
-    navBiz:"公司方向", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕",
-    kicker:"香港 · 企業顧問 × 運動科學",
-    heroTitle:"企業方案 × 運動科學",
-    heroSub:"由數碼轉型顧問、系統開發，到 AI 運動姿態分析 — 一間香港公司，兩條路。揀你想要嘅，直接開始。",
-    ctaBiz:"了解企業服務", ctaMl:"進入 Motion Lab",
-    figCap:"香港 · 由策略到落地",
-    pathBizTitle:"企業解決方案",
-    pathBizDesc:"顧問、系統開發、雲端架構 — 為香港企業度身訂造，由策略到落地一條龍。",
-    pathMlTitle:"個人運動分析",
-    pathMlDesc:"AI 姿態追蹤同搏擊動作分析，連埋教練級訓練紀錄，教練同學員都啱用。",
-    bizTitle:"企業服務", bizSub:"由策略到落地 — 幫你諗、幫你起、幫你維護。",
-    svc1Title:"企業顧問", svc1a:"數碼轉型策略", svc1b:"流程自動化評估", svc1c:"本地市場合規建議",
-    svc2Title:"系統開發", svc2a:"企業系統架構", svc2b:"雲端遷移", svc2c:"高效能 App 開發",
-    svc3Title:"在地專業", svc3a:"熟悉香港營商環境", svc3b:"中英雙語支援", svc3c:"長期維護與迭代",
-    svc1line:"數碼轉型、流程自動化、合規建議",
-    svc2line:"企業系統、雲端遷移、App 開發",
-    svc3line:"熟悉香港市場、中英雙語、長期維護",
-    mlTitle:"AI 運動姿態分析",
-    mlSub:"電腦視覺幫你睇清每一拳、每一個動作 — 教練同學員都啱用。",
+    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕",
+    kicker:"香港 · 企業流程自動化",
+    heroTitle:"企業流程自動化",
+    heroSub:"客服自動化、自動報表、自動審批流程 — 幫香港企業將日日重複嘅工序交俾系統，慳返人手同時間。Motion Lab AI 運動分析，就係我哋其中一個自動化實例。",
+    ctaBiz:"睇我哋點自動化", ctaMl:"睇 Motion Lab 實例",
+    figCap:"香港 · 由評估到落地",
+    pathBizTag:"我哋嘅服務", pathBizTitle:"流程自動化",
+    pathBizDesc:"客服、報表、審批 — 幫香港企業揾出重複工序，交俾系統做，由評估到落地一條龍。",
+    pathMlTag:"其中一個實例", pathMlTitle:"Motion Lab · 自動化實例",
+    pathMlDesc:"AI 運動姿態分析 —「睇片、評分、出報告」全自動，係我哋自動化能力嘅一個真實例子。",
+    bizTitle:"我哋幫你自動化啲乜", bizSub:"揾出最食時間、日日重複嘅工序，交俾系統做 — 由客服、報表到審批，一條龍。",
+    svc1Title:"客服自動化", svc1a:"24／7 智能客服對答", svc1b:"常見問題自動回覆", svc1c:"複雜個案無縫轉真人",
+    svc2Title:"自動報表", svc2a:"數據自動彙整", svc2b:"定時生成報表", svc2c:"即時儀表板同提醒",
+    svc3Title:"自動審批流程", svc3a:"審批流程自動流轉", svc3b:"例外個案自動升級", svc3c:"全程通知同稽核紀錄",
+    svc1line:"智能對答、自動回覆、無縫轉真人",
+    svc2line:"自動彙整、定時報表、即時儀表板",
+    svc3line:"自動流轉、例外升級、稽核紀錄",
+    mlTitle:"Motion Lab：自動化實例",
+    mlSub:"睇片、評分、出報告全程自動 — 我哋將一整套運動分析流程交俾電腦視覺嘅真實例子。教練同學員都啱用。",
     ml1:"AI 姿態追蹤 · 即時動作捕捉", ml2:"WAKO 標準搏擊評分同技術分類",
     ml3:"拳手檔案、訓練紀錄雲端同步", ml4:"生物力學錯誤檢測同精華片段",
     mlCta:"進入 Motion Lab", mlBook:"預約體驗",
     subTeaser:"免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）",
     ctTitle:"聯絡我哋", ctSub:"揀返想查詢嘅服務，表格會自動變簡單 — 只填有用嘅嘢。",
     fService:"查詢服務", fServicePick:"— 請揀一項 —",
-    fServiceBiz:"顧問／系統開發", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
+    fServiceBiz:"流程自動化查詢", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
     fName:"稱呼", fEmail:"電郵", fPhone:"電話（香港）",
     fCompany:"公司名稱", fBudget:"預算範圍", fBudgetPick:"— 請揀一項 —", fBudgetTbd:"未定",
     fWhen:"希望預約嘅日期／時間",
@@ -575,32 +579,32 @@ const I18N = {
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
   en: {
-    navBiz:"What We Do", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles",
-    kicker:"HONG KONG · CONSULTING × SPORTS SCIENCE",
-    heroTitle:"Business Solutions × Sports Science",
-    heroSub:"From digital-transformation consulting and systems development to AI motion analysis — one Hong Kong studio, two paths. Pick yours and dive in.",
-    ctaBiz:"Explore business services", ctaMl:"Enter Motion Lab",
-    figCap:"Hong Kong · from strategy to shipping",
-    pathBizTitle:"Business Solutions",
-    pathBizDesc:"Consulting, systems development and cloud architecture — tailored for Hong Kong companies, from strategy to shipping.",
-    pathMlTitle:"Personal Motion Analysis",
-    pathMlDesc:"AI posture tracking and combat-sports motion analysis, with coach-grade training records.",
-    bizTitle:"Business Services", bizSub:"From strategy to shipping — we plan it, build it, keep it running.",
-    svc1Title:"Consulting", svc1a:"Digital transformation strategy", svc1b:"Process automation assessment", svc1c:"Local compliance guidance",
-    svc2Title:"Development", svc2a:"Enterprise system architecture", svc2b:"Cloud migration", svc2c:"High-performance app development",
-    svc3Title:"Local Expertise", svc3a:"Deep knowledge of the HK market", svc3b:"Bilingual (EN / 中文) support", svc3c:"Long-term maintenance & iteration",
-    svc1line:"Transformation, automation & compliance",
-    svc2line:"Enterprise systems, cloud & apps",
-    svc3line:"HK-savvy, bilingual, long-term support",
-    mlTitle:"AI Motion Analysis",
-    mlSub:"Computer vision that sees every strike and every movement — for coaches and athletes alike.",
+    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles",
+    kicker:"HONG KONG · ENTERPRISE PROCESS AUTOMATION",
+    heroTitle:"Enterprise Process Automation",
+    heroSub:"Customer-service automation, automated reporting and approval workflows — we hand your team's daily repetitive work to systems, saving time and headcount. Our AI Motion Lab is one such automation in action.",
+    ctaBiz:"See what we automate", ctaMl:"See the Motion Lab example",
+    figCap:"Hong Kong · from assessment to shipping",
+    pathBizTag:"What we do", pathBizTitle:"Process Automation",
+    pathBizDesc:"Customer service, reporting and approvals — we find the repetitive work and hand it to systems, from assessment to shipping.",
+    pathMlTag:"One example", pathMlTitle:"Motion Lab · Automation Example",
+    pathMlDesc:"AI motion analysis — watch, score and report, fully automated. A real example of what our automation can do.",
+    bizTitle:"What We Automate", bizSub:"We find the most time-consuming, repetitive steps and hand them to systems — from customer service to reporting to approvals.",
+    svc1Title:"Customer Service Automation", svc1a:"24/7 AI chat & replies", svc1b:"Auto-answers to common questions", svc1c:"Seamless hand-off to a human",
+    svc2Title:"Automated Reporting", svc2a:"Data aggregated automatically", svc2b:"Reports generated on schedule", svc2c:"Live dashboards & alerts",
+    svc3Title:"Approval Workflows", svc3a:"Approvals routed automatically", svc3b:"Exceptions escalated automatically", svc3c:"Notifications & audit trail throughout",
+    svc1line:"AI chat, auto-replies, human hand-off",
+    svc2line:"Aggregation, scheduled reports, dashboards",
+    svc3line:"Auto-routing, escalation, audit trail",
+    mlTitle:"Motion Lab: Automation in Action",
+    mlSub:"Watch, score, report — fully automated. A real example of us handing an entire sports-analysis pipeline to computer vision. Built for coaches and athletes.",
     ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
     ml3:"Athlete profiles synced to the cloud", ml4:"Fault detection & highlight reels",
     mlCta:"Enter Motion Lab", mlBook:"Book a session",
     subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser)",
     ctTitle:"Get in Touch", ctSub:"Pick a service — the form adapts so you only fill in what matters.",
     fService:"Service", fServicePick:"— Please choose —",
-    fServiceBiz:"Consulting / Development", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
+    fServiceBiz:"Process automation enquiry", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
     fName:"Name", fEmail:"Email", fPhone:"Phone (HK)",
     fCompany:"Company name", fBudget:"Budget range", fBudgetPick:"— Please choose —", fBudgetTbd:"Not decided yet",
     fWhen:"Preferred date / time",
