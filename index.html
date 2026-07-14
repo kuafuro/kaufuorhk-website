@@ -175,6 +175,20 @@
   .ml-note a:hover{color:var(--color-accent)}
   .ml-plate{height:360px}
 
+  /* ── Data analysis ── */
+  .da-sec{display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:center; padding:56px 0}
+  .da-sec .kicker{margin-bottom:10px}
+  .da-sec h2{font-size:34px; margin:0 0 10px}
+  .da-sec .lead{font-size:15px; line-height:1.8; text-align:justify; color:var(--color-neutral-700); margin:0 0 20px}
+  .da-sec .cta-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .da-plate{min-height:360px; display:flex; align-items:center; justify-content:center; padding:32px; text-align:center}
+  .finding{max-width:30ch}
+  .finding .kicker{margin-bottom:10px}
+  .finding-stat{font-family:var(--font-heading); font-size:58px; line-height:1; color:var(--color-accent); font-feature-settings:'tnum'; margin:0}
+  .finding-stat small{display:block; font-family:var(--font-body); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600); margin-top:10px}
+  .finding-txt{font-size:14.5px; line-height:1.7; color:var(--color-text); margin:16px 0 12px}
+  .finding-note{font-size:12px; line-height:1.6; color:var(--color-neutral-600); margin:0}
+
   /* ── Contact ── */
   .ct-sec{display:grid; grid-template-columns:1fr 1.2fr; gap:56px; padding:56px 0}
   .ct-sec h2{font-size:34px; margin:0 0 10px}
@@ -274,6 +288,13 @@
     .ml-sec .cta-row{flex-direction:column; align-items:stretch}
     .ml-sec .cta-row .btn{width:100%; min-height:44px}
 
+    .da-sec{grid-template-columns:1fr; gap:24px; padding:32px 0}
+    .da-sec h2{font-size:26px}
+    .da-plate{min-height:auto; order:2; padding:26px}
+    .finding-stat{font-size:46px}
+    .da-sec .cta-row{flex-direction:column; align-items:stretch}
+    .da-sec .cta-row .btn{width:100%; min-height:44px}
+
     .ct-sec{grid-template-columns:1fr; gap:24px}
     .ct-sec h2{font-size:26px}
     .grid2{grid-template-columns:1fr}
@@ -308,6 +329,7 @@
   </div>
   <!-- Tree 2：其他功能（漢堡選單，桌面都有）；.m-only = 細屏先補返 Tree 1 -->
   <div id="mobileMenu">
+    <a href="#data" data-t="navData"></a>
     <a href="#motionlab">Motion Lab</a>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
     <a id="navCalcM" href="split-calculator/" style="display:none" data-t="navCalc"></a>
@@ -433,6 +455,34 @@
   </div>
 </section>
 
+<!-- ═══ 數據分析 ═══ -->
+<section id="data">
+  <div class="wrap da-sec">
+    <div>
+      <div class="kicker">DATA ANALYTICS</div>
+      <h2 data-t="daTitle"></h2>
+      <p class="lead" data-t="daSub"></p>
+      <div class="ml-list">
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da1"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da2"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da3"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da4"></span></div>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#contact" data-t="daCta"></a>
+      </div>
+    </div>
+    <div class="plate da-plate fade">
+      <div class="finding">
+        <div class="kicker" data-t="daFindTag"></div>
+        <div class="finding-stat">r ≈ 0.71<small data-t="daStatLabel"></small></div>
+        <p class="finding-txt" data-t="daFinding"></p>
+        <p class="finding-note" data-t="daFindNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ 聯絡 ═══ -->
 <section id="contact">
   <div class="wrap ct-sec">
@@ -451,6 +501,7 @@
         <select class="input" id="fService">
           <option value="" data-t="fServicePick"></option>
           <option value="consulting" data-t="fServiceBiz"></option>
+          <option value="data" data-t="fServiceData"></option>
           <option value="motionlab" data-t="fServiceMl"></option>
           <option value="other" data-t="fServiceOther"></option>
         </select>
@@ -517,6 +568,7 @@
   <span data-t="footCopy"></span>
   <span class="foot-links">
     <a href="login/" data-t="navLogin"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="#data" data-t="navData"></a><span class="sep" aria-hidden="true">·</span>
     <a href="#motionlab">Motion Lab</a><span class="sep" aria-hidden="true">·</span>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
   </span>
@@ -538,7 +590,7 @@ const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable 
 /* ════════════ i18n（書卷版文案，沿用現有機制） ════════════ */
 const I18N = {
   zh: {
-    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕",
+    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕", navData:"數據分析",
     kicker:"香港 · 企業流程自動化",
     heroTitle:"企業流程自動化",
     heroSub:"客服自動化、自動報表、自動審批流程 — 幫香港企業將日日重複嘅工序交俾系統，慳返人手同時間。Motion Lab AI 運動分析，就係我哋其中一個自動化實例。",
@@ -560,10 +612,18 @@ const I18N = {
     ml1:"AI 姿態追蹤 · 即時動作捕捉", ml2:"WAKO 標準搏擊評分同技術分類",
     ml3:"拳手檔案、訓練紀錄雲端同步", ml4:"生物力學錯誤檢測同精華片段",
     mlCta:"進入 Motion Lab", mlBook:"預約體驗",
+    daTitle:"數據分析",
+    daSub:"由亂糟糟嘅數據入面揾出規律 — 幫你將『感覺』變成『證據』，每個決定都有數據撐腰。統計建模、客製化研究到可視化，一條龍。",
+    da1:"統計建模同相關性分析", da2:"客製化研究同問卷設計",
+    da3:"數據清洗、可視化同儀表板", da4:"由發現到落地建議",
+    daCta:"傾傾你嘅數據",
+    daFindTag:"研究實例", daStatLabel:"正相關",
+    daFinding:"我哋一項研究發現：大部分男性右手嘅手握力，同佢哋嘅約會頻率成正相關 — 握力越強，約會越密。",
+    daFindNote:"＊相關唔等於因果 — 但揾到呢啲意想不到嘅關聯，正正就係數據分析嘅威力。",
     subTeaser:"免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）",
     ctTitle:"聯絡我哋", ctSub:"揀返想查詢嘅服務，表格會自動變簡單 — 只填有用嘅嘢。",
     fService:"查詢服務", fServicePick:"— 請揀一項 —",
-    fServiceBiz:"流程自動化查詢", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
+    fServiceBiz:"流程自動化查詢", fServiceData:"數據分析查詢", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
     fName:"稱呼", fEmail:"電郵", fPhone:"電話（香港）",
     fCompany:"公司名稱", fBudget:"預算範圍", fBudgetPick:"— 請揀一項 —", fBudgetTbd:"未定",
     fWhen:"希望預約嘅日期／時間",
@@ -579,7 +639,7 @@ const I18N = {
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
   en: {
-    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles",
+    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles", navData:"Data Analysis",
     kicker:"HONG KONG · ENTERPRISE PROCESS AUTOMATION",
     heroTitle:"Enterprise Process Automation",
     heroSub:"Customer-service automation, automated reporting and approval workflows — we hand your team's daily repetitive work to systems, saving time and headcount. Our AI Motion Lab is one such automation in action.",
@@ -601,10 +661,18 @@ const I18N = {
     ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
     ml3:"Athlete profiles synced to the cloud", ml4:"Fault detection & highlight reels",
     mlCta:"Enter Motion Lab", mlBook:"Book a session",
+    daTitle:"Data Analysis",
+    daSub:"We find the patterns hidden in messy data — turning gut feel into evidence, so every decision has numbers behind it. Statistical modelling, custom research and visualisation, end to end.",
+    da1:"Statistical modelling & correlation analysis", da2:"Custom research & survey design",
+    da3:"Data cleaning, visualisation & dashboards", da4:"From findings to actionable recommendations",
+    daCta:"Talk about your data",
+    daFindTag:"RESEARCH EXAMPLE", daStatLabel:"positive correlation",
+    daFinding:"In one of our studies, most men's right-hand grip strength turned out to be positively correlated with their dating frequency — the stronger the grip, the more dates.",
+    daFindNote:"*Correlation isn't causation — but surfacing unexpected links like this is exactly what data analysis is for.",
     subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser)",
     ctTitle:"Get in Touch", ctSub:"Pick a service — the form adapts so you only fill in what matters.",
     fService:"Service", fServicePick:"— Please choose —",
-    fServiceBiz:"Process automation enquiry", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
+    fServiceBiz:"Process automation enquiry", fServiceData:"Data analysis enquiry", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
     fName:"Name", fEmail:"Email", fPhone:"Phone (HK)",
     fCompany:"Company name", fBudget:"Budget range", fBudgetPick:"— Please choose —", fBudgetTbd:"Not decided yet",
     fWhen:"Preferred date / time",
@@ -693,7 +761,7 @@ setTimeout(()=>document.querySelectorAll(".fade:not(.in)").forEach(el=>el.classL
 /* ════════════ 漸進式表單 ════════════ */
 const svcSel = $("#fService");
 function revealGroups(){
-  $("#grpBiz").classList.toggle("show", svcSel.value === "consulting");
+  $("#grpBiz").classList.toggle("show", svcSel.value === "consulting" || svcSel.value === "data");
   $("#grpMl").classList.toggle("show", svcSel.value === "motionlab");
 }
 svcSel.addEventListener("change", revealGroups);
@@ -721,8 +789,8 @@ $("#contactForm").addEventListener("submit", async e=>{
     name,
     email: email || null,
     phone: phone ? "+852 " + phone : null,
-    company: svcSel.value === "consulting" ? ($("#fCompany").value.trim() || null) : null,
-    budget: svcSel.value === "consulting" ? ($("#fBudget").value || null) : null,
+    company: (svcSel.value === "consulting" || svcSel.value === "data") ? ($("#fCompany").value.trim() || null) : null,
+    budget: (svcSel.value === "consulting" || svcSel.value === "data") ? ($("#fBudget").value || null) : null,
     preferred_time: svcSel.value === "motionlab" ? ($("#fWhen").value || null) : null,
     message: $("#fMsg").value.trim() || null,
     lang,
