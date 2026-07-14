@@ -5,234 +5,304 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Kuafuor HK｜企業方案 × 運動分析 Business Solutions × Motion Lab</title>
 <meta name="description" content="Kuafuor HK — 企業顧問及系統開發 · AI 運動姿態分析 Motion Lab。Consulting, development and AI-powered motion analysis in Hong Kong.">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
 <style>
-  /* ===== 黑白主色 Monochrome design system ===== */
+  /* ═══════════ Classical — 書卷編輯風（紅／黑／白，紅色只做描邊） ═══════════ */
   :root{
-    color-scheme: light dark;
-    --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
-    --line:#e2e2e2; --line-strong:#111111;
-    --btn:#111111; --btn-ink:#ffffff;
-    --soft:#f0f0f0; --ok:#1e7d46; --ok-soft:#e6f4ec;
-    --shadow:0 10px 30px rgba(0,0,0,.08);
-    --shadow-lift:0 16px 40px rgba(0,0,0,.14);
+    color-scheme: light;
+    --color-bg:#f3f2f2; --color-surface:#eae9e9; --color-text:#201f1d;
+    --color-divider:color-mix(in srgb, #201f1d 16%, transparent);
+
+    /* Accent — 紅 */
+    --color-accent:#a83228;
+    --color-accent-100:#fdeeec; --color-accent-200:#f8d8d4; --color-accent-300:#efb4ad;
+    --color-accent-400:#dd8177; --color-accent-500:#c25349; --color-accent-600:#8a281f;
+    --color-accent-700:#6f1e16; --color-accent-800:#54160f; --color-accent-900:#38100b;
+
+    /* Neutrals */
+    --color-neutral-100:#f8f4f4; --color-neutral-200:#eae7e7; --color-neutral-300:#d7d3d3;
+    --color-neutral-400:#bab6b6; --color-neutral-500:#9b9797; --color-neutral-600:#7d7979;
+    --color-neutral-700:#605d5d; --color-neutral-800:#444141; --color-neutral-900:#2d2b2b;
+
+    --font-heading:"Cormorant Garamond","Noto Serif TC",serif;
+    --font-body:"Lora","Noto Serif TC",serif;
+    --radius-md:4px;
+    --shadow-lg:0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
   }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a;
-      --line:#333333; --line-strong:#f2f2f2;
-      --btn:#f2f2f2; --btn-ink:#111111;
-      --soft:#242424; --ok:#5fd08d; --ok-soft:#1d3327;
-      --shadow:0 10px 30px rgba(0,0,0,.5);
-      --shadow-lift:0 16px 40px rgba(0,0,0,.65);
-    }
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
+  *,*::before,*::after{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
-    font-family:-apple-system,"PingFang HK","Noto Sans TC","Segoe UI","Microsoft JhengHei",sans-serif;
-    line-height:1.65; color:var(--ink); background:var(--bg);
+    margin:0; background:var(--color-bg); color:var(--color-text);
+    font-family:var(--font-body); font-size:15px; line-height:1.55; font-weight:400;
     padding-bottom:env(safe-area-inset-bottom);
   }
-  img{max-width:100%}
-  section{scroll-margin-top:76px}
+  h1,h2,h3,h4{font-family:var(--font-heading); font-weight:600; line-height:1.12; letter-spacing:-0.015em; margin:0}
+  p{margin:0}
+  img{display:block; max-width:100%}
+  a{color:var(--color-accent); text-underline-offset:3px}
+  :focus{outline:none}
+  :focus-visible{outline:2px solid var(--color-accent); outline-offset:2px}
+  ::selection{background:color-mix(in srgb, var(--color-accent) 30%, transparent)}
+  .tnum{font-feature-settings:'tnum'}
+  .text-muted{color:color-mix(in srgb, var(--color-text) 55%, transparent)}
 
-  /* ===== Nav ===== */
-  header.site{
-    position:fixed; top:0; width:100%; z-index:1000;
-    background:var(--card); border-bottom:1px solid var(--line);
+  .wrap{max-width:1200px; margin:0 auto; padding:0 48px}
+
+  /* ── 按鈕（描邊，非填色；紅色只做邊框＋文字） ── */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    cursor:pointer; text-decoration:none; font-family:var(--font-heading); font-weight:600;
+    font-size:14px; line-height:1.2; color:var(--color-text);
+    background:transparent; border:1px solid transparent; padding:11px 22px; border-radius:var(--radius-md);
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  nav.bar{
-    max-width:1100px; margin:0 auto; padding:12px 18px;
-    display:flex; align-items:center; gap:14px;
+  .btn svg{display:block}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn-primary{color:var(--color-accent); border-color:var(--color-accent)}
+  .btn-primary:hover{background:color-mix(in srgb, var(--color-accent) 12%, transparent)}
+  .btn-primary:active{background:color-mix(in srgb, var(--color-accent) 22%, transparent)}
+  .btn-secondary{border-color:var(--color-divider)}
+  .btn-secondary:hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
+  .btn-block{width:100%}
+
+  /* ── Nav（sticky，底部髮絲線） ── */
+  header.site{position:sticky; top:0; z-index:1000; background:var(--color-bg); border-bottom:1px solid var(--color-divider)}
+  nav.bar{display:flex; align-items:center; gap:26px; padding:20px 0}
+  .logo{
+    font-family:var(--font-heading); font-weight:600; font-size:21px; letter-spacing:0.1em;
+    text-transform:uppercase; margin-right:auto; text-decoration:none; color:var(--color-text);
   }
-  .logo{font-size:1.15rem; font-weight:800; letter-spacing:2px; text-transform:uppercase; margin-right:auto; text-decoration:none; color:var(--ink)}
-  .nav-links{list-style:none; display:flex; gap:4px; align-items:center}
-  .nav-links a{
-    display:block; padding:10px 12px; border-radius:10px;
-    text-decoration:none; color:var(--ink); font-weight:600; font-size:.9rem;
-  }
-  .nav-links a:hover{background:var(--soft)}
-  .nav-links a.account{border:1.5px solid var(--line-strong); font-weight:800}
-  .lang{display:flex; border:1px solid var(--line-strong); border-radius:99px; overflow:hidden; flex:none}
-  .lang button{padding:6px 12px; border:none; background:none; color:var(--ink); font-size:.78rem; font-weight:700; cursor:pointer; min-height:32px}
-  .lang button.on{background:var(--btn); color:var(--btn-ink)}
+  .nav-links{list-style:none; display:flex; align-items:center; gap:26px; margin:0; padding:0}
+  .nav-links a{font-size:13.5px; color:var(--color-text); text-decoration:none; transition:color .15s ease}
+  .nav-links a:hover{color:var(--color-accent)}
+  .nav-links a.account{border:1px solid var(--color-accent); color:var(--color-accent); font-family:var(--font-heading); font-weight:600; padding:8px 16px; border-radius:var(--radius-md)}
+  .nav-links a.account:hover{background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-accent)}
+  .lang{display:flex; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden; flex:none}
+  .lang button{padding:5px 11px; border:none; background:transparent; color:var(--color-text); font-family:var(--font-body); font-size:12px; cursor:pointer; min-height:30px}
+  .lang button.on{background:var(--color-accent); color:#fff}   /* 唯一填色例外 */
   #hamburger{
-    display:block; border:1px solid var(--line-strong); background:none; color:var(--ink);
-    border-radius:10px; font-size:1.15rem; width:44px; height:44px; cursor:pointer; flex:none;
+    display:inline-flex; align-items:center; justify-content:center;
+    width:40px; height:40px; flex:none; cursor:pointer;
+    border:1px solid var(--color-divider); border-radius:var(--radius-md);
+    background:transparent; color:var(--color-text);
   }
-  #hamburger:hover{background:var(--soft)}
+  #hamburger:hover{background:color-mix(in srgb, var(--color-text) 7%, transparent); color:var(--color-accent)}
   #mobileMenu{
-    display:none; position:fixed; top:69px; left:0; right:0; z-index:999;
-    background:var(--card); border-bottom:1px solid var(--line); box-shadow:var(--shadow);
+    display:none; position:fixed; top:70px; left:0; right:0; z-index:999;
+    background:var(--color-bg); border-bottom:1px solid var(--color-divider); box-shadow:var(--shadow-lg);
   }
   #mobileMenu a{
-    display:flex; align-items:center; min-height:48px; padding:0 22px;
-    text-decoration:none; color:var(--ink); font-weight:700; border-top:1px solid var(--line);
+    display:flex; align-items:center; min-height:50px; padding:0 24px;
+    text-decoration:none; color:var(--color-text); font-family:var(--font-heading); font-weight:600; font-size:16px;
+    border-top:1px solid var(--color-divider);
   }
-  #mobileMenu a:hover{background:var(--soft)}
+  #mobileMenu a:hover{background:color-mix(in srgb, var(--color-text) 5%, transparent); color:var(--color-accent)}
   #mobileMenu.open{display:block}
   @media (min-width:841px){
-    /* 桌面：漢堡＝Tree 2 下拉面板（貼齊漢堡右邊），Tree 1 項目唔使重複 */
+    /* 桌面：漢堡＝Tree 2 下拉面板（貼齊右邊），Tree 1 項目唔重複 */
     #mobileMenu{
-      left:auto; right:max(18px, calc((100% - 1100px)/2 + 18px)); width:280px;
-      border:1px solid var(--line); border-radius:0 0 16px 16px; overflow:hidden;
+      left:auto; right:max(48px, calc((100% - 1200px)/2 + 48px)); width:280px;
+      border:1px solid var(--color-divider); border-radius:0 0 6px 6px; overflow:hidden;
     }
     #mobileMenu a:first-child{border-top:none}
     #mobileMenu .m-only{display:none}
   }
-  @media (max-width:840px){
-    .nav-links{display:none}
-  }
 
-  /* ===== Hero + 分流 ===== */
-  .hero{
-    position:relative; padding:150px 18px 70px; text-align:center; overflow:hidden; isolation:isolate;
-  }
-  .hero::before{
-    content:""; position:absolute; inset:0; z-index:-1;
-    background:linear-gradient(rgba(0,0,0,.66),rgba(0,0,0,.66)),
-      url('https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') center/cover;
-    filter:grayscale(1);
-  }
-  .hero h1{color:#fff; font-size:clamp(1.7rem,5vw,3rem); letter-spacing:1px; margin-bottom:10px}
-  .hero p.sub{color:#ddd; font-size:clamp(.95rem,2.5vw,1.15rem); margin-bottom:34px}
-  .split{
-    max-width:860px; margin:0 auto;
-    display:grid; grid-template-columns:1fr 1fr; gap:16px; text-align:left;
-  }
-  @media (max-width:640px){ .split{grid-template-columns:1fr} }
-  .split a{
-    display:block; background:var(--card); color:var(--ink); text-decoration:none;
-    border:1px solid var(--line); border-radius:16px; padding:22px 20px;
-    box-shadow:var(--shadow); transition:transform .22s ease, box-shadow .22s ease;
-  }
-  .split a:hover{transform:translateY(-4px); box-shadow:var(--shadow-lift)}
-  .split .ico{font-size:1.7rem}
-  .split h2{font-size:1.12rem; margin:8px 0 4px}
-  .split p{font-size:.85rem; color:var(--muted)}
-  .split .go{display:inline-block; margin-top:12px; font-weight:800; font-size:.88rem; border-bottom:2px solid var(--ink)}
+  /* ── 每個大段落用髮絲線分隔 ── */
+  section{border-top:1px solid var(--color-divider); scroll-margin-top:76px}
+  header.site + section{border-top:none}
 
-  /* ===== Sections ===== */
-  .container{max-width:1100px; margin:0 auto; padding:64px 18px}
-  .kicker{font-size:.75rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); text-align:center}
-  .section-title{text-align:center; font-size:clamp(1.4rem,3.5vw,2rem); margin:6px 0 8px}
-  .section-sub{text-align:center; color:var(--muted); font-size:.92rem; max-width:640px; margin:0 auto 36px}
-  .grid3{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px}
-  .svc{
-    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px 22px;
-    transition:transform .22s ease, box-shadow .22s ease;
-  }
-  .svc:hover{transform:translateY(-4px); box-shadow:var(--shadow-lift)}
-  .svc .ico{font-size:1.5rem}
-  .svc h3{margin:8px 0 10px; font-size:1.05rem}
-  .svc ul{list-style:none}
-  .svc li{
-    font-size:.88rem; color:var(--muted); padding:5px 0 5px 26px; position:relative;
-  }
-  .svc li::before{content:"✅"; position:absolute; left:0; font-size:.8rem}
-  .band{background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+  /* ── Hero ── */
+  .hero{display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; padding:72px 0 64px; align-items:center}
+  .kicker{font-size:12px; letter-spacing:0.24em; text-transform:uppercase; color:var(--color-accent); font-feature-settings:'tnum'}
+  .hero h1{font-size:56px; line-height:1.1; margin:14px 0 18px}
+  .hero .lead{font-size:16px; line-height:1.8; text-align:justify; color:var(--color-neutral-700); max-width:52ch; margin:0 0 28px}
+  .hero .cta-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  figure.hero-fig{margin:0}
+  figcaption{font-size:11px; margin-top:6px; color:color-mix(in srgb, var(--color-text) 55%, transparent); font-feature-settings:'tnum'}
 
-  /* Motion Lab teaser */
-  .ml{
-    max-width:860px; margin:0 auto; display:grid; grid-template-columns:1.1fr .9fr; gap:26px; align-items:center;
+  /* ── Plate（相片框：6px surface 邊 + 1px 髮絲線），內含預留位 ── */
+  .plate{box-sizing:border-box; border:6px solid var(--color-surface); outline:1px solid var(--color-divider); background:var(--color-surface); overflow:hidden; position:relative}
+  .plate .slot{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    color:color-mix(in srgb, var(--color-accent) 42%, var(--color-surface));
+    background:repeating-linear-gradient(135deg, transparent 0 13px, color-mix(in srgb, var(--color-accent) 5%, transparent) 13px 14px);
   }
-  @media (max-width:700px){ .ml{grid-template-columns:1fr} }
-  .ml ul{list-style:none; margin:14px 0 20px}
-  .ml li{font-size:.92rem; padding:6px 0 6px 28px; position:relative}
-  .ml li::before{content:"🥊"; position:absolute; left:0; font-size:.85rem}
-  .btn{
-    display:inline-block; background:var(--btn); color:var(--btn-ink);
-    padding:13px 28px; border:1.5px solid var(--btn); border-radius:12px;
-    text-decoration:none; font-weight:800; font-size:.95rem; cursor:pointer;
-    transition:transform .15s ease, opacity .15s ease;
-  }
-  .btn:hover{transform:translateY(-2px)}
-  .btn.ghost{background:none; color:var(--ink); border-color:var(--line-strong)}
-  .ml-visual{
-    border:1px solid var(--line); border-radius:16px; background:var(--soft);
-    aspect-ratio:4/3; display:flex; align-items:center; justify-content:center;
-    font-size:3.4rem;
-  }
+  .plate .slot .slot-label{font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:color-mix(in srgb, var(--color-text) 42%, transparent)}
 
-  /* ===== Contact form ===== */
-  form.contact{
-    max-width:560px; margin:0 auto; background:var(--card);
-    border:1px solid var(--line); border-radius:16px; padding:26px 22px;
+  /* ── 雙路分流（兩欄，中間豎髮絲線） ── */
+  .dual{display:grid; grid-template-columns:1fr 1fr}
+  .dual > a{
+    display:block; text-decoration:none; color:var(--color-text); padding:40px 48px 40px 0;
   }
-  label.f{display:block; font-size:.78rem; color:var(--muted); margin-bottom:14px}
-  label.f > span{display:block; margin-bottom:5px; font-weight:600}
-  input, select, textarea{
-    width:100%; font-size:1rem; padding:12px; min-height:48px;
-    border:1px solid var(--line); border-radius:10px;
-    background:var(--bg); color:var(--ink); font-family:inherit;
+  .dual > a + a{padding:40px 0 40px 48px; border-left:1px solid var(--color-divider)}
+  .dual .path-ico{color:var(--color-accent)}
+  .dual h3{font-size:26px; margin:12px 0 8px}
+  .dual p{font-size:14px; line-height:1.75; text-align:justify; color:var(--color-neutral-700); margin:0 0 16px}
+  .dual .go{font-size:14px; color:var(--color-accent); border-bottom:1px solid var(--color-accent); padding-bottom:2px}
+  .dual > a:hover .go{border-bottom-color:var(--color-accent-600); color:var(--color-accent-600)}
+
+  /* ── Services ── */
+  .sec-pad{padding:56px 0}
+  .sec-head{display:flex; align-items:baseline; gap:20px; margin-bottom:36px; flex-wrap:wrap}
+  .sec-head .kicker{margin:0}
+  .sec-head h2{font-size:34px; margin:0}
+  .sec-head .sub{font-size:14px; margin:0 0 0 auto; color:color-mix(in srgb, var(--color-text) 55%, transparent)}
+  .svc-grid{display:grid; grid-template-columns:1fr 1fr 1fr}
+  .svc{padding:0 32px; border-left:1px solid var(--color-divider)}
+  .svc .no{font-family:var(--font-heading); font-size:30px; color:var(--color-accent); font-feature-settings:'tnum'}
+  .svc h3{font-size:22px; margin:8px 0 12px}
+  .svc-list{display:flex; flex-direction:column; gap:9px}
+  .svc-list .it,.ml-list .it{display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--color-neutral-700)}
+  .svc-list .chk,.ml-list .chk{color:var(--color-accent); flex:none; margin-top:2px}
+  .svc-line{display:none; font-size:13px; color:var(--color-neutral-600)}
+
+  /* ── Motion Lab ── */
+  .ml-sec{display:grid; grid-template-columns:0.9fr 1.1fr; gap:56px; align-items:center; padding:56px 0}
+  .ml-sec .kicker,.ct-sec .kicker{margin-bottom:10px}
+  .ml-sec h2{font-size:34px; margin:0 0 10px}
+  .ml-sec .lead{font-size:15px; line-height:1.8; text-align:justify; color:var(--color-neutral-700); margin:0 0 20px}
+  .ml-list{display:flex; flex-direction:column; gap:9px; margin-bottom:26px}
+  .ml-sec .cta-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .ml-note{font-size:13px; margin:18px 0 0; color:color-mix(in srgb, var(--color-text) 55%, transparent)}
+  .ml-note a{color:inherit; text-decoration:underline; text-underline-offset:3px}
+  .ml-note a:hover{color:var(--color-accent)}
+  .ml-plate{height:360px}
+
+  /* ── Contact ── */
+  .ct-sec{display:grid; grid-template-columns:1fr 1.2fr; gap:56px; padding:56px 0}
+  .ct-sec h2{font-size:34px; margin:0 0 10px}
+  .ct-sec .lead{font-size:15px; line-height:1.8; color:var(--color-neutral-700); margin:0 0 22px; max-width:38ch}
+  .ct-mail{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--color-neutral-700)}
+  .ct-mail .m-ico{color:var(--color-accent)}
+  form.contact{display:flex; flex-direction:column; gap:16px}
+  .field > span{display:block; font-size:12px; margin-bottom:5px; color:color-mix(in srgb, var(--color-text) 70%, transparent)}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .input{
+    width:100%; min-height:44px; padding:10px 12px; font:inherit; font-size:14px;
+    color:var(--color-text); caret-color:var(--color-accent); background:transparent;
+    border:1px solid var(--color-divider); border-radius:var(--radius-md); font-family:var(--font-body);
   }
-  textarea{min-height:96px; resize:vertical}
-  input:focus, select:focus, textarea:focus{outline:2px solid var(--line-strong)}
+  select.input{min-height:44px}
+  .input:hover{border-color:color-mix(in srgb, var(--color-text) 45%, transparent)}
+  .input:focus-visible{border-color:var(--color-accent); outline:2px solid var(--color-accent); outline-offset:0}
+  textarea.input{min-height:90px; resize:vertical}
   .phone-wrap{display:flex; gap:8px}
-  .phone-wrap .cc{flex:0 0 84px}
-  .reveal-grp{
-    display:none; border-left:3px solid var(--line-strong);
-    padding-left:14px; margin-bottom:6px;
-  }
-  .reveal-grp.show{display:block; animation:fadeUp .35s ease}
+  .phone-wrap .cc{flex:0 0 72px; width:72px; color:var(--color-neutral-600)}
+  .reveal-grp{display:none; border-left:2px solid var(--color-accent); padding-left:16px; flex-direction:column; gap:16px}
+  .reveal-grp.show{display:flex; animation:fadeUp .3s ease}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
   .hp{position:absolute; left:-9999px; opacity:0; height:0; overflow:hidden}
-  #submitBtn{width:100%; margin-top:4px}
-  #submitBtn:disabled{opacity:.6; cursor:wait}
+  #submitBtn{align-self:flex-start; padding:11px 26px}
+  #submitBtn:disabled{cursor:wait}
   .spinner{
-    display:inline-block; width:16px; height:16px; vertical-align:-3px; margin-right:8px;
-    border:2px solid var(--btn-ink); border-top-color:transparent; border-radius:50%;
+    display:inline-block; width:14px; height:14px; vertical-align:-2px; margin-right:8px;
+    border:2px solid var(--color-accent); border-top-color:transparent; border-radius:50%;
     animation:spin .7s linear infinite;
   }
   @keyframes spin{to{transform:rotate(360deg)}}
-  .formmsg{display:none; margin-top:14px; border-radius:10px; padding:12px 14px; font-size:.88rem}
-  .formmsg.ok{display:block; background:var(--ok-soft); color:var(--ok); font-weight:700}
-  .formmsg.err{display:block; background:var(--btn); color:var(--btn-ink); font-weight:600}
+  .formmsg{display:none; border-radius:var(--radius-md); padding:12px 16px; font-size:14px}
+  .formmsg.ok{display:block; border:1px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-accent-700)}
+  .formmsg.err{display:block; border:1px solid var(--color-neutral-700); background:var(--color-neutral-100); color:var(--color-neutral-900)}
 
-  /* ===== Footer & sticky CTA ===== */
-  footer{border-top:1px solid var(--line); text-align:center; padding:26px 18px 110px; color:var(--muted); font-size:.8rem}
-  footer a{color:var(--muted)}
+  /* ── Footer ── */
+  footer{border-top:1px solid var(--color-divider); padding:20px 0 28px; display:flex; justify-content:space-between; gap:16px; font-size:12.5px; color:var(--color-neutral-600); font-feature-settings:'tnum'}
+  footer a{color:var(--color-neutral-600); text-decoration:none}
+  footer a:hover{color:var(--color-accent)}
+  footer .foot-links{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  footer .foot-links .sep{color:var(--color-neutral-400)}
+
+  /* ── 手機置底 CTA（拇指位，≤840px） ── */
   #stickyCta{
     display:none; position:fixed; left:0; right:0; bottom:0; z-index:998;
-    background:var(--card); border-top:1px solid var(--line);
+    background:var(--color-neutral-100); border-top:1px solid var(--color-divider);
     padding:10px 14px calc(10px + env(safe-area-inset-bottom));
     grid-template-columns:1fr 1fr; gap:10px;
   }
-  #stickyCta a{
-    display:flex; align-items:center; justify-content:center; min-height:48px;
-    border-radius:12px; text-decoration:none; font-weight:800; font-size:.92rem;
-  }
-  #stickyCta .primary{background:var(--btn); color:var(--btn-ink)}
-  #stickyCta .second{border:1.5px solid var(--line-strong); color:var(--ink)}
-  @media (max-width:840px){ #stickyCta{display:grid} }
-  @media (min-width:841px){ footer{padding-bottom:26px} }
+  #stickyCta .btn{min-height:44px}
 
-  /* ===== 滾動漸現（尊重 reduced motion） ===== */
-  .fade{opacity:0; transform:translateY(22px); transition:opacity .5s ease, transform .5s ease}
+  /* ── 滾動漸現（尊重 reduced-motion） ── */
+  .fade{opacity:0; transform:translateY(18px); transition:opacity .5s ease, transform .5s ease}
   .fade.in{opacity:1; transform:none}
+  html:not(.js-fade) .fade{opacity:1; transform:none}   /* JS 冇行起（module 載入失敗）→ 內容照樣顯示，唔會永遠隱形 */
   @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto}
     .fade{opacity:1; transform:none; transition:none}
-    .split a, .svc, .btn{transition:none}
+    .reveal-grp.show{animation:none}
+  }
+
+  /* ═══════════ 響應式 ═══════════ */
+  @media (max-width:840px){
+    .wrap{padding:0 20px}
+    .nav-links{display:none}
+    nav.bar{gap:12px; padding:16px 0}
+    section{scroll-margin-top:64px}
+
+    .hero{grid-template-columns:1fr; gap:24px; padding:40px 0 32px}
+    .hero h1{font-size:34px}
+    .hero .lead{font-size:14.5px; text-align:left}
+    figure.hero-fig{order:2}
+    .hero-fig .plate{aspect-ratio:3/2}
+
+    .dual{grid-template-columns:1fr}
+    .dual > a{padding:28px 0}
+    .dual > a + a{padding:28px 0; border-left:none; border-top:1px solid var(--color-divider)}
+    .dual h3{font-size:22px}
+
+    .sec-pad,.ml-sec,.ct-sec{padding:32px 0}
+    .sec-head{gap:8px; margin-bottom:16px}
+    .sec-head h2{font-size:26px}
+    .sec-head .sub{display:none}
+    /* Services → 編號列（編號＋標題＋一句概述） */
+    .svc-grid{grid-template-columns:1fr}
+    .svc{display:flex; gap:14px; align-items:baseline; padding:12px 0; border-left:none; border-top:1px solid var(--color-divider)}
+    .svc:first-child{padding-top:0; border-top:none}
+    .svc .no{font-size:20px}
+    .svc h3{font-size:18px; margin:0}
+    .svc-list{display:none}
+    .svc-line{display:block; margin-top:2px}
+
+    .ml-sec{grid-template-columns:1fr; gap:24px}
+    .ml-sec h2{font-size:26px}
+    .ml-plate{height:220px; order:2}
+    .ml-sec .cta-row{flex-direction:column; align-items:stretch}
+    .ml-sec .cta-row .btn{width:100%; min-height:44px}
+
+    .ct-sec{grid-template-columns:1fr; gap:24px}
+    .ct-sec h2{font-size:26px}
+    .grid2{grid-template-columns:1fr}
+
+    footer{flex-direction:column; gap:8px; text-align:center; align-items:center; padding-bottom:96px}
+    footer .foot-links{justify-content:center}
+    #stickyCta{display:grid}
+  }
+  @media (max-width:420px){
+    .hero h1{font-size:30px}
   }
 </style>
 </head>
 <body>
 
 <header class="site">
-  <nav class="bar">
-    <a class="logo" href="#top">Kuafuor HK</a>
-    <!-- Tree 1：核心（公司方向／聯絡／登入＋語言） -->
-    <ul class="nav-links">
-      <li><a href="#business" data-t="navBiz"></a></li>
-      <li><a href="#contact" data-t="navContact"></a></li>
-      <li><a class="account" id="navAccount" href="login/" data-t="navLogin"></a></li>
-    </ul>
-    <div class="lang" role="group" data-taria="ariaLang">
-      <button id="langZh">廣東話</button>
-      <button id="langEn">English</button>
-    </div>
-    <button id="hamburger" data-taria="ariaMenu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
-  </nav>
+  <div class="wrap">
+    <nav class="bar">
+      <a class="logo" href="#top">Kuafuor HK</a>
+      <!-- Tree 1：核心（公司方向／聯絡／登入＋語言） -->
+      <ul class="nav-links">
+        <li><a href="#business" data-t="navBiz"></a></li>
+        <li><a href="#contact" data-t="navContact"></a></li>
+        <li><a class="account" id="navAccount" href="login/" data-t="navLogin"></a></li>
+      </ul>
+      <div class="lang" role="group" data-taria="ariaLang">
+        <button id="langZh">廣</button>
+        <button id="langEn">EN</button>
+      </div>
+      <button id="hamburger" data-taria="ariaMenu" aria-expanded="false" aria-controls="mobileMenu"></button>
+    </nav>
+  </div>
   <!-- Tree 2：其他功能（漢堡選單，桌面都有）；.m-only = 細屏先補返 Tree 1 -->
   <div id="mobileMenu">
     <a href="#motionlab">Motion Lab</a>
@@ -244,234 +314,306 @@
   </div>
 </header>
 
-<!-- ===== Hero：雙受眾分流 ===== -->
-<section class="hero" id="top">
-  <h1 data-t="heroTitle"></h1>
-  <p class="sub" data-t="heroSub"></p>
-  <div class="split">
+<!-- ═══ Hero ═══ -->
+<section id="top">
+  <div class="wrap hero">
+    <div>
+      <div class="kicker" data-t="kicker"></div>
+      <h1 data-t="heroTitle"></h1>
+      <p class="lead" data-t="heroSub"></p>
+      <div class="cta-row">
+        <a href="#business" class="btn btn-primary" data-t="ctaBiz"></a>
+        <a href="#motionlab" class="btn btn-secondary" data-t="ctaMl"></a>
+      </div>
+    </div>
+    <figure class="hero-fig">
+      <!-- 圖片預留位：客戶提供品牌／香港城市相後，換成 <img src="..." alt="..."> -->
+      <div class="plate" style="aspect-ratio:4/3">
+        <div class="slot">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+        </div>
+      </div>
+      <figcaption>Fig. 1 — <span data-t="figCap"></span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ═══ 雙路分流 ═══ -->
+<section>
+  <div class="wrap dual">
     <a href="#business" id="ctaBiz">
-      <div class="ico">🏢</div>
-      <h2 data-t="splitBizTitle"></h2>
-      <p data-t="splitBizDesc"></p>
-      <span class="go" data-t="splitBizGo"></span>
+      <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>
+      <h3 data-t="pathBizTitle"></h3>
+      <p data-t="pathBizDesc"></p>
+      <span class="go"><span data-t="ctaBiz"></span> →</span>
     </a>
     <a href="#motionlab" id="ctaMl">
-      <div class="ico">🥊</div>
-      <h2 data-t="splitMlTitle"></h2>
-      <p data-t="splitMlDesc"></p>
-      <span class="go" data-t="splitMlGo"></span>
+      <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span>
+      <h3 data-t="pathMlTitle"></h3>
+      <p data-t="pathMlDesc"></p>
+      <span class="go"><span data-t="ctaMl"></span> →</span>
     </a>
   </div>
 </section>
 
-<!-- ===== 企業服務 ===== -->
-<section id="business" class="container">
-  <div class="kicker" data-t="bizKicker"></div>
-  <h2 class="section-title" data-t="bizTitle"></h2>
-  <p class="section-sub" data-t="bizSub"></p>
-  <div class="grid3">
-    <div class="svc fade">
-      <div class="ico">🧭</div>
-      <h3 data-t="svc1Title"></h3>
-      <ul>
-        <li data-t="svc1a"></li>
-        <li data-t="svc1b"></li>
-        <li data-t="svc1c"></li>
-      </ul>
+<!-- ═══ 企業服務 ═══ -->
+<section id="business">
+  <div class="wrap sec-pad">
+    <div class="sec-head">
+      <div class="kicker">BUSINESS</div>
+      <h2 data-t="bizTitle"></h2>
+      <p class="sub" data-t="bizSub"></p>
     </div>
-    <div class="svc fade">
-      <div class="ico">⚙️</div>
-      <h3 data-t="svc2Title"></h3>
-      <ul>
-        <li data-t="svc2a"></li>
-        <li data-t="svc2b"></li>
-        <li data-t="svc2c"></li>
-      </ul>
-    </div>
-    <div class="svc fade">
-      <div class="ico">📍</div>
-      <h3 data-t="svc3Title"></h3>
-      <ul>
-        <li data-t="svc3a"></li>
-        <li data-t="svc3b"></li>
-        <li data-t="svc3c"></li>
-      </ul>
+    <div class="svc-grid">
+      <div class="svc fade">
+        <div class="no">01</div>
+        <h3 data-t="svc1Title"></h3>
+        <div class="svc-list">
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc1a"></span></div>
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc1b"></span></div>
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc1c"></span></div>
+        </div>
+        <div class="svc-line" data-t="svc1line"></div>
+      </div>
+      <div class="svc fade">
+        <div class="no">02</div>
+        <h3 data-t="svc2Title"></h3>
+        <div class="svc-list">
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc2a"></span></div>
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc2b"></span></div>
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc2c"></span></div>
+        </div>
+        <div class="svc-line" data-t="svc2line"></div>
+      </div>
+      <div class="svc fade">
+        <div class="no">03</div>
+        <h3 data-t="svc3Title"></h3>
+        <div class="svc-list">
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc3a"></span></div>
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc3b"></span></div>
+          <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="svc3c"></span></div>
+        </div>
+        <div class="svc-line" data-t="svc3line"></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ===== Motion Lab ===== -->
-<section id="motionlab" class="band">
-  <div class="container">
-    <div class="kicker">MOTION LAB</div>
-    <h2 class="section-title" data-t="mlTitle"></h2>
-    <p class="section-sub" data-t="mlSub"></p>
-    <div class="ml">
-      <div class="fade">
-        <ul>
-          <li data-t="ml1"></li>
-          <li data-t="ml2"></li>
-          <li data-t="ml3"></li>
-          <li data-t="ml4"></li>
-        </ul>
-        <a class="btn" href="motion-lab/" data-t="mlCta"></a>
-        <a class="btn ghost" href="#contact" style="margin-left:8px" data-t="mlBook"></a>
-        <p style="margin-top:14px;font-size:.85rem;color:var(--muted)">
-          <span data-t="subTeaser"></span>
-          <a href="cantonese-subtitle/" style="color:var(--ink);font-weight:700" data-t="subLink"></a>
-        </p>
+<!-- ═══ Motion Lab ═══ -->
+<section id="motionlab">
+  <div class="wrap ml-sec">
+    <!-- 圖片預留位：客戶提供 Motion Lab 截圖／訓練相後，換成 <img> -->
+    <div class="plate ml-plate fade">
+      <div class="slot">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+        <span class="slot-label">Motion Lab</span>
       </div>
-      <div class="ml-visual fade" aria-hidden="true">🥊</div>
+    </div>
+    <div>
+      <div class="kicker">MOTION LAB</div>
+      <h2 data-t="mlTitle"></h2>
+      <p class="lead" data-t="mlSub"></p>
+      <div class="ml-list">
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="ml1"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="ml2"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="ml3"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="ml4"></span></div>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="motion-lab/" data-t="mlCta"></a>
+        <a class="btn btn-secondary" href="#contact" data-t="mlBook"></a>
+      </div>
+      <p class="ml-note">
+        <span data-t="subTeaser"></span><a href="cantonese-subtitle/" data-t="subLink"></a>
+      </p>
     </div>
   </div>
 </section>
 
-<!-- ===== 聯絡表單 ===== -->
-<section id="contact" class="container">
-  <div class="kicker" data-t="ctKicker"></div>
-  <h2 class="section-title" data-t="ctTitle"></h2>
-  <p class="section-sub" data-t="ctSub"></p>
-
-  <form class="contact fade" id="contactForm" novalidate>
-    <label class="f">
-      <span data-t="fService"></span>
-      <select id="fService">
-        <option value="" data-t="fServicePick"></option>
-        <option value="consulting" data-t="fServiceBiz"></option>
-        <option value="motionlab" data-t="fServiceMl"></option>
-        <option value="other" data-t="fServiceOther"></option>
-      </select>
-    </label>
-
-    <label class="f">
-      <span data-t="fName"></span>
-      <input id="fName" type="text" autocomplete="name" maxlength="100" required>
-    </label>
-    <label class="f">
-      <span data-t="fEmail"></span>
-      <input id="fEmail" type="email" autocomplete="email" inputmode="email" maxlength="200">
-    </label>
-    <label class="f">
-      <span data-t="fPhone"></span>
-      <div class="phone-wrap">
-        <input class="cc" value="+852" readonly data-taria="ariaCc" tabindex="-1">
-        <input id="fPhone" type="tel" autocomplete="tel-national" inputmode="tel" maxlength="30" placeholder="9123 4567">
+<!-- ═══ 聯絡 ═══ -->
+<section id="contact">
+  <div class="wrap ct-sec">
+    <div>
+      <div class="kicker">CONTACT</div>
+      <h2 data-t="ctTitle"></h2>
+      <p class="lead" data-t="ctSub"></p>
+      <div class="ct-mail">
+        <span class="m-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+        <a href="mailto:hello@kuafuorhk.com" style="color:inherit;text-decoration:none">hello@kuafuorhk.com</a>
       </div>
-    </label>
-
-    <!-- 揀「顧問/開發」先出現 -->
-    <div class="reveal-grp" id="grpBiz">
-      <label class="f">
-        <span data-t="fCompany"></span>
-        <input id="fCompany" type="text" autocomplete="organization" maxlength="150">
-      </label>
-      <label class="f">
-        <span data-t="fBudget"></span>
-        <select id="fBudget">
-          <option value="" data-t="fBudgetPick"></option>
-          <option value="<50k">&lt; HK$50k</option>
-          <option value="50-200k">HK$50k – 200k</option>
-          <option value=">200k">&gt; HK$200k</option>
-          <option value="tbd" data-t="fBudgetTbd"></option>
+    </div>
+    <form class="contact fade" id="contactForm" novalidate>
+      <label class="field">
+        <span data-t="fService"></span>
+        <select class="input" id="fService">
+          <option value="" data-t="fServicePick"></option>
+          <option value="consulting" data-t="fServiceBiz"></option>
+          <option value="motionlab" data-t="fServiceMl"></option>
+          <option value="other" data-t="fServiceOther"></option>
         </select>
       </label>
-    </div>
-
-    <!-- 揀「Motion Lab」先出現 -->
-    <div class="reveal-grp" id="grpMl">
-      <label class="f">
-        <span data-t="fWhen"></span>
-        <input id="fWhen" type="datetime-local">
+      <div class="grid2">
+        <label class="field">
+          <span data-t="fName"></span>
+          <input class="input" id="fName" type="text" autocomplete="name" maxlength="100" required>
+        </label>
+        <label class="field">
+          <span data-t="fEmail"></span>
+          <input class="input" id="fEmail" type="email" autocomplete="email" inputmode="email" maxlength="200">
+        </label>
+      </div>
+      <label class="field">
+        <span data-t="fPhone"></span>
+        <div class="phone-wrap">
+          <input class="input cc" value="+852" readonly data-taria="ariaCc" tabindex="-1">
+          <input class="input" id="fPhone" type="tel" autocomplete="tel-national" inputmode="tel" maxlength="30" placeholder="9123 4567">
+        </div>
       </label>
-    </div>
 
-    <label class="f">
-      <span data-t="fMsg"></span>
-      <textarea id="fMsg" maxlength="2000"></textarea>
-    </label>
+      <!-- 揀「顧問／開發」先出現 -->
+      <div class="reveal-grp" id="grpBiz">
+        <label class="field">
+          <span data-t="fCompany"></span>
+          <input class="input" id="fCompany" type="text" autocomplete="organization" maxlength="150">
+        </label>
+        <label class="field">
+          <span data-t="fBudget"></span>
+          <select class="input" id="fBudget">
+            <option value="" data-t="fBudgetPick"></option>
+            <option value="<50k">&lt; HK$50k</option>
+            <option value="50-200k">HK$50k – 200k</option>
+            <option value=">200k">&gt; HK$200k</option>
+            <option value="tbd" data-t="fBudgetTbd"></option>
+          </select>
+        </label>
+      </div>
 
-    <!-- honeypot 防機械人 -->
-    <input class="hp" id="fWebsite" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <!-- 揀「Motion Lab」先出現 -->
+      <div class="reveal-grp" id="grpMl">
+        <label class="field">
+          <span data-t="fWhen"></span>
+          <input class="input" id="fWhen" type="datetime-local">
+        </label>
+      </div>
 
-    <button class="btn" id="submitBtn" type="submit"><span data-t="fSend"></span></button>
-    <div class="formmsg" id="formMsg" role="status"></div>
-  </form>
+      <label class="field">
+        <span data-t="fMsg"></span>
+        <textarea class="input" id="fMsg" maxlength="2000"></textarea>
+      </label>
+
+      <!-- honeypot 防機械人 -->
+      <input class="hp" id="fWebsite" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <button class="btn btn-primary" id="submitBtn" type="submit"><span data-t="fSend"></span></button>
+      <div class="formmsg" id="formMsg" role="status"></div>
+    </form>
+  </div>
 </section>
 
-<footer>
-  <span data-t="footCopy"></span> · <a href="login/" data-t="navLogin"></a>
+<footer class="wrap">
+  <span data-t="footCopy"></span>
+  <span class="foot-links">
+    <a href="login/" data-t="navLogin"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="#motionlab">Motion Lab</a><span class="sep" aria-hidden="true">·</span>
+    <a href="cantonese-subtitle/" data-t="navSub"></a>
+  </span>
 </footer>
 
 <!-- 手機置底 CTA（拇指位） -->
 <div id="stickyCta">
-  <a class="primary" href="#contact" data-t="stickyEnquire"></a>
-  <a class="second" href="motion-lab/">Motion Lab</a>
+  <a class="btn btn-primary" href="#contact" data-t="stickyEnquire"></a>
+  <a class="btn btn-secondary" href="motion-lab/">Motion Lab</a>
 </div>
 
 <script type="module">
+// 一行就啟用漸現隱藏狀態；若呢個 module 完全載入唔到，.fade 內容會維持顯示（見 CSS html:not(.js-fade)）
+document.documentElement.classList.add("js-fade");
+
 const SB_URL = "https://ikzoxrvnpsseyjviawti.supabase.co";
 const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable key — 前端可公開
 
-/* ================= i18n ================= */
+/* ════════════ i18n（書卷版文案，沿用現有機制） ════════════ */
 const I18N = {
   zh: {
-    navBiz:"公司方向", navContact:"聯絡我哋", navLogin:"登入",
-    heroTitle:"Kuafuor HK", heroSub:"企業方案 × 運動科學 — 揀你想要嘅，直接開始。",
-    splitBizTitle:"企業解決方案", splitBizDesc:"顧問、系統開發、雲端架構 — 為香港企業度身訂造。", splitBizGo:"了解企業服務 →",
-    splitMlTitle:"個人運動分析", splitMlDesc:"AI 姿態追蹤同搏擊動作分析，配合教練訓練紀錄。", splitMlGo:"進入 Motion Lab →",
-    bizKicker:"BUSINESS", bizTitle:"企業服務", bizSub:"由策略到落地，一條龍幫你諗、幫你起、幫你維護。",
+    navBiz:"公司方向", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕",
+    kicker:"香港 · 企業顧問 × 運動科學",
+    heroTitle:"企業方案 × 運動科學",
+    heroSub:"由數碼轉型顧問、系統開發，到 AI 運動姿態分析 — 一間香港公司，兩條路。揀你想要嘅，直接開始。",
+    ctaBiz:"了解企業服務", ctaMl:"進入 Motion Lab",
+    figCap:"香港 · 由策略到落地",
+    pathBizTitle:"企業解決方案",
+    pathBizDesc:"顧問、系統開發、雲端架構 — 為香港企業度身訂造，由策略到落地一條龍。",
+    pathMlTitle:"個人運動分析",
+    pathMlDesc:"AI 姿態追蹤同搏擊動作分析，連埋教練級訓練紀錄，教練同學員都啱用。",
+    bizTitle:"企業服務", bizSub:"由策略到落地 — 幫你諗、幫你起、幫你維護。",
     svc1Title:"企業顧問", svc1a:"數碼轉型策略", svc1b:"流程自動化評估", svc1c:"本地市場合規建議",
     svc2Title:"系統開發", svc2a:"企業系統架構", svc2b:"雲端遷移", svc2c:"高效能 App 開發",
     svc3Title:"在地專業", svc3a:"熟悉香港營商環境", svc3b:"中英雙語支援", svc3c:"長期維護與迭代",
-    mlTitle:"AI 運動姿態分析", mlSub:"用電腦視覺幫你睇清楚每一拳、每一個動作 — 教練同學員都用得。",
-    ml1:"AI 姿態追蹤 · 即時動作捕捉", ml2:"WAKO 標準搏擊評分同技術分類", ml3:"拳手檔案、訓練紀錄雲端同步", ml4:"生物力學錯誤檢測同精華片段",
+    svc1line:"數碼轉型、流程自動化、合規建議",
+    svc2line:"企業系統、雲端遷移、App 開發",
+    svc3line:"熟悉香港市場、中英雙語、長期維護",
+    mlTitle:"AI 運動姿態分析",
+    mlSub:"電腦視覺幫你睇清每一拳、每一個動作 — 教練同學員都啱用。",
+    ml1:"AI 姿態追蹤 · 即時動作捕捉", ml2:"WAKO 標準搏擊評分同技術分類",
+    ml3:"拳手檔案、訓練紀錄雲端同步", ml4:"生物力學錯誤檢測同精華片段",
     mlCta:"進入 Motion Lab", mlBook:"預約體驗",
-    ctKicker:"CONTACT", ctTitle:"聯絡我哋", ctSub:"揀返你想查詢嘅服務，表格會即刻變返簡單啲。",
-    fService:"你對咩服務有興趣？", fServicePick:"— 請揀一項 —", fServiceBiz:"顧問／系統開發", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
+    subTeaser:"免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）",
+    ctTitle:"聯絡我哋", ctSub:"揀返想查詢嘅服務，表格會自動變簡單 — 只填有用嘅嘢。",
+    fService:"查詢服務", fServicePick:"— 請揀一項 —",
+    fServiceBiz:"顧問／系統開發", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
     fName:"稱呼", fEmail:"電郵", fPhone:"電話（香港）",
-    fCompany:"公司名稱", fBudget:"預算範圍", fBudgetPick:"— 請揀 —", fBudgetTbd:"未定",
+    fCompany:"公司名稱", fBudget:"預算範圍", fBudgetPick:"— 請揀一項 —", fBudgetTbd:"未定",
     fWhen:"希望預約嘅日期／時間",
     fMsg:"想講多啲？（可留空）",
     fSend:"送出查詢", fSending:"送緊…",
     fOk:"✔ 收到你嘅查詢！我哋會盡快覆你。",
     fErrName:"請填返個稱呼。", fErrService:"請先揀你想查詢嘅服務。", fErrContact:"電郵同電話最少填一樣，等我哋搵到你。",
     fErrSend:"送出失敗，請遲啲再試，或者直接 email 我哋。",
-    stickyEnquire:"✉️ 快速查詢",
-    ariaLang:"語言", ariaMenu:"更多功能", ariaCc:"區號",
-    navSub:"轉字幕",
-    subTeaser:"仲有免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）→",
-    navCalc:"🧮 分成計數機",
     fErrEmail:"電郵格式唔啱，睇下有冇打錯。",
+    stickyEnquire:"快速查詢",
+    ariaLang:"語言", ariaMenu:"更多功能", ariaCc:"區號",
+    navCalc:"分成計數機",
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
   en: {
-    navBiz:"What We Do", navContact:"Contact", navLogin:"Log in",
-    heroTitle:"Kuafuor HK", heroSub:"Business solutions × sports science — pick your path and dive in.",
-    splitBizTitle:"Business Solutions", splitBizDesc:"Consulting, systems development and cloud architecture, tailored for Hong Kong companies.", splitBizGo:"Explore business services →",
-    splitMlTitle:"Personal Motion Analysis", splitMlDesc:"AI posture tracking and combat-sports motion analysis, with coach-grade training records.", splitMlGo:"Enter Motion Lab →",
-    bizKicker:"BUSINESS", bizTitle:"Business Services", bizSub:"From strategy to shipping — we plan it, build it, and keep it running.",
+    navBiz:"What We Do", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles",
+    kicker:"HONG KONG · CONSULTING × SPORTS SCIENCE",
+    heroTitle:"Business Solutions × Sports Science",
+    heroSub:"From digital-transformation consulting and systems development to AI motion analysis — one Hong Kong studio, two paths. Pick yours and dive in.",
+    ctaBiz:"Explore business services", ctaMl:"Enter Motion Lab",
+    figCap:"Hong Kong · from strategy to shipping",
+    pathBizTitle:"Business Solutions",
+    pathBizDesc:"Consulting, systems development and cloud architecture — tailored for Hong Kong companies, from strategy to shipping.",
+    pathMlTitle:"Personal Motion Analysis",
+    pathMlDesc:"AI posture tracking and combat-sports motion analysis, with coach-grade training records.",
+    bizTitle:"Business Services", bizSub:"From strategy to shipping — we plan it, build it, keep it running.",
     svc1Title:"Consulting", svc1a:"Digital transformation strategy", svc1b:"Process automation assessment", svc1c:"Local compliance guidance",
     svc2Title:"Development", svc2a:"Enterprise system architecture", svc2b:"Cloud migration", svc2c:"High-performance app development",
     svc3Title:"Local Expertise", svc3a:"Deep knowledge of the HK market", svc3b:"Bilingual (EN / 中文) support", svc3c:"Long-term maintenance & iteration",
-    mlTitle:"AI Motion Analysis", mlSub:"Computer vision that sees every strike and every movement — built for coaches and athletes alike.",
-    ml1:"AI posture tracking · real-time motion capture", ml2:"WAKO-standard strike scoring & technique taxonomy", ml3:"Athlete profiles & training records synced to the cloud", ml4:"Biomechanics fault detection & highlight reels",
+    svc1line:"Transformation, automation & compliance",
+    svc2line:"Enterprise systems, cloud & apps",
+    svc3line:"HK-savvy, bilingual, long-term support",
+    mlTitle:"AI Motion Analysis",
+    mlSub:"Computer vision that sees every strike and every movement — for coaches and athletes alike.",
+    ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
+    ml3:"Athlete profiles synced to the cloud", ml4:"Fault detection & highlight reels",
     mlCta:"Enter Motion Lab", mlBook:"Book a session",
-    ctKicker:"CONTACT", ctTitle:"Get in Touch", ctSub:"Pick the service you're interested in — the form adapts so you only fill in what matters.",
-    fService:"What are you interested in?", fServicePick:"— Please choose —", fServiceBiz:"Consulting / Development", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
+    subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser)",
+    ctTitle:"Get in Touch", ctSub:"Pick a service — the form adapts so you only fill in what matters.",
+    fService:"Service", fServicePick:"— Please choose —",
+    fServiceBiz:"Consulting / Development", fServiceMl:"Motion Lab session / booking", fServiceOther:"Other",
     fName:"Name", fEmail:"Email", fPhone:"Phone (HK)",
-    fCompany:"Company name", fBudget:"Budget range", fBudgetPick:"— Choose —", fBudgetTbd:"Not decided yet",
+    fCompany:"Company name", fBudget:"Budget range", fBudgetPick:"— Please choose —", fBudgetTbd:"Not decided yet",
     fWhen:"Preferred date / time",
     fMsg:"Anything else? (optional)",
     fSend:"Send enquiry", fSending:"Sending…",
     fOk:"✔ Got it! We'll get back to you shortly.",
     fErrName:"Please tell us your name.", fErrService:"Please choose a service first.", fErrContact:"Leave at least an email or a phone number so we can reach you.",
     fErrSend:"Couldn't send — please try again later or email us directly.",
-    stickyEnquire:"✉️ Quick enquiry",
-    ariaLang:"Language", ariaMenu:"More features", ariaCc:"Area code",
-    navSub:"Subtitles",
-    subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser) →",
-    navCalc:"🧮 Split calculator",
     fErrEmail:"That email doesn't look right — please double-check.",
+    stickyEnquire:"Quick enquiry",
+    ariaLang:"Language", ariaMenu:"More features", ariaCc:"Area code",
+    navCalc:"Split calculator",
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
 };
@@ -491,7 +633,7 @@ function applyLang(){
     if (sending && el.closest("#submitBtn")) return;   // 送緊嘢：唔好剷走 spinner
     el.textContent = t(el.getAttribute("data-t"));
   });
-  document.documentElement.querySelectorAll("[data-taria]").forEach(el => {
+  document.querySelectorAll("[data-taria]").forEach(el => {
     el.setAttribute("aria-label", t(el.getAttribute("data-taria")));
   });
   $("#langZh").classList.toggle("on", lang === "zh");
@@ -509,21 +651,25 @@ function setLang(l){
 $("#langZh").onclick = ()=>setLang("zh");
 $("#langEn").onclick = ()=>setLang("en");
 
-/* ================= 手機選單 ================= */
+/* ════════════ 漢堡選單（Tree 2） ════════════ */
+const ICON_MENU = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>';
+const ICON_X = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
 const menu = $("#mobileMenu"), burger = $("#hamburger");
-burger.onclick = ()=>{
+burger.innerHTML = ICON_MENU;
+burger.onclick = (e)=>{
+  e.stopPropagation();   // 唔好俾下面「撳出面自動閂」嘅 document listener 收到（swap innerHTML 會令 e.target 脫離 DOM）
   const open = !menu.classList.contains("open");
   menu.classList.toggle("open", open);
   burger.setAttribute("aria-expanded", String(open));
-  burger.textContent = open ? "✕" : "☰";
+  burger.innerHTML = open ? ICON_X : ICON_MENU;
 };
 function closeMenu(){
   menu.classList.remove("open");
-  burger.textContent = "☰";
+  burger.innerHTML = ICON_MENU;
   burger.setAttribute("aria-expanded", "false");
 }
 menu.addEventListener("click", e=>{
-  if(e.target.tagName === "A") closeMenu();
+  if(e.target.closest("a")) closeMenu();
 });
 // 撳選單以外任何地方（包括 Tree 1 連結）→ 自動閂
 document.addEventListener("click", e=>{
@@ -533,13 +679,15 @@ document.addEventListener("keydown", e=>{
   if(e.key === "Escape" && menu.classList.contains("open")){ closeMenu(); burger.focus(); }
 });
 
-/* ================= 滾動漸現 ================= */
+/* ════════════ 滾動漸現 ════════════ */
 const io = new IntersectionObserver(entries=>{
   entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); } });
 }, { threshold: .15 });
 document.querySelectorAll(".fade").forEach(el=>io.observe(el));
+// 安全網：萬一 IntersectionObserver 冇 fire（極快捲動／舊瀏覽器），2 秒後強制顯示，確保內容永遠見到
+setTimeout(()=>document.querySelectorAll(".fade:not(.in)").forEach(el=>el.classList.add("in")), 2000);
 
-/* ================= 漸進式表單 ================= */
+/* ════════════ 漸進式表單 ════════════ */
 const svcSel = $("#fService");
 function revealGroups(){
   $("#grpBiz").classList.toggle("show", svcSel.value === "consulting");
@@ -600,10 +748,10 @@ $("#contactForm").addEventListener("submit", async e=>{
   }
 });
 
-/* ================= 帳戶狀態（同 /login/ 共用 session） ================= */
+/* ════════════ 帳戶狀態（同 /login/ 共用 session） ════════════ */
 let userEmail = null, userRole = null, _sb = null;
 function renderAccount(){
-  const text = userEmail ? "👤 " + userEmail.split("@")[0] : t("navLogin");
+  const text = userEmail ? userEmail.split("@")[0] : t("navLogin");
   const a = $("#navAccount"), m = $("#navAccountM");
   if(a) a.textContent = text;
   if(m) m.textContent = text;
