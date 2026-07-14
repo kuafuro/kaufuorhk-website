@@ -50,19 +50,18 @@
 
   function blocked(title, detail) {
     function render() {
-      // 黑白主色，跟登入頁一致
-      var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      var bg = dark ? "#1a1a1a" : "#ffffff", ink = dark ? "#f2f2f2" : "#111111",
-          mut = dark ? "#9a9a9a" : "#666666", line = dark ? "#333333" : "#e2e2e2";
+      // 書卷識別（紅／黑／米白），跟主頁及登入頁一致；淨淺色
+      var bg = "#f8f4f4", ink = "#201f1d", mut = "#605d5d", line = "#d7d3d3", accent = "#a83228";
+      var serif = "'Lora','Noto Serif TC',serif", head = "'Cormorant Garamond','Noto Serif TC',serif";
       document.body.innerHTML =
-        '<div style="font-family:-apple-system,\'PingFang HK\',\'Noto Sans TC\',sans-serif;max-width:420px;margin:80px auto;padding:28px 22px;border:1px solid ' + line + ';border-radius:14px;text-align:center;background:' + bg + ';color:' + ink + '">' +
+        '<div style="font-family:' + serif + ';max-width:420px;margin:80px auto;padding:28px 22px;border:1px solid ' + line + ';border-radius:6px;text-align:center;background:' + bg + ';color:' + ink + '">' +
         '<div style="font-size:2.2rem">🔒</div>' +
-        '<h2 style="margin:10px 0 4px;font-size:1.1rem">' + title + "</h2>" +
-        (detail ? '<p style="color:' + mut + ';font-size:.85rem;line-height:1.6">' + detail + "</p>" : "") +
+        '<h2 style="margin:10px 0 4px;font-size:1.4rem;font-family:' + head + ';font-weight:600">' + title + "</h2>" +
+        (detail ? '<p style="color:' + mut + ';font-size:.9rem;line-height:1.6">' + detail + "</p>" : "") +
         '<p style="margin-top:16px"><a href="' + loginUrl + "?next=" + encodeURIComponent(location.pathname + location.search) +
-        '" style="color:' + ink + ';font-weight:700;text-decoration:underline">' + L.goLogin + "</a></p>" +
+        '" style="color:' + accent + ';font-weight:600;text-decoration:underline;text-underline-offset:3px">' + L.goLogin + "</a></p>" +
         "</div>";
-      document.body.style.background = dark ? "#0e0e0e" : "#fafafa";
+      document.body.style.background = "#f3f2f2";
       document.documentElement.style.visibility = "visible";
       hide.remove();
     }

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>數據筆記 Stats Notes｜Kuafuor HK</title>
+<meta name="description" content="Kuafuor HK 數據筆記 — 用真實案例講清楚基礎統計:相關與因果、辛普森悖論、抽樣偏差、p 值。Stats notes: real-world lessons on correlation vs causation, Simpson's paradox, sampling bias and p-values.">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
+<style>
+  /* ═══════════ Classical — 書卷編輯風（沿用主頁 token） ═══════════ */
+  :root{
+    color-scheme: light;
+    --color-bg:#f3f2f2; --color-surface:#eae9e9; --color-text:#201f1d;
+    --color-divider:color-mix(in srgb, #201f1d 16%, transparent);
+    --color-accent:#a83228;
+    --color-accent-100:#fdeeec; --color-accent-200:#f8d8d4; --color-accent-600:#8a281f;
+    --color-accent-700:#6f1e16;
+    --color-neutral-100:#f8f4f4; --color-neutral-500:#9b9797; --color-neutral-600:#7d7979;
+    --color-neutral-700:#605d5d; --color-neutral-800:#444141; --color-neutral-900:#2d2b2b;
+    --font-heading:"Cormorant Garamond","Noto Serif TC",serif;
+    --font-body:"Lora","Noto Serif TC",serif;
+    --radius-md:4px;
+    --shadow-lg:0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--color-bg); color:var(--color-text);
+    font-family:var(--font-body); font-size:15px; line-height:1.55; font-weight:400;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  h1,h2,h3,h4{font-family:var(--font-heading); font-weight:600; line-height:1.12; letter-spacing:-0.015em; margin:0}
+  p{margin:0}
+  a{color:var(--color-accent); text-underline-offset:3px}
+  :focus{outline:none}
+  :focus-visible{outline:2px solid var(--color-accent); outline-offset:2px}
+  ::selection{background:color-mix(in srgb, var(--color-accent) 30%, transparent)}
+  .tnum{font-feature-settings:'tnum'}
+  .wrap{max-width:1000px; margin:0 auto; padding:0 48px}
+  .kicker{font-size:12px; letter-spacing:0.24em; text-transform:uppercase; color:var(--color-accent); font-feature-settings:'tnum'}
+
+  /* ── skip link ── */
+  .skip{position:absolute; left:-9999px; top:0; background:var(--color-accent); color:#fff; padding:10px 16px; z-index:2000; border-radius:0 0 var(--radius-md) 0}
+  .skip:focus{left:0}
+
+  /* ── Nav（sticky，底部髮絲線） ── */
+  header.site{position:sticky; top:0; z-index:1000; background:var(--color-bg); border-bottom:1px solid var(--color-divider)}
+  nav.bar{display:flex; align-items:center; gap:26px; padding:20px 0}
+  .logo{font-family:var(--font-heading); font-weight:600; font-size:21px; letter-spacing:0.1em; text-transform:uppercase; margin-right:auto; text-decoration:none; color:var(--color-text)}
+  .nav-links{list-style:none; display:flex; align-items:center; gap:26px; margin:0; padding:0}
+  .nav-links a{font-size:13.5px; color:var(--color-text); text-decoration:none; transition:color .15s ease}
+  .nav-links a:hover{color:var(--color-accent)}
+  .lang{display:flex; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden; flex:none}
+  .lang button{padding:5px 11px; border:none; background:transparent; color:var(--color-text); font-family:var(--font-body); font-size:12px; cursor:pointer; min-height:30px}
+  .lang button.on{background:var(--color-accent); color:#fff}
+
+  /* ── Hero ── */
+  .hero{padding:72px 0 20px; max-width:44ch}
+  .hero .kicker{display:block; margin-bottom:14px}
+  .hero h1{font-size:54px; line-height:1.08; margin:0 0 18px; text-wrap:balance}
+  .hero .lead{font-size:16px; line-height:1.8; color:var(--color-neutral-800); margin:0}
+  .hero .meta{margin-top:18px; font-size:12.5px; color:var(--color-neutral-700); letter-spacing:.02em}
+
+  /* ── Threads（垂直編號序列，左邊脊線） ── */
+  .threads{padding:24px 0 40px}
+  .thread{display:grid; grid-template-columns:64px 1fr; gap:32px; padding:44px 0; border-top:1px solid var(--color-divider); position:relative}
+  .thread-rail{display:flex; flex-direction:column; align-items:center}
+  .thread-num{font-family:var(--font-heading); font-size:34px; line-height:1; color:var(--color-accent); font-feature-settings:'tnum'}
+  .thread-spine{flex:1; width:1px; background:var(--color-divider); margin-top:14px; min-height:20px}
+  .thread:last-child .thread-spine{display:none}
+  .thread-tag{display:block; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--color-neutral-600); margin-bottom:8px; font-feature-settings:'tnum'}
+  .thread h2{font-size:30px; margin:0 0 14px; text-wrap:balance}
+  .thread .hook{font-size:17px; line-height:1.7; color:var(--color-text); border-left:0; padding:14px 18px; background:var(--color-neutral-100); border:1px solid var(--color-divider); border-radius:var(--radius-md); margin:0 0 18px}
+  .thread .hook b{color:var(--color-accent); font-weight:600}
+  .thread .explain{font-size:15px; line-height:1.85; color:var(--color-neutral-800); margin:0 0 16px; max-width:64ch; text-wrap:pretty}
+  .thread .takeaway{display:flex; gap:10px; align-items:flex-start; font-size:14.5px; line-height:1.7; color:var(--color-text); margin:0 0 14px}
+  .thread .takeaway .tk-label{flex:none; font-family:var(--font-heading); font-weight:600; color:var(--color-accent)}
+  .thread .src{font-size:12px; line-height:1.5; color:var(--color-neutral-600); margin:0}
+  .thread .src cite{font-style:italic}
+  .thread .src a{color:var(--color-accent); text-decoration:none; border-bottom:1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)}
+  .thread .src a:hover{border-bottom-color:var(--color-accent)}
+
+  /* ── 頁尾「陸續有嚟」＋ CTA ── */
+  .more{border-top:1px solid var(--color-divider); padding:40px 0; display:flex; flex-wrap:wrap; gap:16px 32px; align-items:baseline; justify-content:space-between}
+  .more p{font-size:14px; color:var(--color-neutral-700); max-width:46ch; line-height:1.7}
+  .btn{display:inline-flex; align-items:center; gap:8px; cursor:pointer; text-decoration:none; font-family:var(--font-heading); font-weight:600; font-size:14px; line-height:1.2; color:var(--color-accent); background:transparent; border:1px solid var(--color-accent); padding:11px 22px; border-radius:var(--radius-md); transition:background .15s ease}
+  .btn:hover{background:color-mix(in srgb, var(--color-accent) 12%, transparent)}
+
+  /* ── Footer ── */
+  footer{border-top:1px solid var(--color-divider); padding:20px 0 40px; display:flex; justify-content:space-between; gap:16px; font-size:12.5px; color:var(--color-neutral-600); font-feature-settings:'tnum'}
+  footer a{color:var(--color-neutral-600); text-decoration:none}
+  footer a:hover{color:var(--color-accent)}
+  footer .foot-links{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  footer .foot-links .sep{color:var(--color-neutral-500)}
+
+  @media (max-width:840px){
+    .wrap{padding:0 20px}
+    .nav-links{display:none}
+    nav.bar{gap:12px; padding:16px 0}
+    .hero{padding:44px 0 12px}
+    .hero h1{font-size:38px}
+    .thread{grid-template-columns:1fr; gap:12px; padding:32px 0}
+    .thread-rail{flex-direction:row; align-items:baseline; gap:12px}
+    .thread-spine{display:none}
+    .thread h2{font-size:25px}
+    footer{flex-direction:column; gap:8px; text-align:center; align-items:center}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main" data-t="skip"></a>
+
+<header class="site">
+  <div class="wrap">
+    <nav class="bar">
+      <a class="logo" href="../#top">Kuafuor HK</a>
+      <ul class="nav-links">
+        <li><a href="../#business" data-t="navBiz"></a></li>
+        <li><a href="../#data" data-t="navData"></a></li>
+        <li><a href="../#contact" data-t="navContact"></a></li>
+      </ul>
+      <div class="lang" role="group" data-taria="ariaLang">
+        <button id="langZh">廣</button>
+        <button id="langEn">EN</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="wrap hero">
+    <span class="kicker" data-t="kicker"></span>
+    <h1 data-t="title"></h1>
+    <p class="lead" data-t="lead"></p>
+    <p class="meta" data-t="meta"></p>
+  </section>
+
+  <section class="wrap threads">
+
+    <article class="thread">
+      <div class="thread-rail"><div class="thread-num">01</div><div class="thread-spine"></div></div>
+      <div class="thread-body">
+        <span class="thread-tag" data-t="t1tag"></span>
+        <h2 data-t="t1title"></h2>
+        <p class="hook" data-t="t1hook"></p>
+        <p class="explain" data-t="t1body"></p>
+        <p class="takeaway"><span class="tk-label" data-t="tkLabel"></span><span data-t="t1take"></span></p>
+        <p class="src"><span data-t="t1src"></span> · <a href="https://en.wikipedia.org/wiki/Spurious_relationship" target="_blank" rel="noopener">Wikipedia</a></p>
+      </div>
+    </article>
+
+    <article class="thread">
+      <div class="thread-rail"><div class="thread-num">02</div><div class="thread-spine"></div></div>
+      <div class="thread-body">
+        <span class="thread-tag" data-t="t2tag"></span>
+        <h2 data-t="t2title"></h2>
+        <p class="hook" data-t="t2hook"></p>
+        <p class="explain" data-t="t2body"></p>
+        <p class="takeaway"><span class="tk-label" data-t="tkLabel"></span><span data-t="t2take"></span></p>
+        <p class="src">Bickel, Hammel &amp; O'Connell, <cite>Science</cite> 187 (1975) · <a href="https://www.science.org/doi/10.1126/science.187.4175.398" target="_blank" rel="noopener" data-t="t2srclink"></a></p>
+      </div>
+    </article>
+
+    <article class="thread">
+      <div class="thread-rail"><div class="thread-num">03</div><div class="thread-spine"></div></div>
+      <div class="thread-body">
+        <span class="thread-tag" data-t="t3tag"></span>
+        <h2 data-t="t3title"></h2>
+        <p class="hook" data-t="t3hook"></p>
+        <p class="explain" data-t="t3body"></p>
+        <p class="takeaway"><span class="tk-label" data-t="tkLabel"></span><span data-t="t3take"></span></p>
+        <p class="src"><span data-t="t3src"></span> · <a href="https://en.wikipedia.org/wiki/The_Literary_Digest#1936_poll" target="_blank" rel="noopener">Wikipedia</a></p>
+      </div>
+    </article>
+
+    <article class="thread">
+      <div class="thread-rail"><div class="thread-num">04</div><div class="thread-spine"></div></div>
+      <div class="thread-body">
+        <span class="thread-tag" data-t="t4tag"></span>
+        <h2 data-t="t4title"></h2>
+        <p class="hook" data-t="t4hook"></p>
+        <p class="explain" data-t="t4body"></p>
+        <p class="takeaway"><span class="tk-label" data-t="tkLabel"></span><span data-t="t4take"></span></p>
+        <p class="src">Wasserstein &amp; Lazar, <cite>The American Statistician</cite> 70:2 (2016) · <a href="https://www.tandfonline.com/doi/full/10.1080/00031305.2016.1154108" target="_blank" rel="noopener" data-t="t4srclink"></a></p>
+      </div>
+    </article>
+
+  </section>
+
+  <section class="wrap more">
+    <p data-t="moreNote"></p>
+    <a class="btn" href="../#contact" data-t="moreCta"></a>
+  </section>
+</main>
+
+<footer class="wrap">
+  <span data-t="footCopy"></span>
+  <span class="foot-links">
+    <a href="../" data-t="footHome"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="../#business" data-t="navBiz"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="../#data" data-t="navData"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="../#contact" data-t="navContact"></a>
+  </span>
+</footer>
+
+<script>
+const I18N = {
+  zh: {
+    skip:"跳去內文",
+    navBiz:"流程自動化", navData:"數據分析", navContact:"聯絡我哋",
+    ariaLang:"語言",
+    kicker:"數據筆記 · STATS NOTES",
+    title:"數據筆記",
+    lead:"用真實案例，講清楚幾個最容易搞錯嘅基礎統計概念 —— 冇公式，淨係常識同故仔。呢啲，就係我哋幫客戶睇數據時嘅思考方式。",
+    meta:"一個持續更新嘅系列 · 由 Kuafuor HK 數據團隊整理",
+    tkLabel:"重點 —",
+    t1tag:"THREAD 01 · 相關 vs 因果",
+    t1title:"相關 ≠ 因果",
+    t1hook:"雪糕賣得多，遇溺都多 —— 但<b>雪糕唔會整死人</b>。",
+    t1body:"兩樣嘢一齊上落，唔代表一個引起另一個。雪糕銷量同遇溺數字一齊升，係因為背後有個共同成因：夏天高溫。天氣熱，大家買多啲雪糕，又多咗人落水游水 —— 遇溺自然多。只要控制返溫度（例如淨係睇同一種天氣），呢個關聯就會消失。呢個喺幕後同時推高兩邊嘅「黑手」，統計上叫混淆變量（confounding variable）。",
+    t1take:"見到相關，先問：有冇第三個變量同時推高兩邊？",
+    t1src:"統計學經典例子（spurious correlation）",
+    t2tag:"THREAD 02 · 睇整體定睇分組",
+    t2title:"辛普森悖論",
+    t2hook:"1973 年 Berkeley：男生取錄率 <b>44%</b>、女生 <b>35%</b>，表面似歧視女性。分系睇，反而輕微利女性。",
+    t2body:"同一堆數據，睇整體同睇分組，可以得出完全相反嘅結論。喺 Berkeley 個案入面，女生多數報咗最難入嘅學系（申請人多、取錄率低），而唔係啲相對易入嘅工程系。將取錄率差好遠嘅學系溝埋一齊計，就砌出咗一個根本唔存在嘅「整體性別歧視」。逐個學系睇，其實冇明顯偏差。",
+    t2take:"落 aggregate 結論之前，問吓：分返組會唔會反轉個結果？",
+    t2srclink:"原文",
+    t3tag:"THREAD 03 · 抽樣",
+    t3title:"大 ≠ 準：抽樣偏差",
+    t3hook:"1936 年《Literary Digest》用 <b>240 萬</b>份樣本預測美國大選 —— 結果錯足 19 個百分點。",
+    t3body:"佢哋預測 Landon 贏（57% 對 43%），實際 Roosevelt 大勝（62% 對 38%）。問題唔係樣本細，而係樣本偏：名單來自電話簿、車主登記同雜誌訂戶 —— 喺大蕭條年代，呢班人偏有錢、偏傾向共和黨；再加上肯自己填卡寄返嘅人本身就有立場（無回應偏差）。同一年，Gallup 用大約 5 萬個揀得啱嘅樣本，反而預測準咗。",
+    t3take:"樣本點揀，比樣本幾大重要得多。又大又偏，一樣錯。",
+    t3src:"The Literary Digest 1936 民調",
+    t4tag:"THREAD 04 · 顯著性",
+    t4title:"p 值唔係咁讀",
+    t4hook:"「p < 0.05」<b>唔代表</b>效應大，亦都唔代表結果重要。",
+    t4body:"美國統計學會（ASA）2016 年出咗份聲明，列咗六條原則講點樣用 p 值。核心一句：p 值只係「假設虛無假設為真時，見到咁極端（或更極端）數據嘅機會率」；佢唔量度效應嘅大細、唔量度重要性，單靠一個 p 值都唔足以就一個假設落結論。而且樣本夠大，連細微到冇實際意義嘅差異都可以變到「統計顯著」。",
+    t4take:"見到「統計顯著」，追問兩句：效應有幾大？可唔可以重現？",
+    t4srclink:"ASA 聲明",
+    moreNote:"呢個系列會陸續加 —— 迴歸均值、選擇偏差、基本率謬誤……有數據上想搞清楚嘅問題？搵我哋傾。",
+    moreCta:"傾傾你嘅數據",
+    footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
+    footHome:"返主頁",
+  },
+  en: {
+    skip:"Skip to content",
+    navBiz:"Automation", navData:"Data Analysis", navContact:"Contact",
+    ariaLang:"Language",
+    kicker:"STATS NOTES · 數據筆記",
+    title:"Stats Notes",
+    lead:"A few of the most commonly misread ideas in statistics, told through real cases — no formulas, just common sense and a good story. This is how we think when we read data for clients.",
+    meta:"An ongoing series · compiled by the Kuafuor HK data team",
+    tkLabel:"Takeaway —",
+    t1tag:"THREAD 01 · Correlation vs Causation",
+    t1title:"Correlation ≠ Causation",
+    t1hook:"More ice cream sold, more drownings — but <b>ice cream doesn't kill anyone</b>.",
+    t1body:"Two things moving together doesn't mean one causes the other. Ice cream sales and drownings rise together because they share a common cause: summer heat. When it's hot, people buy more ice cream and more people go swimming — so drownings go up too. Hold temperature constant (look only within the same weather) and the link disappears. That hidden driver pushing both up is called a confounding variable.",
+    t1take:"When you see a correlation, first ask: is a third variable pushing both sides up?",
+    t1src:"A classic teaching example (spurious correlation)",
+    t2tag:"THREAD 02 · Whole vs Parts",
+    t2title:"Simpson's Paradox",
+    t2hook:"Berkeley, 1973: men admitted at <b>44%</b>, women at <b>35%</b> — apparent bias against women. Split by department, it slightly favoured women.",
+    t2body:"On the same data, the whole and the parts can tell opposite stories. At Berkeley, women had applied more to the most competitive departments (many applicants, low admit rates), rather than to the easier-to-enter engineering programmes. Pooling departments with very different admit rates manufactured an overall 'gender bias' that didn't actually exist. Department by department, there was no clear bias.",
+    t2take:"Before you trust an aggregate, ask: would splitting it into groups reverse the result?",
+    t2srclink:"Original paper",
+    t3tag:"THREAD 03 · Sampling",
+    t3title:"Bigger ≠ Better: Sampling Bias",
+    t3hook:"In 1936, the Literary Digest polled <b>2.4 million</b> people to call the US election — and missed by 19 points.",
+    t3body:"It predicted Landon would win (57% to 43%); Roosevelt won in a landslide (62% to 38%). The problem wasn't sample size — it was a biased sample: names came from telephone books, car registries and magazine subscribers, who in the Depression skewed wealthier and Republican; and people who bothered to mail the card back had their own leanings (nonresponse bias). That same year, Gallup called it right with about 50,000 well-chosen respondents.",
+    t3take:"How you pick the sample matters far more than how big it is. Big and biased is still wrong.",
+    t3src:"The Literary Digest 1936 poll",
+    t4tag:"THREAD 04 · Significance",
+    t4title:"The p-value Isn't Read That Way",
+    t4hook:"'p < 0.05' <b>does not</b> mean the effect is large, or that the result matters.",
+    t4body:"The American Statistical Association's 2016 statement set out six principles for using p-values. The core: a p-value is only 'the probability of seeing data this extreme (or more) if the null hypothesis were true' — it does not measure the size of an effect or its importance, and a p-value alone isn't enough to draw a conclusion. And with a big enough sample, even a difference too tiny to matter can come out 'statistically significant'.",
+    t4take:"When you see 'statistically significant', ask two things: how big is the effect, and does it replicate?",
+    t4srclink:"ASA statement",
+    moreNote:"More threads to come — regression to the mean, selection bias, the base-rate fallacy… Got a data question you want cleared up? Talk to us.",
+    moreCta:"Talk about your data",
+    footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
+    footHome:"Back to home",
+  },
+};
+let lang = "zh";
+try { lang = localStorage.getItem("kf-lang") || ((navigator.language||"").toLowerCase().startsWith("zh") ? "zh" : "en"); } catch(e){}
+if(!I18N[lang]) lang = "zh";
+const t = k => (I18N[lang]||I18N.zh)[k] ?? I18N.zh[k] ?? k;
+const $ = s => document.querySelector(s);
+function applyLang(){
+  document.querySelectorAll("[data-t]").forEach(el=>{ el.innerHTML = t(el.getAttribute("data-t")); });
+  document.querySelectorAll("[data-taria]").forEach(el=>{ el.setAttribute("aria-label", t(el.getAttribute("data-taria"))); });
+  $("#langZh").classList.toggle("on", lang==="zh");
+  $("#langEn").classList.toggle("on", lang==="en");
+  document.documentElement.lang = lang==="zh" ? "zh-Hant-HK" : "en";
+  document.title = (lang==="zh" ? "數據筆記 Stats Notes" : "Stats Notes 數據筆記") + "｜Kuafuor HK";
+}
+function setLang(l){ lang = l; try{ localStorage.setItem("kf-lang", l); }catch(e){} applyLang(); }
+$("#langZh").onclick = ()=>setLang("zh");
+$("#langEn").onclick = ()=>setLang("en");
+applyLang();
+</script>
+</body>
+</html>

@@ -135,7 +135,7 @@
   .plate img{width:100%; height:100%; object-fit:cover; object-position:center; display:block}
 
   /* ── 雙路分流（兩欄，中間豎髮絲線） ── */
-  .dual{display:grid; grid-template-columns:1.5fr 1fr}
+  .dual{display:grid; grid-template-columns:1fr 1fr}
   .dual > a{
     display:block; text-decoration:none; color:var(--color-text); padding:40px 48px 40px 0;
   }
@@ -184,10 +184,16 @@
   .da-plate{min-height:360px; display:flex; align-items:center; justify-content:center; padding:32px; text-align:center}
   .finding{max-width:30ch}
   .finding .kicker{margin-bottom:10px}
-  .finding-stat{font-family:var(--font-heading); font-size:58px; line-height:1; color:var(--color-accent); font-feature-settings:'tnum'; margin:0}
-  .finding-stat small{display:block; font-family:var(--font-body); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600); margin-top:10px}
-  .finding-txt{font-size:14.5px; line-height:1.7; color:var(--color-text); margin:16px 0 12px}
-  .finding-note{font-size:12px; line-height:1.6; color:var(--color-neutral-600); margin:0}
+  .finding-stat{font-family:var(--font-heading); font-size:56px; line-height:1; color:var(--color-accent); font-feature-settings:'tnum'; margin:0; display:flex; align-items:baseline; flex-wrap:wrap; justify-content:center}
+  .finding-stat .stat-vs{font-family:var(--font-body); font-size:15px; letter-spacing:0.16em; text-transform:uppercase; color:var(--color-neutral-600); margin:0 12px; align-self:center}
+  .finding-stat .stat-b{color:var(--color-neutral-500)}
+  .finding-stat small{display:block; width:100%; font-family:var(--font-body); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-700); margin-top:12px}
+  .finding-txt{font-size:14.5px; line-height:1.7; color:var(--color-text); margin:16px 0 12px; text-align:left}
+  .finding-note{font-size:12.5px; line-height:1.65; color:var(--color-neutral-700); margin:0 0 10px; text-align:left}
+  .finding-src{font-size:11px; line-height:1.5; color:var(--color-neutral-600); margin:0; text-align:left}
+  .finding-src cite{font-style:italic}
+  .finding-src a{color:var(--color-accent); text-decoration:none; border-bottom:1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)}
+  .finding-src a:hover{border-bottom-color:var(--color-accent)}
 
   /* ── Contact ── */
   .ct-sec{display:grid; grid-template-columns:1fr 1.2fr; gap:56px; padding:56px 0}
@@ -224,6 +230,12 @@
   .formmsg{display:none; border-radius:var(--radius-md); padding:12px 16px; font-size:14px}
   .formmsg.ok{display:block; border:1px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-accent-700)}
   .formmsg.err{display:block; border:1px solid var(--color-neutral-700); background:var(--color-neutral-100); color:var(--color-neutral-900)}
+  /* 逐欄 inline 錯誤 + PDPO 私隱句 */
+  .field-err{display:none; font-size:12px; line-height:1.4; color:var(--color-accent-700); margin-top:6px}
+  .field-err.show{display:block}
+  .input[aria-invalid="true"]{border-color:var(--color-accent)}
+  .form-privacy{font-size:12px; line-height:1.55; color:var(--color-neutral-700); margin:0}
+  .form-privacy a{color:var(--color-accent)}
 
   /* ── Footer ── */
   footer{border-top:1px solid var(--color-divider); padding:20px 0 28px; display:flex; justify-content:space-between; gap:16px; font-size:12.5px; color:var(--color-neutral-600); font-feature-settings:'tnum'}
@@ -237,9 +249,9 @@
     display:none; position:fixed; left:0; right:0; bottom:0; z-index:998;
     background:var(--color-neutral-100); border-top:1px solid var(--color-divider);
     padding:10px 14px calc(10px + env(safe-area-inset-bottom));
-    grid-template-columns:1fr 1fr; gap:10px;
+    grid-template-columns:1fr; gap:10px;
   }
-  #stickyCta .btn{min-height:44px}
+  #stickyCta .btn{min-height:46px}
 
   /* ── 滾動漸現（尊重 reduced-motion） ── */
   .fade{opacity:0; transform:translateY(18px); transition:opacity .5s ease, transform .5s ease}
@@ -330,7 +342,8 @@
   <!-- Tree 2：其他功能（漢堡選單，桌面都有）；.m-only = 細屏先補返 Tree 1 -->
   <div id="mobileMenu">
     <a href="#data" data-t="navData"></a>
-    <a href="#motionlab">Motion Lab</a>
+    <a href="stats/" data-t="navStats"></a>
+    <a href="#motionlab" data-t="navMl"></a>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
     <a id="navCalcM" href="split-calculator/" style="display:none" data-t="navCalc"></a>
     <a class="m-only" href="#business" data-t="navBiz"></a>
@@ -348,7 +361,7 @@
       <p class="lead" data-t="heroSub"></p>
       <div class="cta-row">
         <a href="#business" class="btn btn-primary" data-t="ctaBiz"></a>
-        <a href="#motionlab" class="btn btn-secondary" data-t="ctaMl"></a>
+        <a href="#data" class="btn btn-secondary" data-t="ctaData"></a>
       </div>
     </div>
     <figure class="hero-fig">
@@ -371,12 +384,12 @@
       <p data-t="pathBizDesc"></p>
       <span class="go"><span data-t="ctaBiz"></span> →</span>
     </a>
-    <a href="#motionlab" id="ctaMl">
-      <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span>
-      <span class="ptag ex" data-t="pathMlTag"></span>
-      <h3 data-t="pathMlTitle"></h3>
-      <p data-t="pathMlDesc"></p>
-      <span class="go"><span data-t="ctaMl"></span> →</span>
+    <a href="#data" id="ctaData">
+      <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+      <span class="ptag" data-t="pathDataTag"></span>
+      <h3 data-t="pathDataTitle"></h3>
+      <p data-t="pathDataDesc"></p>
+      <span class="go"><span data-t="ctaData"></span> →</span>
     </a>
   </div>
 </section>
@@ -385,7 +398,7 @@
 <section id="business">
   <div class="wrap sec-pad">
     <div class="sec-head">
-      <div class="kicker">AUTOMATION</div>
+      <div class="kicker" data-t="kickerAuto"></div>
       <h2 data-t="bizTitle"></h2>
       <p class="sub" data-t="bizSub"></p>
     </div>
@@ -424,10 +437,40 @@
   </div>
 </section>
 
-<!-- ═══ Motion Lab ═══ -->
+<!-- ═══ 數據分析 ═══ -->
+<section id="data">
+  <div class="wrap da-sec">
+    <div>
+      <div class="kicker" data-t="kickerData"></div>
+      <h2 data-t="daTitle"></h2>
+      <p class="lead" data-t="daSub"></p>
+      <div class="ml-list">
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da1"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da2"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da3"></span></div>
+        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da4"></span></div>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#contact" data-t="daCta"></a>
+        <a class="btn btn-secondary" href="stats/" data-t="daNotesCta"></a>
+      </div>
+    </div>
+    <div class="plate da-plate fade">
+      <div class="finding">
+        <div class="kicker" data-t="daFindTag"></div>
+        <div class="finding-stat"><span class="stat-a">44%</span><span class="stat-vs" data-t="daStatVs"></span><span class="stat-b">35%</span><small data-t="daStatLabel"></small></div>
+        <p class="finding-txt" data-t="daFinding"></p>
+        <p class="finding-note" data-t="daFindNote"></p>
+        <p class="finding-src">Bickel, Hammel &amp; O'Connell, <cite>Science</cite> 187 (1975) · <a href="stats/" data-t="daFindLink"></a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 自家實例：Motion Lab（自研 side project，降格展示；日後 side project 都放呢度） ═══ -->
 <section id="motionlab">
   <div class="wrap ml-sec">
-    <!-- 圖片預留位：客戶提供 Motion Lab 截圖／訓練相後，換成 <img> -->
+    <!-- 圖片預留位：客戶提供 Motion Lab 截圖／訓練相後，換成真實圖片 -->
     <div class="plate ml-plate fade">
       <div class="slot">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
@@ -435,7 +478,7 @@
       </div>
     </div>
     <div>
-      <div class="kicker">MOTION LAB</div>
+      <div class="kicker" data-t="kickerMl"></div>
       <h2 data-t="mlTitle"></h2>
       <p class="lead" data-t="mlSub"></p>
       <div class="ml-list">
@@ -455,39 +498,11 @@
   </div>
 </section>
 
-<!-- ═══ 數據分析 ═══ -->
-<section id="data">
-  <div class="wrap da-sec">
-    <div>
-      <div class="kicker">DATA ANALYTICS</div>
-      <h2 data-t="daTitle"></h2>
-      <p class="lead" data-t="daSub"></p>
-      <div class="ml-list">
-        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da1"></span></div>
-        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da2"></span></div>
-        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da3"></span></div>
-        <div class="it"><span class="chk"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span data-t="da4"></span></div>
-      </div>
-      <div class="cta-row">
-        <a class="btn btn-primary" href="#contact" data-t="daCta"></a>
-      </div>
-    </div>
-    <div class="plate da-plate fade">
-      <div class="finding">
-        <div class="kicker" data-t="daFindTag"></div>
-        <div class="finding-stat">r ≈ 0.71<small data-t="daStatLabel"></small></div>
-        <p class="finding-txt" data-t="daFinding"></p>
-        <p class="finding-note" data-t="daFindNote"></p>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ═══ 聯絡 ═══ -->
 <section id="contact">
   <div class="wrap ct-sec">
     <div>
-      <div class="kicker">CONTACT</div>
+      <div class="kicker" data-t="kickerContact"></div>
       <h2 data-t="ctTitle"></h2>
       <p class="lead" data-t="ctSub"></p>
       <div class="ct-mail">
@@ -498,30 +513,34 @@
     <form class="contact fade" id="contactForm" novalidate>
       <label class="field">
         <span data-t="fService"></span>
-        <select class="input" id="fService">
+        <select class="input" id="fService" aria-describedby="err-fService">
           <option value="" data-t="fServicePick"></option>
           <option value="consulting" data-t="fServiceBiz"></option>
           <option value="data" data-t="fServiceData"></option>
           <option value="motionlab" data-t="fServiceMl"></option>
           <option value="other" data-t="fServiceOther"></option>
         </select>
+        <span class="field-err" id="err-fService" aria-live="polite"></span>
       </label>
       <div class="grid2">
         <label class="field">
           <span data-t="fName"></span>
-          <input class="input" id="fName" type="text" autocomplete="name" maxlength="100" required>
+          <input class="input" id="fName" type="text" autocomplete="name" maxlength="100" required aria-describedby="err-fName">
+          <span class="field-err" id="err-fName" aria-live="polite"></span>
         </label>
         <label class="field">
           <span data-t="fEmail"></span>
-          <input class="input" id="fEmail" type="email" autocomplete="email" inputmode="email" maxlength="200">
+          <input class="input" id="fEmail" type="email" autocomplete="email" inputmode="email" maxlength="200" aria-describedby="err-fEmail">
+          <span class="field-err" id="err-fEmail" aria-live="polite"></span>
         </label>
       </div>
       <label class="field">
         <span data-t="fPhone"></span>
         <div class="phone-wrap">
           <input class="input cc" value="+852" readonly data-taria="ariaCc" tabindex="-1">
-          <input class="input" id="fPhone" type="tel" autocomplete="tel-national" inputmode="tel" maxlength="30" placeholder="9123 4567">
+          <input class="input" id="fPhone" type="tel" autocomplete="tel-national" inputmode="tel" maxlength="30" placeholder="9123 4567" aria-describedby="err-fPhone">
         </div>
+        <span class="field-err" id="err-fPhone" aria-live="polite"></span>
       </label>
 
       <!-- 揀「顧問／開發」先出現 -->
@@ -558,6 +577,7 @@
       <!-- honeypot 防機械人 -->
       <input class="hp" id="fWebsite" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
 
+      <p class="form-privacy" data-t="fPrivacy"></p>
       <button class="btn btn-primary" id="submitBtn" type="submit"><span data-t="fSend"></span></button>
       <div class="formmsg" id="formMsg" role="status"></div>
     </form>
@@ -569,15 +589,15 @@
   <span class="foot-links">
     <a href="login/" data-t="navLogin"></a><span class="sep" aria-hidden="true">·</span>
     <a href="#data" data-t="navData"></a><span class="sep" aria-hidden="true">·</span>
-    <a href="#motionlab">Motion Lab</a><span class="sep" aria-hidden="true">·</span>
+    <a href="stats/" data-t="navStats"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="#motionlab" data-t="navMl"></a><span class="sep" aria-hidden="true">·</span>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
   </span>
 </footer>
 
 <!-- 手機置底 CTA（拇指位） -->
 <div id="stickyCta">
-  <a class="btn btn-primary" href="#contact" data-t="stickyEnquire"></a>
-  <a class="btn btn-secondary" href="motion-lab/">Motion Lab</a>
+  <a class="btn btn-primary btn-block" href="#contact" data-t="stickyEnquire"></a>
 </div>
 
 <script type="module">
@@ -590,65 +610,70 @@ const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable 
 /* ════════════ i18n（書卷版文案，沿用現有機制） ════════════ */
 const I18N = {
   zh: {
-    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕", navData:"數據分析",
-    kicker:"香港 · 企業流程自動化",
-    heroTitle:"企業流程自動化",
-    heroSub:"客服自動化、自動報表、自動審批流程 — 幫香港企業將日日重複嘅工序交俾系統，慳返人手同時間。Motion Lab AI 運動分析，就係我哋其中一個自動化實例。",
-    ctaBiz:"睇我哋點自動化", ctaMl:"睇 Motion Lab 實例",
+    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕", navData:"數據分析", navStats:"數據筆記", navMl:"Motion Lab",
+    kicker:"香港 · 流程自動化 × 數據分析",
+    heroTitle:"自動化重複工序，用數據做決定",
+    heroSub:"我哋幫香港企業做兩件事：將日日重複嘅工序 —— 客服、報表、審批 —— 交俾系統做；再喺亂糟糟嘅數據入面揾出可以落地嘅規律。Motion Lab AI 運動分析，就係我哋自研能力嘅一個實例。",
+    ctaBiz:"睇流程自動化", ctaData:"睇數據分析",
     figCap:"香港 · 由評估到落地",
-    pathBizTag:"我哋嘅服務", pathBizTitle:"流程自動化",
-    pathBizDesc:"客服、報表、審批 — 幫香港企業揾出重複工序，交俾系統做，由評估到落地一條龍。",
-    pathMlTag:"其中一個實例", pathMlTitle:"Motion Lab · 自動化實例",
-    pathMlDesc:"AI 運動姿態分析 —「睇片、評分、出報告」全自動，係我哋自動化能力嘅一個真實例子。",
-    bizTitle:"我哋幫你自動化啲乜", bizSub:"揾出最食時間、日日重複嘅工序，交俾系統做 — 由客服、報表到審批，一條龍。",
+    pathBizTag:"服務一", pathBizTitle:"流程自動化",
+    pathBizDesc:"客服、報表、審批 —— 幫香港企業揾出重複工序，交俾系統做，由評估到落地一條龍。",
+    pathDataTag:"服務二", pathDataTitle:"數據分析",
+    pathDataDesc:"由亂糟糟嘅數據入面揾出規律，將『感覺』變成『證據』—— 統計建模、客製研究到可視化，每個決定有數撐腰。",
+    kickerAuto:"流程自動化", kickerData:"數據分析", kickerMl:"自家實例 · SIDE PROJECT", kickerContact:"聯絡",
+    bizTitle:"我哋幫你自動化啲乜", bizSub:"揾出最食時間、日日重複嘅工序，交俾系統做 —— 由客服、報表到審批，一條龍。",
     svc1Title:"客服自動化", svc1a:"24／7 智能客服對答", svc1b:"常見問題自動回覆", svc1c:"複雜個案無縫轉真人",
     svc2Title:"自動報表", svc2a:"數據自動彙整", svc2b:"定時生成報表", svc2c:"即時儀表板同提醒",
     svc3Title:"自動審批流程", svc3a:"審批流程自動流轉", svc3b:"例外個案自動升級", svc3c:"全程通知同稽核紀錄",
     svc1line:"智能對答、自動回覆、無縫轉真人",
     svc2line:"自動彙整、定時報表、即時儀表板",
     svc3line:"自動流轉、例外升級、稽核紀錄",
-    mlTitle:"Motion Lab：自動化實例",
-    mlSub:"睇片、評分、出報告全程自動 — 我哋將一整套運動分析流程交俾電腦視覺嘅真實例子。教練同學員都啱用。",
+    daTitle:"數據分析",
+    daSub:"由亂糟糟嘅數據入面揾出規律 —— 幫你將『感覺』變成『證據』，每個決定都有數據撐腰。統計建模、客製化研究到可視化，一條龍。",
+    da1:"統計建模同相關性分析", da2:"客製化研究同問卷設計",
+    da3:"數據清洗、可視化同儀表板", da4:"由發現到落地建議",
+    daCta:"傾傾你嘅數據", daNotesCta:"睇數據筆記",
+    daFindTag:"經典案例 · 辛普森悖論", daStatVs:"表面 vs", daStatLabel:"1973 Berkeley 研究生取錄率（男 / 女）",
+    daFinding:"1973 年 UC Berkeley 研究生取錄：表面上男性取錄率 44%、女性 35%，似係性別歧視。但逐個學系睇，偏差消失，甚至輕微利女性 —— 原來女性多數報咗最競爭嘅學系。整體數字呃咗人，啱嘅分組將結論完全反轉。",
+    daFindNote:"＊呢個就係『辛普森悖論』：同一堆數據，睇整體定睇分組，結論可以相反。揾出啱嘅切法，正正就係數據分析嘅價值。",
+    daFindLink:"睇埋更多數據筆記",
+    mlTitle:"Motion Lab：自家自動化實例",
+    mlSub:"睇片、評分、出報告全程自動 —— 我哋將一整套運動分析流程交俾電腦視覺，係我哋練手同展示自動化能力嘅自研 side project。日後嘅實驗都會放喺呢度。",
     ml1:"AI 姿態追蹤 · 即時動作捕捉", ml2:"WAKO 標準搏擊評分同技術分類",
     ml3:"拳手檔案、訓練紀錄雲端同步", ml4:"生物力學錯誤檢測同精華片段",
     mlCta:"進入 Motion Lab", mlBook:"預約體驗",
-    daTitle:"數據分析",
-    daSub:"由亂糟糟嘅數據入面揾出規律 — 幫你將『感覺』變成『證據』，每個決定都有數據撐腰。統計建模、客製化研究到可視化，一條龍。",
-    da1:"統計建模同相關性分析", da2:"客製化研究同問卷設計",
-    da3:"數據清洗、可視化同儀表板", da4:"由發現到落地建議",
-    daCta:"傾傾你嘅數據",
-    daFindTag:"研究實例", daStatLabel:"正相關",
-    daFinding:"我哋一項研究發現：大部分男性右手嘅手握力，同佢哋嘅約會頻率成正相關 — 握力越強，約會越密。",
-    daFindNote:"＊相關唔等於因果 — 但揾到呢啲意想不到嘅關聯，正正就係數據分析嘅威力。",
     subTeaser:"免費工具：", subLink:"廣東話轉字幕（瀏覽器本地運算）",
-    ctTitle:"聯絡我哋", ctSub:"揀返想查詢嘅服務，表格會自動變簡單 — 只填有用嘅嘢。",
+    ctTitle:"聯絡我哋", ctSub:"揀返想查詢嘅服務，表格會自動變簡單 —— 只填有用嘅嘢。",
     fService:"查詢服務", fServicePick:"— 請揀一項 —",
     fServiceBiz:"流程自動化查詢", fServiceData:"數據分析查詢", fServiceMl:"Motion Lab 體驗／預約", fServiceOther:"其他",
     fName:"稱呼", fEmail:"電郵", fPhone:"電話（香港）",
     fCompany:"公司名稱", fBudget:"預算範圍", fBudgetPick:"— 請揀一項 —", fBudgetTbd:"未定",
     fWhen:"希望預約嘅日期／時間",
     fMsg:"想講多啲？（可留空）",
+    fPrivacy:"我哋只會用你填嘅資料回覆呢次查詢，唔會賣俾第三方。",
     fSend:"送出查詢", fSending:"送緊…",
-    fOk:"✔ 收到你嘅查詢！我哋會盡快覆你。",
+    fOk:"✔ 收到你嘅查詢！我哋會喺一個工作天內覆你。", fOkVia:"覆去：",
     fErrName:"請填返個稱呼。", fErrService:"請先揀你想查詢嘅服務。", fErrContact:"電郵同電話最少填一樣，等我哋搵到你。",
     fErrSend:"送出失敗，請遲啲再試，或者直接 email 我哋。",
     fErrEmail:"電郵格式唔啱，睇下有冇打錯。",
+    fErrWhen:"預約時間唔可以係過去。",
     stickyEnquire:"快速查詢",
     ariaLang:"語言", ariaMenu:"更多功能", ariaCc:"區號",
     navCalc:"分成計數機",
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
   en: {
-    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles", navData:"Data Analysis",
-    kicker:"HONG KONG · ENTERPRISE PROCESS AUTOMATION",
-    heroTitle:"Enterprise Process Automation",
-    heroSub:"Customer-service automation, automated reporting and approval workflows — we hand your team's daily repetitive work to systems, saving time and headcount. Our AI Motion Lab is one such automation in action.",
-    ctaBiz:"See what we automate", ctaMl:"See the Motion Lab example",
+    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles", navData:"Data Analysis", navStats:"Stats Notes", navMl:"Motion Lab",
+    kicker:"HONG KONG · AUTOMATION × DATA ANALYSIS",
+    heroTitle:"Automate the busywork. Decide with data.",
+    heroSub:"We do two things for Hong Kong businesses: hand the daily repetitive work — support, reporting, approvals — to systems, and find the patterns hidden in messy data that you can actually act on. Our AI Motion Lab is one example of what we build in-house.",
+    ctaBiz:"See automation", ctaData:"See data analysis",
     figCap:"Hong Kong · from assessment to shipping",
-    pathBizTag:"What we do", pathBizTitle:"Process Automation",
+    pathBizTag:"Service 01", pathBizTitle:"Process Automation",
     pathBizDesc:"Customer service, reporting and approvals — we find the repetitive work and hand it to systems, from assessment to shipping.",
-    pathMlTag:"One example", pathMlTitle:"Motion Lab · Automation Example",
-    pathMlDesc:"AI motion analysis — watch, score and report, fully automated. A real example of what our automation can do.",
+    pathDataTag:"Service 02", pathDataTitle:"Data Analysis",
+    pathDataDesc:"Find the patterns in messy data and turn gut feel into evidence — statistical modelling, custom research and visualisation, so every call has numbers behind it.",
+    kickerAuto:"AUTOMATION", kickerData:"DATA ANALYSIS", kickerMl:"IN-HOUSE · SIDE PROJECT", kickerContact:"CONTACT",
     bizTitle:"What We Automate", bizSub:"We find the most time-consuming, repetitive steps and hand them to systems — from customer service to reporting to approvals.",
     svc1Title:"Customer Service Automation", svc1a:"24/7 AI chat & replies", svc1b:"Auto-answers to common questions", svc1c:"Seamless hand-off to a human",
     svc2Title:"Automated Reporting", svc2a:"Data aggregated automatically", svc2b:"Reports generated on schedule", svc2c:"Live dashboards & alerts",
@@ -656,19 +681,20 @@ const I18N = {
     svc1line:"AI chat, auto-replies, human hand-off",
     svc2line:"Aggregation, scheduled reports, dashboards",
     svc3line:"Auto-routing, escalation, audit trail",
-    mlTitle:"Motion Lab: Automation in Action",
-    mlSub:"Watch, score, report — fully automated. A real example of us handing an entire sports-analysis pipeline to computer vision. Built for coaches and athletes.",
-    ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
-    ml3:"Athlete profiles synced to the cloud", ml4:"Fault detection & highlight reels",
-    mlCta:"Enter Motion Lab", mlBook:"Book a session",
     daTitle:"Data Analysis",
     daSub:"We find the patterns hidden in messy data — turning gut feel into evidence, so every decision has numbers behind it. Statistical modelling, custom research and visualisation, end to end.",
     da1:"Statistical modelling & correlation analysis", da2:"Custom research & survey design",
     da3:"Data cleaning, visualisation & dashboards", da4:"From findings to actionable recommendations",
-    daCta:"Talk about your data",
-    daFindTag:"RESEARCH EXAMPLE", daStatLabel:"positive correlation",
-    daFinding:"In one of our studies, most men's right-hand grip strength turned out to be positively correlated with their dating frequency — the stronger the grip, the more dates.",
-    daFindNote:"*Correlation isn't causation — but surfacing unexpected links like this is exactly what data analysis is for.",
+    daCta:"Talk about your data", daNotesCta:"Read the stats notes",
+    daFindTag:"CLASSIC CASE · SIMPSON'S PARADOX", daStatVs:"surface vs", daStatLabel:"1973 Berkeley grad admit rate (men / women)",
+    daFinding:"1973 Berkeley graduate admissions: on the surface men were admitted at 44% and women at 35% — apparent gender bias. But department by department the bias vanished, even slightly favouring women — women had simply applied more to the most competitive departments. The aggregate lied; the right grouping reversed the conclusion.",
+    daFindNote:"*This is Simpson's Paradox: on the same data, looking at the whole vs the parts can give opposite answers. Finding the right cut is exactly what data analysis is for.",
+    daFindLink:"See more stats notes",
+    mlTitle:"Motion Lab: our in-house automation demo",
+    mlSub:"Watch, score, report — fully automated. We handed an entire sports-analysis pipeline to computer vision as an in-house side project to sharpen and showcase what our automation can do. Future experiments live here too.",
+    ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
+    ml3:"Athlete profiles synced to the cloud", ml4:"Fault detection & highlight reels",
+    mlCta:"Enter Motion Lab", mlBook:"Book a session",
     subTeaser:"Free tool: ", subLink:"Cantonese subtitle generator (runs locally in your browser)",
     ctTitle:"Get in Touch", ctSub:"Pick a service — the form adapts so you only fill in what matters.",
     fService:"Service", fServicePick:"— Please choose —",
@@ -677,11 +703,13 @@ const I18N = {
     fCompany:"Company name", fBudget:"Budget range", fBudgetPick:"— Please choose —", fBudgetTbd:"Not decided yet",
     fWhen:"Preferred date / time",
     fMsg:"Anything else? (optional)",
+    fPrivacy:"We only use what you enter to reply to this enquiry — never sold or shared.",
     fSend:"Send enquiry", fSending:"Sending…",
-    fOk:"✔ Got it! We'll get back to you shortly.",
+    fOk:"✔ Got it! We'll reply within one business day.", fOkVia:"Reply going to:",
     fErrName:"Please tell us your name.", fErrService:"Please choose a service first.", fErrContact:"Leave at least an email or a phone number so we can reach you.",
     fErrSend:"Couldn't send — please try again later or email us directly.",
     fErrEmail:"That email doesn't look right — please double-check.",
+    fErrWhen:"The booking time can't be in the past.",
     stickyEnquire:"Quick enquiry",
     ariaLang:"Language", ariaMenu:"More features", ariaCc:"Area code",
     navCalc:"Split calculator",
@@ -706,6 +734,10 @@ function applyLang(){
   });
   document.querySelectorAll("[data-taria]").forEach(el => {
     el.setAttribute("aria-label", t(el.getAttribute("data-taria")));
+  });
+  // 已顯示嘅逐欄錯誤：跟住切語言重新翻譯（佢哋無 data-t，用記低嘅 key）
+  document.querySelectorAll(".field-err.show").forEach(el => {
+    if (el.dataset.k) el.textContent = t(el.dataset.k);
   });
   $("#langZh").classList.toggle("on", lang === "zh");
   $("#langEn").classList.toggle("on", lang === "en");
@@ -760,29 +792,70 @@ setTimeout(()=>document.querySelectorAll(".fade:not(.in)").forEach(el=>el.classL
 
 /* ════════════ 漸進式表單 ════════════ */
 const svcSel = $("#fService");
+const whenInput = $("#fWhen");
 function revealGroups(){
   $("#grpBiz").classList.toggle("show", svcSel.value === "consulting" || svcSel.value === "data");
   $("#grpMl").classList.toggle("show", svcSel.value === "motionlab");
 }
 svcSel.addEventListener("change", revealGroups);
 
+// datetime-local：唔俾揀過去（min = 而家，本地時區）
+function setWhenMin(){
+  const n = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  whenInput.min = n.toISOString().slice(0, 16);
+}
+setWhenMin();
+
 function formMsg(text, cls){
   const el = $("#formMsg");
   el.className = "formmsg " + cls;
+  el.setAttribute("role", cls === "err" ? "alert" : "status");   // 錯誤 assertive、成功 polite
   el.textContent = text;
 }
+
+// 逐欄 inline 錯誤（aria-invalid + 描述訊息）
+const VALIDATED = ["fService", "fName", "fEmail", "fPhone", "fWhen"];
+function setErr(id, msgKey){
+  const inp = $("#" + id), box = $("#err-" + id);
+  if(box){ box.textContent = t(msgKey); box.classList.add("show"); box.dataset.k = msgKey; }
+  if(inp) inp.setAttribute("aria-invalid", "true");
+}
+function clearErr(id){
+  const inp = $("#" + id), box = $("#err-" + id);
+  if(box){ box.textContent = ""; box.classList.remove("show"); delete box.dataset.k; }
+  if(inp) inp.removeAttribute("aria-invalid");
+}
+// 一改就清返嗰欄嘅錯誤
+VALIDATED.forEach(id=>{
+  const el = $("#" + id);
+  if(el){ el.addEventListener("input", ()=>clearErr(id)); el.addEventListener("change", ()=>clearErr(id)); }
+});
 
 $("#contactForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const btn = $("#submitBtn");
   if($("#fWebsite").value){ formMsg(t("fOk"), "ok"); e.target.reset(); revealGroups(); return; } // honeypot：假成功
-  if(!svcSel.value){ formMsg(t("fErrService"), "err"); svcSel.focus(); return; }
+
+  VALIDATED.forEach(clearErr);
   const name = $("#fName").value.trim();
-  if(!name){ formMsg(t("fErrName"), "err"); $("#fName").focus(); return; }
   const email = $("#fEmail").value.trim();
   let phone = $("#fPhone").value.trim().replace(/^\+?852[\s-]*/, "");   // 用戶自己打咗 +852 就唔好重複
-  if(!email && !phone){ formMsg(t("fErrContact"), "err"); $("#fEmail").focus(); return; }
-  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ formMsg(t("fErrEmail"), "err"); $("#fEmail").focus(); return; }
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);   // 收緊：頂級域至少 2 個字（唔收 a@b.c）
+
+  // 一次過收集所有錯誤，唔好逐個彈
+  const errs = [];
+  if(!svcSel.value) errs.push(["fService", "fErrService"]);
+  if(!name) errs.push(["fName", "fErrName"]);
+  if(email && !emailOk) errs.push(["fEmail", "fErrEmail"]);
+  if(!email && !phone) errs.push(["fEmail", "fErrContact"]);
+  if(svcSel.value === "motionlab" && whenInput.value && whenInput.value < whenInput.min) errs.push(["fWhen", "fErrWhen"]);
+
+  if(errs.length){
+    errs.forEach(([id, key])=>setErr(id, key));
+    formMsg(t(errs[0][1]), "err");
+    const first = $("#" + errs[0][0]); if(first) first.focus();
+    return;
+  }
 
   const row = {
     service: svcSel.value,
@@ -795,6 +868,7 @@ $("#contactForm").addEventListener("submit", async e=>{
     message: $("#fMsg").value.trim() || null,
     lang,
   };
+  const channel = email || (phone ? "+852 " + phone : "");
 
   btn.disabled = true;
   const label = btn.querySelector("span");
@@ -807,9 +881,10 @@ $("#contactForm").addEventListener("submit", async e=>{
       signal: AbortSignal.timeout(15000),
     });
     if(!resp.ok) throw new Error("HTTP " + resp.status);
-    formMsg(t("fOk"), "ok");
+    formMsg(t("fOk") + (channel ? "  " + t("fOkVia") + channel : ""), "ok");
     e.target.reset();
     revealGroups();
+    setWhenMin();
   }catch(err){
     console.warn("enquiry failed", err);
     formMsg(t("fErrSend"), "err");
