@@ -135,12 +135,14 @@
   .plate img{width:100%; height:100%; object-fit:cover; object-position:center; display:block}
 
   /* ── 雙路分流（兩欄，中間豎髮絲線） ── */
-  .dual{display:grid; grid-template-columns:1fr 1fr}
+  .dual{display:grid; grid-template-columns:1.5fr 1fr}
   .dual > a{
     display:block; text-decoration:none; color:var(--color-text); padding:40px 48px 40px 0;
   }
   .dual > a + a{padding:40px 0 40px 48px; border-left:1px solid var(--color-divider)}
   .dual .path-ico{color:var(--color-accent)}
+  .dual .ptag{display:block; font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--color-accent); margin:0 0 2px; font-feature-settings:'tnum'}
+  .dual .ptag.ex{color:var(--color-neutral-500)}
   .dual h3{font-size:26px; margin:12px 0 8px}
   .dual p{font-size:14px; line-height:1.75; text-align:justify; color:var(--color-neutral-700); margin:0 0 16px}
   .dual .go{font-size:14px; color:var(--color-accent); border-bottom:1px solid var(--color-accent); padding-bottom:2px}
@@ -342,12 +344,14 @@
   <div class="wrap dual">
     <a href="#business" id="ctaBiz">
       <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>
+      <span class="ptag" data-t="pathBizTag"></span>
       <h3 data-t="pathBizTitle"></h3>
       <p data-t="pathBizDesc"></p>
       <span class="go"><span data-t="ctaBiz"></span> →</span>
     </a>
     <a href="#motionlab" id="ctaMl">
       <span class="path-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span>
+      <span class="ptag ex" data-t="pathMlTag"></span>
       <h3 data-t="pathMlTitle"></h3>
       <p data-t="pathMlDesc"></p>
       <span class="go"><span data-t="ctaMl"></span> →</span>
@@ -540,9 +544,9 @@ const I18N = {
     heroSub:"客服自動化、自動報表、自動審批流程 — 幫香港企業將日日重複嘅工序交俾系統，慳返人手同時間。Motion Lab AI 運動分析，就係我哋其中一個自動化實例。",
     ctaBiz:"睇我哋點自動化", ctaMl:"睇 Motion Lab 實例",
     figCap:"香港 · 由評估到落地",
-    pathBizTitle:"流程自動化",
+    pathBizTag:"我哋嘅服務", pathBizTitle:"流程自動化",
     pathBizDesc:"客服、報表、審批 — 幫香港企業揾出重複工序，交俾系統做，由評估到落地一條龍。",
-    pathMlTitle:"Motion Lab · 自動化實例",
+    pathMlTag:"其中一個實例", pathMlTitle:"Motion Lab · 自動化實例",
     pathMlDesc:"AI 運動姿態分析 —「睇片、評分、出報告」全自動，係我哋自動化能力嘅一個真實例子。",
     bizTitle:"我哋幫你自動化啲乜", bizSub:"揾出最食時間、日日重複嘅工序，交俾系統做 — 由客服、報表到審批，一條龍。",
     svc1Title:"客服自動化", svc1a:"24／7 智能客服對答", svc1b:"常見問題自動回覆", svc1c:"複雜個案無縫轉真人",
@@ -581,9 +585,9 @@ const I18N = {
     heroSub:"Customer-service automation, automated reporting and approval workflows — we hand your team's daily repetitive work to systems, saving time and headcount. Our AI Motion Lab is one such automation in action.",
     ctaBiz:"See what we automate", ctaMl:"See the Motion Lab example",
     figCap:"Hong Kong · from assessment to shipping",
-    pathBizTitle:"Process Automation",
+    pathBizTag:"What we do", pathBizTitle:"Process Automation",
     pathBizDesc:"Customer service, reporting and approvals — we find the repetitive work and hand it to systems, from assessment to shipping.",
-    pathMlTitle:"Motion Lab · Automation Example",
+    pathMlTag:"One example", pathMlTitle:"Motion Lab · Automation Example",
     pathMlDesc:"AI motion analysis — watch, score and report, fully automated. A real example of what our automation can do.",
     bizTitle:"What We Automate", bizSub:"We find the most time-consuming, repetitive steps and hand them to systems — from customer service to reporting to approvals.",
     svc1Title:"Customer Service Automation", svc1a:"24/7 AI chat & replies", svc1b:"Auto-answers to common questions", svc1c:"Seamless hand-off to a human",
