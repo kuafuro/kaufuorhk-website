@@ -529,16 +529,34 @@ function renderResult(output, duration, secs){
   $("result").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// 免費：只顯示前 ~10% 段，全文＋匯出鎖住；Pro：全部顯示。ent 一變就重繪。
+// 免費：只顯示頭 ~10%（用「字元 budget」計，唔靠段數 —— 單段長稿一樣截到）；Pro：全部。ent 一變就重繪。
 function applyGate(){
   if (!lastResult) return;
   const { segs, fullText, secs } = lastResult;
   const pro = isPro();
-  const shown = pro ? segs.length : Math.max(1, Math.ceil(segs.length * BILLING.SUBTITLE_FREE_PREVIEW_RATIO));
-  const shownSegs = segs.slice(0, shown);
+  const total = fullText.length;
+  const budget = pro ? total : Math.max(30, Math.ceil(total * BILLING.SUBTITLE_FREE_PREVIEW_RATIO));
+  const gated = !pro && budget < total;
+  const en = (localStorage.getItem("kf-lang") || "zh").startsWith("en");
+
+  // 分段顯示：逐段加至用完 budget，最後一段超額就截斷（保證免費永遠見唔到全部）
+  let shownSegs;
+  if (pro) {
+    shownSegs = segs;
+  } else {
+    shownSegs = [];
+    let acc = 0;
+    for (const s of segs) {
+      if (acc >= budget) break;
+      const txt = s.text || "";
+      if (acc + txt.length > budget) { shownSegs.push({ ...s, text: txt.slice(0, Math.max(0, budget - acc)) + " …" }); break; }
+      shownSegs.push(s); acc += txt.length;
+    }
+    if (!shownSegs.length && segs.length) shownSegs.push({ ...segs[0], text: (segs[0].text || "").slice(0, budget) + " …" });
+  }
 
   const ta = $("outText");
-  ta.value = pro ? fullText : shownSegs.map(s => s.text).join("");
+  ta.value = pro ? fullText : (fullText.slice(0, budget) + (gated ? " …" : ""));
   ta.readOnly = !pro;
 
   const sv = $("segView");
@@ -551,15 +569,15 @@ function applyGate(){
     sv.appendChild(row);
   });
 
-  const en = (localStorage.getItem("kf-lang") || "zh").startsWith("en");
+  const pct = Math.min(100, Math.round((budget / Math.max(1, total)) * 100));
   $("resultMeta").textContent = pro
     ? `${segs.length} 段 · 用咗 ${secs} 秒`
-    : (en ? `Free preview ${shown} / ${segs.length} segments` : `免費預覽 ${shown} / ${segs.length} 段`);
+    : (en ? `Free preview (~${pct}%)` : `免費預覽（約 ${pct}%）`);
 
-  renderPaywallCard(!pro && segs.length > shown, segs.length - shown, en);
+  renderPaywallCard(gated, en);
 }
 
-function renderPaywallCard(show, hiddenCount, en){
+function renderPaywallCard(show, en){
   let card = $("subPaywall");
   if (!show) { if (card) card.style.display = "none"; return; }
   if (!card) {
@@ -570,8 +588,8 @@ function renderPaywallCard(show, hiddenCount, en){
   }
   card.style.display = "block";
   card.innerHTML = en
-    ? `<b>Free preview.</b> ${hiddenCount} more segments are hidden — unlock the full transcript and export .srt / .vtt subtitles.`
-    : `<b>免費預覽。</b>仲有 ${hiddenCount} 段收埋咗 —— 解鎖睇全文，同埋匯出 .srt / .vtt 字幕。`;
+    ? `<b>Free preview.</b> Unlock the full transcript and export .srt / .vtt subtitles.`
+    : `<b>免費預覽。</b>解鎖睇全文，同埋匯出 .srt / .vtt 字幕。`;
   const btn = document.createElement("button");
   btn.className = "btn primary";
   btn.style.cssText = "margin-top:12px";
