@@ -240,7 +240,14 @@
       <button class="btn" id="dlTxt">⬇️ 下載 .txt</button>
       <button class="btn" id="dlSrt">⬇️ 下載 .srt 字幕</button>
       <button class="btn" id="dlVtt">⬇️ 下載 .vtt</button>
+      <button class="btn" id="saveCloud">☁️ 存去雲端</button>
     </div>
+  </div>
+
+  <!-- 雲端歷史（Pro，opt-in；音檔永遠唔上傳，淨係存字幕文字） -->
+  <div class="card" id="cloudCard" style="display:none">
+    <h2>☁️ <span data-cloud="title">我的雲端字幕</span> <span class="hint" data-cloud="sub">Pro · 任何裝置睇返 · 音檔唔上傳</span></h2>
+    <div id="cloudList" class="fs-xs muted">—</div>
   </div>
 
   <div class="card fs-xs muted">
@@ -268,8 +275,9 @@ let ent = null;
 const isPro = () => !!(ent && ent.hasAccess("subtitle"));
 Entitlements.init().then(e => {
   ent = e;
-  e.on("change", () => applyGate());   // 升級後即時解鎖現有結果
+  e.on("change", () => { applyGate(); loadHistory(); });   // 升級後即時解鎖 + 顯示雲端歷史
   applyGate();
+  loadHistory();
 }).catch(err => console.warn("billing init", err));
 const toast = (msg) => {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
@@ -628,7 +636,7 @@ function download(name, text){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function baseName(){
-  const n = (audioFile?.name || "transcript").replace(/\.[^.]+$/, "");
+  const n = (lastResult?.name || audioFile?.name || "transcript").replace(/\.[^.]+$/, "");
   return n || "transcript";
 }
 // 匯出／複製全文 = Pro；免費撳 → 彈 paywall
@@ -648,6 +656,74 @@ async function copy(text){
   catch { toast("複製唔到，請手動揀"); }
 }
 $("copyText").addEventListener("click", () => { if (!exportGate()) return; lastResult && copy(lastResult.fullText); });
+
+/* ---------- 雲端字幕（Pro，opt-in；音檔唔上傳，淨係存文字＋段落） ---------- */
+const cloudEN = () => (localStorage.getItem("kf-lang") || "zh").startsWith("en");
+const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+async function saveToCloud(){
+  if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud save" : "雲端儲存"); return; }
+  if (!lastResult) return;
+  const db = ent && await ent.db();
+  if (!db || !ent.userId) { toast(cloudEN() ? "Please sign in" : "請先登入"); return; }
+  const btn = $("saveCloud"); btn.disabled = true;
+  try {
+    const { error } = await db.from("subtitle_transcripts").insert({
+      user_id: ent.userId, name: baseName(), body: lastResult.fullText, segments: lastResult.segs,
+    });
+    if (error) throw error;   // RLS 會擋非 Pro（服務端閘）
+    toast(cloudEN() ? "Saved to cloud ✓" : "已存去雲端 ✓");
+    loadHistory();
+  } catch (e) { toast((cloudEN() ? "Save failed: " : "存唔到：") + (e.message || e)); }
+  finally { btn.disabled = false; }
+}
+$("saveCloud").addEventListener("click", saveToCloud);
+
+async function loadHistory(){
+  const card = $("cloudCard"), list = $("cloudList");
+  const db = ent && await ent.db();
+  if (!db || !ent.userId) { card.style.display = "none"; return; }
+  const en = cloudEN();
+  card.querySelector('[data-cloud="title"]').textContent = en ? "My cloud subtitles" : "我的雲端字幕";
+  card.querySelector('[data-cloud="sub"]').textContent = en ? "Pro · any device · audio never uploaded" : "Pro · 任何裝置睇返 · 音檔唔上傳";
+  let rows = [];
+  try {
+    const { data } = await db.from("subtitle_transcripts")
+      .select("id,name,created_at").order("created_at", { ascending: false }).limit(50);
+    rows = data || [];
+  } catch (_) {}
+  card.style.display = "block";
+  if (!rows.length) { list.textContent = en ? "Nothing saved yet — transcribe, then ☁️ Save to cloud." : "仲未存嘢 —— 轉完字幕撳 ☁️ 存去雲端。"; return; }
+  list.innerHTML = "";
+  rows.forEach(r => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)";
+    const when = (r.created_at || "").slice(0, 16).replace("T", " ");
+    row.innerHTML = `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.name)}</span><span class="muted" style="font-size:.72rem;white-space:nowrap">${when}</span>`;
+    const open = document.createElement("button"); open.className = "btn"; open.textContent = en ? "Open" : "開";
+    open.onclick = () => openSaved(r.id);
+    const del = document.createElement("button"); del.className = "btn"; del.textContent = "🗑";
+    del.onclick = () => deleteSaved(r.id);
+    row.append(open, del); list.appendChild(row);
+  });
+}
+
+async function openSaved(id){
+  const db = ent && await ent.db(); if (!db) return;
+  try {
+    const { data } = await db.from("subtitle_transcripts").select("name,body,segments").eq("id", id).single();
+    if (!data) return;
+    lastResult = { segs: data.segments || [], fullText: data.body || "", secs: 0, name: data.name };
+    $("result").style.display = "block";
+    applyGate();
+    $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (_) {}
+}
+
+async function deleteSaved(id){
+  const db = ent && await ent.db(); if (!db) return;
+  try { await db.from("subtitle_transcripts").delete().eq("id", id); toast(cloudEN() ? "Deleted" : "已刪除"); loadHistory(); } catch (_) {}
+}
 $("copyPrompt").addEventListener("click", () => copy($("promptText").textContent.trim()));
 </script>
 </body>

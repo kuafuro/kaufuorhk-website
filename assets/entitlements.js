@@ -49,6 +49,10 @@ class Ent {
 
   hasAccess(tool) { return !!(this._ent.all || this._ent[tool]); }
 
+  // Authenticated Supabase client for tool CRUD (reuses the session). null if not logged in.
+  async db() { return hasStoredSession() ? await sb() : null; }
+  get userId() { return this._session?.user?.id || null; }
+
   requirePro(tool, feature) { if (this.hasAccess(tool)) return true; this._paywall(tool, feature); return false; }
 
   async upgrade(product) {
