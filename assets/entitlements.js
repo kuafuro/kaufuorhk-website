@@ -55,7 +55,7 @@ class Ent {
 
   requirePro(tool, feature) { if (this.hasAccess(tool)) return true; this._paywall(tool, feature); return false; }
 
-  async upgrade(product) {
+  async upgrade(product, tier = 'pro') {
     const client = await sb();
     this._session = (await client.auth.getSession()).data.session;
     if (!this._session) {                                  // free tier is anonymous → login, then come back here
@@ -66,8 +66,9 @@ class Ent {
     const res = await fetch(`${BILLING.EDGE_BASE}/create-checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this._session.access_token}` },
-      body: JSON.stringify({ product, success_url: `${base}${location.pathname}?upgraded=1`, cancel_url: `${base}${location.pathname}` }),
+      body: JSON.stringify({ product, tier, success_url: `${base}${location.pathname}?upgraded=1`, cancel_url: `${base}${location.pathname}` }),
     }).then((r) => r.json());
+    // url = fresh checkout · portalUrl (+upgrade) = switch plan in portal · alreadyActive = already covered
     if (res.url) location.href = res.url;
     else if (res.portalUrl) location.href = res.portalUrl;
     else if (res.alreadyActive) { await this._load(); this._emit(); }

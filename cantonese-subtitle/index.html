@@ -61,6 +61,17 @@
   #fileInfo{margin-top:10px;font-size:.85rem;display:none}
   #fileInfo b{font-weight:600}
 
+  /* engine toggle */
+  .engine{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .eng{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);
+    color:var(--ink);font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;
+  }
+  .eng:hover{border-color:var(--ink)}
+  .eng.on{border-color:var(--accent);background:var(--accent-soft)}
+  .eng .s{font-size:.68rem;font-weight:400;color:var(--muted)}
+
   /* controls */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media (max-width:520px){ .grid2{grid-template-columns:1fr} }
@@ -146,7 +157,7 @@
 
   <header class="top">
     <h1>🎙️ 廣東話轉字幕
-      <small>Cantonese → Subtitles · 全程喺你部機本地運算 · 唔使上傳</small>
+      <small>Cantonese → Subtitles · 本地免費私密,或雲端快速（Pro）</small>
     </h1>
     <a class="back" href="/">← 返 Kuafuor HK</a>
   </header>
@@ -166,7 +177,22 @@
   <!-- STEP 2: 設定 -->
   <div class="card">
     <h2>② 設定 <span class="hint">預設已經係「廣東話口語」最佳組合</span></h2>
-    <div class="grid2">
+
+    <!-- 引擎：本地（免費／私密）vs 雲端快速（Pro · SenseVoice） -->
+    <div class="engine" role="tablist" aria-label="轉字幕引擎">
+      <button id="engLocal" class="eng on" role="tab" aria-selected="true">
+        💻 本地 <span class="s">免費 · 私密 · 慢</span>
+      </button>
+      <button id="engCloud" class="eng" role="tab" aria-selected="false">
+        ☁️ 雲端快速 <span class="s">Pro · 快 15× · 有講者</span>
+      </button>
+    </div>
+    <div class="notice info" id="cloudNote" style="display:none">
+      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,1 個鐘錄音大約 15–60 秒搞掂,仲會分「邊個講」同出時間軸。
+      音檔會上傳到我哋嘅私密處理伺服器,轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
+    </div>
+
+    <div class="grid2" id="localOpts">
       <label class="f">模型 Model
         <select id="model"></select>
       </label>
@@ -251,9 +277,11 @@
   </div>
 
   <div class="card fs-xs muted">
-    <b>私隱：</b>你嘅錄音同字幕全部喺你部瀏覽器本地處理，<u>唔會上傳去任何伺服器</u>。
+    <b>私隱：</b><b>本地引擎（預設）</b>—— 你嘅錄音同字幕全部喺你部瀏覽器本地處理，<u>唔會上傳去任何伺服器</u>。
     第一次用會由 Hugging Face 下載模型檔（turbo 約 1.6GB，之後會 cache 喺瀏覽器，第二次即刻用）。
-    建議用 <b>Chrome / Edge</b>（有 WebGPU 最快）；冇 WebGPU 會自動轉用相容模式（細啲嘅模型、慢啲）。
+    建議用 <b>Chrome / Edge</b>（有 WebGPU 最快）；冇 WebGPU 會自動轉用相容模式（細啲嘅模型、慢啲）。<br>
+    <b>雲端快速（Pro）</b>—— 為咗快，音檔會上傳到我哋嘅私密處理伺服器，轉完 6 個鐘內自動刪除，只保留字幕文字。
+    廣東話雲端轉錄由 <b>SenseVoice</b>（FunASR · Alibaba）提供。
   </div>
 
 </div>
@@ -338,6 +366,26 @@ function refreshModelNote(){
 }
 refreshModelNote();
 
+/* ---------- 引擎切換：本地（免費）vs 雲端快速（Pro · SenseVoice）---------- */
+let engine = "local";
+const engLocalBtn = $("engLocal"), engCloudBtn = $("engCloud");
+function setEngine(e){
+  engine = e;
+  const cloud = e === "cloud";
+  engCloudBtn.classList.toggle("on", cloud); engCloudBtn.setAttribute("aria-selected", String(cloud));
+  engLocalBtn.classList.toggle("on", !cloud); engLocalBtn.setAttribute("aria-selected", String(!cloud));
+  $("localOpts").style.display = cloud ? "none" : "";
+  $("modelNote").style.display = cloud ? "none" : "";
+  const adv = document.querySelector("details.adv"); if (adv) adv.style.display = cloud ? "none" : "";
+  $("cloudNote").style.display = cloud ? "block" : "none";
+  $("run").textContent = cloud ? "☁️ 開始轉字幕（雲端快速）" : "▶️ 開始轉字幕 Transcribe";
+}
+engLocalBtn.addEventListener("click", () => setEngine("local"));
+engCloudBtn.addEventListener("click", () => {
+  if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud transcription" : "雲端快速轉錄"); else toast("請稍等…"); return; }
+  setEngine("cloud");
+});
+
 /* ---------- 揀檔案 ---------- */
 let audioFile = null;
 const drop = $("drop"), fileInput = $("file");
@@ -414,6 +462,7 @@ function onDownload(p){
 
 /* ---------- 主流程 ---------- */
 let lastResult = null;
+function run(){ return engine === "cloud" ? runCloud() : runLocal(); }
 $("run").addEventListener("click", run);
 
 // 付款後 Stripe 會 full-reload 返呢頁（?upgraded=1）；還原轉換前嘅字幕，等 ent 變 Pro 就自動解鎖全文
@@ -424,7 +473,7 @@ try {
   }
 } catch (_) {}
 
-async function run(){
+async function runLocal(){
   if (!audioFile) return;
   const key = modelSel.value;
   const language = $("lang").value;
@@ -480,6 +529,106 @@ async function run(){
   }
 }
 
+/* ---------- 雲端快速（SenseVoice · Pro）---------- */
+// 快速攞音訊長度（只讀 metadata，唔使整條解碼）—— 用嚟做配額 pre-flight
+function getDurationMeta(file){
+  return new Promise(resolve => {
+    try {
+      const el = document.createElement(file.type.startsWith("video") ? "video" : "audio");
+      el.preload = "metadata";
+      el.onloadedmetadata = () => { const d = el.duration; try { URL.revokeObjectURL(el.src); } catch(_){} resolve(isFinite(d) && d > 0 ? d : 0); };
+      el.onerror = () => resolve(0);
+      el.src = URL.createObjectURL(file);
+    } catch(_) { resolve(0); }
+  });
+}
+
+async function runCloud(){
+  if (!audioFile) return;
+  const en = cloudEN();
+  if (!isPro()) { if (ent) ent.requirePro("subtitle", en ? "cloud transcription" : "雲端快速轉錄"); return; }
+  const db = ent && await ent.db();
+  const token = db && (await db.auth.getSession()).data.session?.access_token;
+  if (!db || !ent.userId || !token) { toast(en ? "Please sign in" : "請先登入"); return; }
+
+  $("run").disabled = true; $("err").style.display = "none"; $("result").style.display = "none";
+  showStatus(); setBar(0);
+  try {
+    const dur = await getDurationMeta(audioFile);
+
+    setBar(15); setText(`<span class="spinner"></span>${en ? "Uploading audio…" : "上傳音檔中…（轉完 6 個鐘內自動刪）"}`);
+    const safe = audioFile.name.replace(/[^\w.\-]+/g, "_").slice(-80) || "audio";
+    const path = `${ent.userId}/${Date.now()}_${safe}`;
+    const up = await db.storage.from("subtitle-audio").upload(path, audioFile, {
+      contentType: audioFile.type || "application/octet-stream", upsert: false,
+    });
+    if (up.error) throw new Error((en ? "upload failed: " : "上傳失敗：") + up.error.message);
+
+    setBar(55); setText(`<span class="spinner"></span>${en ? "Transcribing on SenseVoice cloud…" : "雲端 SenseVoice 轉字幕中…（廣東話原生，好快）"}`);
+    const resp = await fetch(`${BILLING.EDGE_BASE}/transcribe-fast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "apikey": BILLING.SB_KEY },
+      body: JSON.stringify({ storage_path: path, duration_ms: Math.round(dur * 1000) }),
+    });
+
+    if (resp.status === 402) { const j = await resp.json().catch(() => ({})); statusBox.style.display = "none"; showQuotaUpsell(j); return; }
+    if (resp.status === 503) throw new Error(en ? "cloud not enabled yet" : "雲端服務暫未開通,請用返本地引擎");
+    if (!resp.ok) { const j = await resp.json().catch(() => ({})); throw new Error(j.detail || j.error || ("HTTP " + resp.status)); }
+
+    const j = await resp.json();
+    const segs = (j.segments || []).map(s => ({
+      start: (s.start_ms || 0) / 1000, end: (s.end_ms || 0) / 1000,
+      spk: (typeof s.spk === "number" ? s.spk : null), text: (s.text || "").trim(),
+    })).filter(s => s.text);
+    if (!segs.length) throw new Error(en ? "empty result" : "轉唔到字（可能係靜音或者格式問題）");
+
+    const multiSpk = new Set(segs.map(s => s.spk).filter(v => v != null)).size > 1;
+    const fullText = segs.map(s => (multiSpk && s.spk != null ? `講者${s.spk + 1}：` : "") + s.text).join("\n");
+    lastResult = { segs, fullText, secs: 0, cloud: true, multiSpk, name: baseName() };
+    try { sessionStorage.removeItem("kf-sub-last"); } catch(_){}
+    statusBox.style.display = "none";
+    $("result").style.display = "block";
+    updateCloudQuota(j);
+    applyGate();
+    $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    console.error(e); statusBox.style.display = "none";
+    const box = $("err"); box.style.display = "block";
+    box.innerHTML = `${en ? "Cloud transcription failed" : "雲端轉字幕失敗"}：${e?.message || e}`;
+    const b = document.createElement("button");
+    b.className = "btn"; b.style.marginTop = "10px";
+    b.textContent = en ? "Use local engine instead" : "改用本地引擎（免費·慢啲）再試";
+    b.onclick = () => { $("err").style.display = "none"; setEngine("local"); runLocal(); };
+    box.appendChild(document.createElement("br")); box.appendChild(b);
+  } finally { $("run").disabled = false; }
+}
+
+function updateCloudQuota(j){
+  if (!j || j.quota == null) return;
+  const en = cloudEN(), used = j.used_min || 0, q = j.quota, tier = String(j.tier || "pro").toUpperCase();
+  $("cloudQuota").textContent = en
+    ? ` This month: ${used}/${q} min used (${tier}).`
+    : ` 今個月已用 ${used}/${q} 分鐘（${tier}）。`;
+}
+
+function showQuotaUpsell(j){
+  const en = cloudEN();
+  const box = $("err"); box.style.display = "block";
+  const q = (j && j.quota != null) ? ` (${j.used_min || 0}/${j.quota})` : "";
+  box.innerHTML = en
+    ? `<b>You've used up this month's cloud minutes${q}.</b> Upgrade to <b>Max</b> for more — or use the free local engine meanwhile.`
+    : `<b>你今個月嘅雲端額度用完喇${q}。</b>升 <b>Max</b> 解鎖更多,或者用返免費本地引擎。`;
+  const up = document.createElement("button");
+  up.className = "btn primary"; up.style.cssText = "margin-top:10px;margin-right:8px";
+  up.textContent = en ? "Upgrade to Max" : "升級 Max";
+  up.onclick = () => ent && ent.upgrade("subtitle", "max");
+  const loc = document.createElement("button");
+  loc.className = "btn"; loc.style.marginTop = "10px";
+  loc.textContent = en ? "Use local engine" : "改用本地引擎";
+  loc.onclick = () => { $("err").style.display = "none"; setEngine("local"); };
+  box.appendChild(document.createElement("br")); box.appendChild(up); box.appendChild(loc);
+}
+
 /* ---------- 結果渲染 ---------- */
 function pad(n, w=2){ return String(Math.floor(n)).padStart(w, "0"); }
 function fmtTime(sec, comma=true){
@@ -488,6 +637,9 @@ function fmtTime(sec, comma=true){
   const ms = Math.round((sec - Math.floor(sec))*1000);
   return `${pad(h)}:${pad(m)}:${pad(s)}${comma?",":"."}${pad(ms,3)}`;
 }
+
+// 有多過一個講者時，喺每句前面加「講者N：」（雲端 SenseVoice 先有 spk；本地 Whisper 冇）
+function segText(s){ return (lastResult?.multiSpk && s?.spk != null ? `講者${s.spk + 1}：` : "") + (s?.text || ""); }
 
 // 逐字模式：合併成大約一句句子（避免 SRT 一字一格）
 function coalesce(chunks, maxGap=0.8, maxChars=42){
@@ -573,7 +725,7 @@ function applyGate(){
     const row = document.createElement("div");
     row.className = "seg";
     row.innerHTML = `<div class="ts">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
-    row.querySelector(".tx").textContent = s.text;
+    row.querySelector(".tx").textContent = segText(s);
     sv.appendChild(row);
   });
 
@@ -620,12 +772,12 @@ document.querySelectorAll(".tabs button").forEach(b => {
 /* ---------- 匯出 ---------- */
 function buildSRT(segs){
   return segs.map((s, i) =>
-    `${i+1}\n${fmtTime(s.start)} --> ${fmtTime(s.end)}\n${s.text}\n`
+    `${i+1}\n${fmtTime(s.start)} --> ${fmtTime(s.end)}\n${segText(s)}\n`
   ).join("\n");
 }
 function buildVTT(segs){
   return "WEBVTT\n\n" + segs.map(s =>
-    `${fmtTime(s.start,false)} --> ${fmtTime(s.end,false)}\n${s.text}\n`
+    `${fmtTime(s.start,false)} --> ${fmtTime(s.end,false)}\n${segText(s)}\n`
   ).join("\n");
 }
 function download(name, text){
@@ -713,7 +865,9 @@ async function openSaved(id){
   try {
     const { data } = await db.from("subtitle_transcripts").select("name,body,segments").eq("id", id).single();
     if (!data) return;
-    lastResult = { segs: data.segments || [], fullText: data.body || "", secs: 0, name: data.name };
+    const savedSegs = data.segments || [];
+    const multiSpk = new Set(savedSegs.map(s => s?.spk).filter(v => v != null)).size > 1;
+    lastResult = { segs: savedSegs, fullText: data.body || "", secs: 0, name: data.name, multiSpk };
     $("result").style.display = "block";
     applyGate();
     $("result").scrollIntoView({ behavior: "smooth", block: "start" });
