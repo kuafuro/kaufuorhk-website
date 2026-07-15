@@ -45,12 +45,20 @@ Base (free) tiers stay usable **without login**. Premium requires login + active
 
 | Tool | Free (no login) | Premium (paid) |
 |---|---|---|
-| **轉字幕** (`subtitle`) | base Whisper model; view / copy transcript; download **`.txt`** | **turbo** model; export **`.srt` / `.vtt`**; advanced settings; long-file handling |
+| **轉字幕** (`subtitle`) | run the transcription; **preview only ~10% of the transcript** (a teaser); **no export, no full text** | **full transcript** view + copy; **export `.txt` / `.srt` / `.vtt`**; turbo model; advanced settings; long files |
 | **Motion Lab** (`motionlab`) | local analysis; **1 saved athlete + up to 3 saved sessions**; basic score | unlimited athletes / sessions; **cloud sync**; detailed reports; **PDF / CSV export**; highlight reels |
 
 Notes:
 - The exact free-tier Motion Lab quota (1 athlete / 3 sessions) is a starting value, adjustable in config.
-- 轉字幕's premium value is the **subtitle-format export** (`.srt`/`.vtt`) + turbo model.
+- **轉字幕 model (user decision):** the free tier lets a user *run* a transcription but reveals only
+  a **~10% preview** of the result — the paywall is on **seeing the full transcript and any export**
+  (`.txt`/`.srt`/`.vtt`). This proves the tool works, then gates the whole payoff. The 10% fraction
+  is config (`SUBTITLE_FREE_PREVIEW_RATIO`).
+- **Honesty caveat (must stay explicit):** 轉字幕 runs 100% in the browser, so the withheld 90% is
+  computed **client-side** and lives in JS memory — a devtools-savvy user can recover it. The 10%
+  teaser deters casual users; it is not a hard wall. Truly withholding the full text would require
+  server-side transcription, which breaks the "runs locally / free / private" promise and adds cost —
+  **out of scope**. We ship the client-side teaser and say so plainly (§9).
 
 ## 4. Architecture
 
@@ -245,11 +253,15 @@ around premium actions. No new backend code.
 ## 8. Per-tool integration
 
 ### 8.1 轉字幕 (`cantonese-subtitle`)
-- Load `entitlements.js`. Base flow unchanged and login-free.
-- Gate the **turbo model option**, **`.srt` / `.vtt` download** buttons, and **advanced settings**
-  behind `ent.requirePro('subtitle', …)`; free `.txt` download stays open.
-- Locked controls show a "Pro" badge; clicking opens the paywall (upgrade to Subtitle Pro or All-access).
-- Enforcement is **client-side** (the tool runs 100% locally) — see §9.
+- Load `entitlements.js` lazily (§7); the base transcription flow stays **login-free and offline**.
+- After a free transcription finishes, render only the **first ~10% of segments**
+  (`SUBTITLE_FREE_PREVIEW_RATIO`), then a paywall card over the remainder
+  ("睇全文 / 匯出字幕 → 升級 Subtitle Pro 或 Kuafuor Pro").
+- `ent.requirePro('subtitle', …)` gates: **full-transcript reveal**, **copy**, and **all exports**
+  (`.txt` / `.srt` / `.vtt`), plus the **turbo model** and **advanced settings**.
+- Unlocked (Subtitle Pro or All-access) → full transcript + every export button live.
+- Enforcement is **client-side** (the tool runs 100% locally) — see §9 and the §3 honesty caveat;
+  the withheld 90% exists in JS memory and is not a hard wall.
 
 ### 8.2 Motion Lab (`motion-lab`)
 - Reuse Motion Lab's existing magic-link auth + Supabase session; init `entitlements.js` with it.
@@ -273,10 +285,11 @@ around premium actions. No new backend code.
   the **publishable** key + price IDs (public by design).
 - `entitlements` is written only by the signature-verified webhook via service role; **RLS blocks
   all client writes** → users can't forge Pro.
-- **轉字幕 is 100% local** → client-side gating is bypassable via devtools. This is inherent to a
-  local tool; freemium here monetises convenience and deters casual users. We accept it and do **not**
-  pretend otherwise. Anything backed by server data (Motion Lab cloud features, quotas) **is**
-  server-enforced via `has_pro`.
+- **轉字幕 is 100% local** → the full transcript (including the withheld 90% behind the 10% preview)
+  is computed in the browser and sits in JS memory, so the gate is **client-side and bypassable via
+  devtools**. This is inherent to a local tool; the teaser + export paywall monetises convenience and
+  deters casual users. We accept it and do **not** pretend otherwise (see §3 caveat). Anything backed
+  by server data (Motion Lab cloud features, quotas) **is** server-enforced via `has_pro`.
 - Checkout/portal Edge Functions validate JWT, product, and redirect URLs (allow-list); CORS locked
   to our origins.
 - **Refunds/disputes auto-revoke:** `charge.refunded` / `charge.dispute.created` flip the entitlement
