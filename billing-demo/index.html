@@ -1,0 +1,15 @@
+<!DOCTYPE html><html lang="zh-Hant-HK"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Billing demo</title></head>
+<body style="font-family:sans-serif;max-width:520px;margin:40px auto;padding:0 16px">
+<h1>Billing loop demo</h1>
+<p>Access to <b>subtitle</b>: <span id="state">…</span></p>
+<button id="unlock">Unlock (requirePro subtitle)</button>
+<button id="manage">Manage</button>
+<script type="module">
+  import { Entitlements } from '/assets/entitlements.js';
+  const ent = await Entitlements.init();
+  const render = () => document.getElementById('state').textContent = ent.hasAccess('subtitle') ? 'YES (Pro)' : 'no (free)';
+  ent.on('change', render); render();
+  document.getElementById('unlock').onclick = () => { if (ent.requirePro('subtitle','demo')) alert('already Pro'); };
+  document.getElementById('manage').onclick = () => ent.manage();
+</script></body></html>
