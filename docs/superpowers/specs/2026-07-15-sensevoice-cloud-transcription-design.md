@@ -1,7 +1,7 @@
 # SenseVoice cloud fast transcription (Subtitle Pro) — Design Spec
 
 - **Date:** 2026-07-15
-- **Status:** APPROVED — all decisions locked (Modal host · Pro HK$30/5hr · Max HK$88/20hr · ~6h retention · Kuafuor Max deferred). Building P1.
+- **Status:** APPROVED — all decisions locked (Modal host · Pro HK$30/5hr · Max HK$88/20hr · ~6h retention · Kuafuor Max deferred). **P1 shipped** (`sensevoice/modal_app.py` + README) — awaiting user `modal deploy` → `SENSEVOICE_URL`/`SENSEVOICE_TOKEN`. P2/P3 next.
 - **Depends on:** the freemium/Stripe billing (shipped) — this is a new Subtitle **Pro** capability.
 - **Quality gate:** PASSED — SenseVoice tested on a real Cantonese meeting clip; it preserves colloquial 口語 (瞓死咗/係啦/佢哋/唔該), converts cleanly to Traditional (OpenCC `s2hk`), and supports timestamps + speaker diarization (`cam++`).
 
@@ -91,7 +91,7 @@ This is the one infra decision. Both are supported by the same Edge Function (it
 `SENSEVOICE_URL` + `SENSEVOICE_TOKEN`).
 
 ### Option A — Modal serverless GPU (**recommended to start**)
-- We ship a ready `modal deploy sensevoice_app.py`; you run it once → get an HTTPS endpoint + token.
+- We ship a ready `modal deploy sensevoice/modal_app.py`; you run it once → get an HTTPS endpoint + token.
 - **Scale-to-zero:** idle = **$0**; you pay per-second GPU only while transcribing.
 - **Cost:** ~1 min GPU per 1 hr audio on a T4/A10G → **~US$0.02–0.06 per hour of audio**. A Pro user doing
   50 hrs/month ≈ **US$1–3 ≈ HK$8–23**, well under the HK$30/mo Subtitle Pro price → healthy margin.
@@ -119,7 +119,7 @@ GPU box (B) if usage grows. The Edge Function is identical either way.
 - **Output:** `{ segments: [{ start_ms, end_ms, spk, text }], duration_ms }`
 - **Limits:** reject > N minutes (config, e.g. 120) to cap cost; 60 s request timeout guard.
 
-We provide this as `sensevoice_app.py` (Modal) **or** a Dockerfile+server (VPS) — same JSON contract.
+We provide this as `sensevoice/modal_app.py` (Modal) **or** a Dockerfile+server (VPS) — same JSON contract.
 
 ## 6. Edge Function `transcribe-fast`
 
@@ -130,7 +130,7 @@ We provide this as `sensevoice_app.py` (Modal) **or** a Dockerfile+server (VPS) 
   minutes used → return `{ segments, duration_ms }`. The audio is **kept for a short re-run window**
   (see §7), not deleted here.
 - **Tiered quota:** minutes used this calendar month are tracked in a `usage_transcribe` table; the cap
-  is the user's tier quota (`entitlement_tier` → Pro 300 min / Max 1 800 min, config). **Over quota →
+  is the user's tier quota (`entitlement_tier` → Pro 300 min / Max 1 200 min, config). **Over quota →
   `402 { error: 'quota', tier: 'pro' }`** → client shows the **upgrade-to-Max** prompt (not a hard error);
   the free local engine still works. A pre-flight estimate (audio duration) blocks a request that would
   clearly exceed the remaining quota, so we don't pay for a transcription we then refuse.
@@ -179,7 +179,7 @@ requires attribution.** Add to the tool's footer/about: "廣東話雲端轉錄�
 
 ## 13. Phasing
 
-- **P1 — endpoint:** ship `sensevoice_app.py` (Modal) + the JSON contract; you deploy → we get a URL/token.
+- **P1 — endpoint:** ship `sensevoice/modal_app.py` (Modal) + the JSON contract; you deploy → we get a URL/token.
 - **P2 — backend:** Storage bucket + RLS; `transcribe-fast` Edge Function + secrets + usage cap table.
 - **P3 — frontend:** local/cloud toggle, upload+progress, render 時間/講者, `.srt`, fallback, attribution.
 
