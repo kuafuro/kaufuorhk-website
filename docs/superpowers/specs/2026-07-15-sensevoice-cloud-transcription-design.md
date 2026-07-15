@@ -1,7 +1,12 @@
 # SenseVoice cloud fast transcription (Subtitle Pro) — Design Spec
 
 - **Date:** 2026-07-15
-- **Status:** APPROVED — all decisions locked (Modal host · Pro HK$30/5hr · Max HK$88/20hr · ~6h retention · Kuafuor Max deferred). **P1 shipped** (`sensevoice/modal_app.py` + README) — awaiting user `modal deploy` → `SENSEVOICE_URL`/`SENSEVOICE_TOKEN`. P2/P3 next.
+- **Status:** APPROVED + **BUILT (P1–P3)**. P1 `sensevoice/modal_app.py` + README. P2 migrations
+  (tier/quota/bucket/grants) + `transcribe-fast` + `sweep-audio` **deployed** to ikzoxrvnpsseyjviawti;
+  tier-aware `create-checkout`/`stripe-webhook` committed but **not redeployed** (waiting on the Stripe
+  Max price). P3 local/cloud toggle in the subtitle tool. **Go-live blockers (user):** `modal deploy` →
+  SENSEVOICE_URL/TOKEN secrets · create "Subtitle Max" HK$88/mo → PRICE_SUBTITLE_MAX secret · SWEEP_SECRET +
+  schedule sweep-audio · then redeploy create-checkout/webhook + merge frontend to main.
 - **Depends on:** the freemium/Stripe billing (shipped) — this is a new Subtitle **Pro** capability.
 - **Quality gate:** PASSED — SenseVoice tested on a real Cantonese meeting clip; it preserves colloquial 口語 (瞓死咗/係啦/佢哋/唔該), converts cleanly to Traditional (OpenCC `s2hk`), and supports timestamps + speaker diarization (`cam++`).
 
