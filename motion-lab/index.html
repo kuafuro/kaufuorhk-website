@@ -628,6 +628,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 
 <script type="module">
 import { FilesetResolver, PoseLandmarker, ImageEmbedder, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+import { Entitlements } from "/assets/entitlements.js";
 
 /* ============================================================
    Landmarks reference (MediaPipe Pose, 33 points)
@@ -643,6 +644,27 @@ const STATUS_COLOR = { good:"#0ca30c", warning:"#fab219", serious:"#ec835a" };
 const SKELETON_COLOR = "#3987e5";
 
 const $ = id => document.getElementById(id);
+
+/* ── Freemium 閘（Motion Lab）：本地分析免費；雲端同步（免費 1 拳手／3 節）、報告 PDF、匯出回顧片 = Pro ── */
+let ent = null;
+Entitlements.init().then(e => { ent = e; }).catch(err => console.warn("billing init", err));
+const mlEN = () => (localStorage.getItem("kf-lang") || "zh").startsWith("en");
+function mlPro(){ return !!(ent && ent.hasAccess("motionlab")); }
+function mlGate(feature){
+  if (mlPro()) return true;
+  if (ent) ent.requirePro("motionlab", feature);
+  else toast(mlEN() ? "One sec…" : "請稍等…");
+  return false;
+}
+// 服務端額度 trigger 拒絕時（免費超過 1 拳手／3 節）→ 彈 paywall 而唔係 raw error
+function mlQuotaHit(error){
+  if (error && /motionlab_free_quota/.test(error.message || "")) {
+    if (ent) ent.requirePro("motionlab", mlEN() ? "cloud save (free limit reached)" : "雲端儲存（已達免費上限）");
+    else toast(mlEN() ? "Free limit reached — upgrade to save more" : "已達免費上限 —— 升級解鎖更多");
+    return true;
+  }
+  return false;
+}
 const toast = (msg, ms=3200) => {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), ms);
@@ -1658,6 +1680,7 @@ $("clearBtn").addEventListener("click", ()=>{
 
 /* --- report --- */
 $("reportBtn").addEventListener("click", async ()=>{
+  if(!mlGate(mlEN() ? "report / PDF" : "報告 / PDF")) return;
   const a = pState.analyzed;
   if(!a){ toast("未有分析結果"); return; }
   $("rpDate").textContent = new Date().toLocaleString("zh-HK", {dateStyle:"long", timeStyle:"short"});
@@ -3449,7 +3472,7 @@ $("addAthBtn").addEventListener("click", async ()=>{
     height_cm: parseFloat($("newAthH").value) || null,
     weight_kg: parseFloat($("newAthW").value) || null };
   const { data, error } = await sb.from("athletes").insert(row).select().single();
-  if(error){ toast("新增失敗：" + error.message); return; }
+  if(error){ if(mlQuotaHit(error)) return; toast("新增失敗：" + error.message); return; }
   $("newAthName").value = ""; $("newAthH").value = ""; $("newAthW").value = "";
   currentAthleteId = data.id;
   toast(`已新增拳手：${name} ✔`);
@@ -3689,6 +3712,7 @@ function playMoment(i){
 let exporting = false;
 $("revExportBtn").addEventListener("click", async ()=>{
   if(exporting) return;
+  if(!mlGate(mlEN() ? "highlight export" : "匯出回顧影片")) return;
   if(!review.moments.length || !mRun.fileURL){ toast("未有回顧片段"); return; }
   exporting = true;
   const stat = $("revExportStat");
@@ -3845,7 +3869,7 @@ async function saveFighter(tag){
     sepMax: Math.round(F.sepMax || 0),
   };
   const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"motion", summary, detail });
-  if(error){ toast("儲存失敗：" + error.message); return; }
+  if(error){ if(mlQuotaHit(error)) return; toast("儲存失敗：" + error.message); return; }
   toast(`已儲存拳手 ${tag} → ${$("athleteSel").selectedOptions[0]?.textContent || ""} ✔`);
   loadSessions();
 }
@@ -3858,7 +3882,7 @@ $("savePostureBtn").addEventListener("click", async ()=>{
   const summary = { view: a.view, heightCm: a.heightCm,
     metrics: a.metrics.map(m=>({ name:m.name, value:m.value, extra:m.extra, status:m.status })) };
   const { error } = await sb.from("training_sessions").insert({ owner: sbUser.id, athlete_id: currentAthleteId, kind:"posture", summary });
-  if(error){ toast("儲存失敗：" + error.message); return; }
+  if(error){ if(mlQuotaHit(error)) return; toast("儲存失敗：" + error.message); return; }
   toast("已儲存體態紀錄 ✔");
   loadSessions();
 });
