@@ -1,7 +1,7 @@
 # SenseVoice cloud fast transcription (Subtitle Pro) — Design Spec
 
 - **Date:** 2026-07-15
-- **Status:** Draft for review
+- **Status:** Reviewed — decisions locked (Modal host · Pro/Max tiers · ~6h audio retention); pending Max price + quota numbers
 - **Depends on:** the freemium/Stripe billing (shipped) — this is a new Subtitle **Pro** capability.
 - **Quality gate:** PASSED — SenseVoice tested on a real Cantonese meeting clip; it preserves colloquial 口語 (瞓死咗/係啦/佢哋/唔該), converts cleanly to Traditional (OpenCC `s2hk`), and supports timestamps + speaker diarization (`cam++`).
 
@@ -31,6 +31,30 @@ it) and is faster; the only cost is it must run on our own/served GPU (Whisper h
 
 Cloud fast becomes the headline Pro upsell (not just export). Free stays the private/offline option.
 
+## 2.5 Tiers (Pro / Max) — usage-based upsell
+
+Cloud transcription costs real GPU money per minute, so cloud-fast minutes are **metered against a
+monthly quota that depends on the user's tier**. Two paid tiers per tool:
+
+| Tier | Price (proposed — confirm) | Cloud-fast quota / month |
+|---|---|---|
+| **Subtitle Pro** | HK$30 (existing) | **300 min (5 hr)** |
+| **Subtitle Max** | **HK$__ (you set)** | **1 800 min (30 hr)** — or "effectively unlimited" |
+
+**Over-quota behaviour (per your call):** when a Pro user uses up their monthly cloud minutes, we do
+**not** hard-stop — we show an **upgrade-to-Max** prompt ("你今個月嘅雲端額度用完喇,升 Max 解鎖更多")
+and they can still use the **free local** engine meanwhile. Upgrading to Max raises the quota immediately.
+
+**Entitlement model change:** add a `tier text default 'pro' check (tier in ('pro','max'))` column to the
+existing `entitlements` table. `has_pro()` is unchanged (any active row = access). A new
+`entitlement_tier(user, product)` returns the highest active tier (`max` > `pro` > none) to pick the quota.
+
+**Stripe change:** add **"Subtitle Max"** (monthly) — and, if wanted, **"Kuafuor Max"** (all-access Max).
+`create-checkout` gains a `tier` param; `subscription_data.metadata` carries `{ user_id, product, tier }`;
+the webhook maps price → `(product, tier)` and writes `tier` on the entitlement row.
+
+(Same structure generalises to Motion Lab later: motionlab Pro vs Max = different session/athlete quotas.)
+
 ## 3. Architecture
 
 ```
@@ -44,13 +68,13 @@ Cloud fast becomes the headline Pro upsell (not just export). Free stays the pri
 [SenseVoice endpoint (GPU)]  SenseVoice(yue) + fsmn-vad + cam++ + OpenCC s2hk
   │ 4. returns [{start,end,spk,text(繁體)}]
   ▼
-[Edge Function] → returns segments to client; 5. deletes the audio from Storage
+[Edge Function] → returns segments to client; audio kept ~6h for re-run (§7)
   ▼
 [Subtitle tool] renders segments (時間+講者), builds .srt, reuses existing cloud-save/export
 ```
 
-- The Edge Function is the **gatekeeper** (Pro check + secrets + orchestration); the GPU endpoint does inference.
-- **Audio is deleted after transcription** (privacy) — Storage object removed in step 5 (and a scheduled sweep for orphans).
+- The Edge Function is the **gatekeeper** (Pro/tier check + quota + secrets + orchestration); the GPU endpoint does inference.
+- **Audio is kept ~6 hours for re-run, then auto-deleted** (§7) — a scheduled sweep enforces the window.
 - `s2hk` (簡→繁 HK) runs on the **endpoint** (Python OpenCC), so the client/Edge never handle conversion.
 
 ## 4. Hosting the SenseVoice endpoint — options + cost
@@ -93,17 +117,25 @@ We provide this as `sensevoice_app.py` (Modal) **or** a Dockerfile+server (VPS) 
 
 - **Auth:** Supabase JWT; reject if not `has_pro('subtitle')` (server-enforced; also enforced by Storage RLS).
 - **Input:** `{ storage_path }`.
-- **Steps:** validate ownership of the path → create a short-lived signed URL → POST to `SENSEVOICE_URL`
-  with the token → receive segments → **delete the Storage object** → return `{ segments, duration_ms }`.
-- **Rate/΅cost cap:** per-user monthly minutes cap (config, e.g. 600 min) tracked in a small
-  `usage_transcribe` table; over cap → `429 { error: 'monthly_cap' }` → client shows an upgrade/notice.
+- **Steps:** validate ownership of the path → check the user's monthly quota (below) → create a
+  short-lived signed URL → POST to `SENSEVOICE_URL` with the token → receive segments → record the
+  minutes used → return `{ segments, duration_ms }`. The audio is **kept for a short re-run window**
+  (see §7), not deleted here.
+- **Tiered quota:** minutes used this calendar month are tracked in a `usage_transcribe` table; the cap
+  is the user's tier quota (`entitlement_tier` → Pro 300 min / Max 1 800 min, config). **Over quota →
+  `402 { error: 'quota', tier: 'pro' }`** → client shows the **upgrade-to-Max** prompt (not a hard error);
+  the free local engine still works. A pre-flight estimate (audio duration) blocks a request that would
+  clearly exceed the remaining quota, so we don't pay for a transcription we then refuse.
 - **Secrets (Supabase):** `SENSEVOICE_URL`, `SENSEVOICE_TOKEN`. Never in the repo.
 
 ## 7. Storage
 
 - Private bucket `subtitle-audio`; RLS: a user may `insert`/`read`/`delete` only under `"{auth.uid()}/…"`
-  **and** only if `has_pro('subtitle')`. Objects are deleted right after transcription; a daily edge/cron
-  sweep removes any orphaned files older than 1 hour (belt-and-braces for privacy).
+  **and** only if `has_pro('subtitle')`.
+- **Short re-run retention (per your call):** the uploaded audio is kept for a **short window
+  (default 6 hours)** so the user can re-run (e.g. tweak language, retry) without re-uploading; after
+  that a scheduled sweep (Supabase cron / `pg_cron` + edge) auto-deletes it. The user can also delete
+  immediately. This is disclosed in the opt-in notice (§9).
 
 ## 8. Frontend integration (cantonese-subtitle)
 
@@ -117,9 +149,10 @@ We provide this as `sensevoice_app.py` (Modal) **or** a Dockerfile+server (VPS) 
 ## 9. Privacy (must stay explicit)
 
 - Free/local path: audio never uploaded — **unchanged**, still the default and the privacy pitch.
-- Cloud fast: **audio IS uploaded** (to our Storage → our SenseVoice endpoint), **processed, then deleted**.
-  Clearly opt-in, with a one-line notice at the toggle: "雲端快速會上傳你嘅音檔去我哋伺服器處理,完成即刪;
-  唔想上傳就用本地(免費)。" Transcript text saved only if the user uses ☁️ 存去雲端.
+- Cloud fast: **audio IS uploaded** (to our Storage → our SenseVoice endpoint) and processed. The audio is
+  **kept ~6 hours for re-run, then auto-deleted** (§7). Clearly opt-in, one-line notice at the toggle:
+  "雲端快速會上傳你嘅音檔去我哋伺服器處理,保留約 6 小時俾你重試,之後自動刪除;唔想上傳就用本地(免費)。"
+  Transcript text is saved only if the user uses ☁️ 存去雲端.
 
 ## 10. Cost control & abuse
 
@@ -146,14 +179,17 @@ Each phase is independently testable (endpoint via curl; Edge via a test call; f
 
 ## 14. What you provide
 
-1. A **hosting choice** (Modal recommended) + the resulting `SENSEVOICE_URL` + `SENSEVOICE_TOKEN`
-   (for Modal: a free account + `modal deploy` the script we give you; for a VPS: a box we hand you the Docker for).
-2. Setting those two secrets in Supabase (same as the Stripe keys).
+**Decisions locked:** host = **Modal**; tiers = **Pro + Max**; audio kept **~6 h** for re-run.
 
-Everything else (Storage, RLS, Edge Function, frontend, the deploy script itself) is built by us.
+1. A free **Modal** account → run `modal deploy` on the script we give you → gives `SENSEVOICE_URL` + `SENSEVOICE_TOKEN`.
+2. **Stripe:** create "Subtitle Max" (monthly) price — and, if wanted, "Kuafuor Max" (all-access Max) — send the price IDs.
+3. Set the two SenseVoice secrets + the Max price IDs in Supabase (same as the Stripe keys before).
 
-## 15. Open items
+Everything else (Modal deploy script, Storage, RLS, `tier` migration, Edge Function, frontend) is built by us.
 
-- Exact per-user monthly minute cap + the over-cap UX (notice vs hard block).
-- Whether to keep audio for a short grace period for re-runs (default: no — delete immediately).
-- GPU class on Modal (T4 cheapest vs A10G faster) — pick after a real timing test.
+## 15. Open items — need your numbers before P2/P3
+
+- **Subtitle Max price** (HK$/month) — you set. (Pro stays HK$30.)
+- **Quotas:** Pro cloud minutes/month (proposed **300**) and Max (proposed **1 800**) — confirm or adjust.
+- Whether to also add **"Kuafuor Max"** (all-access Max) now or later.
+- Modal GPU class (T4 cheapest vs A10G faster) — pick after a real timing test during P1.
