@@ -1,7 +1,7 @@
 # SenseVoice cloud fast transcription (Subtitle Pro) — Design Spec
 
 - **Date:** 2026-07-15
-- **Status:** Reviewed — decisions locked (Modal host · Pro/Max tiers · ~6h audio retention); pending Max price + quota numbers
+- **Status:** APPROVED — all decisions locked (Modal host · Pro HK$30/5hr · Max HK$88/20hr · ~6h retention · Kuafuor Max deferred). Building P1.
 - **Depends on:** the freemium/Stripe billing (shipped) — this is a new Subtitle **Pro** capability.
 - **Quality gate:** PASSED — SenseVoice tested on a real Cantonese meeting clip; it preserves colloquial 口語 (瞓死咗/係啦/佢哋/唔該), converts cleanly to Traditional (OpenCC `s2hk`), and supports timestamps + speaker diarization (`cam++`).
 
@@ -36,10 +36,18 @@ Cloud fast becomes the headline Pro upsell (not just export). Free stays the pri
 Cloud transcription costs real GPU money per minute, so cloud-fast minutes are **metered against a
 monthly quota that depends on the user's tier**. Two paid tiers per tool:
 
-| Tier | Price (proposed — confirm) | Cloud-fast quota / month |
+| Tier | Price | Cloud-fast quota / month |
 |---|---|---|
 | **Subtitle Pro** | HK$30 (existing) | **300 min (5 hr)** |
-| **Subtitle Max** | **HK$__ (you set)** | **1 800 min (30 hr)** — or "effectively unlimited" |
+| **Subtitle Max** | **HK$88** | **1 200 min (20 hr)** |
+
+**"Never lose money" guarantee (owner's only constraint):** the monthly quota **hard-caps the per-user
+GPU cost**, and each tier is priced well above the worst-case cost at full quota. Real GPU cost ≈
+HK$0.4 / hr audio (T4); padded 5× to **HK$2 / hr** for safety:
+- Pro: 5 hr × HK$2 = HK$10 worst-case cost vs HK$30 → **≥ HK$20 margin**.
+- Max: 20 hr × HK$2 = HK$40 worst-case cost vs HK$88 → **≥ HK$48 margin**.
+- Even at an absurd HK$4/hr (10× estimate), Max still nets +HK$8. **Structurally cannot lose money per subscriber.**
+- P1's real timing test confirms the true cost; quotas/prices can be tuned up with confidence afterwards.
 
 **Over-quota behaviour (per your call):** when a Pro user uses up their monthly cloud minutes, we do
 **not** hard-stop — we show an **upgrade-to-Max** prompt ("你今個月嘅雲端額度用完喇,升 Max 解鎖更多")
@@ -187,9 +195,10 @@ Each phase is independently testable (endpoint via curl; Edge via a test call; f
 
 Everything else (Modal deploy script, Storage, RLS, `tier` migration, Edge Function, frontend) is built by us.
 
-## 15. Open items — need your numbers before P2/P3
+## 15. Open items
 
-- **Subtitle Max price** (HK$/month) — you set. (Pro stays HK$30.)
-- **Quotas:** Pro cloud minutes/month (proposed **300**) and Max (proposed **1 800**) — confirm or adjust.
-- Whether to also add **"Kuafuor Max"** (all-access Max) now or later.
-- Modal GPU class (T4 cheapest vs A10G faster) — pick after a real timing test during P1.
+- **Locked (owner delegated under "don't lose money"):** Subtitle Pro HK$30 / 5 hr; Subtitle Max HK$88 / 20 hr.
+- **Kuafuor Max (all-access Max): deferred** — keep it simple; all-access stays Pro-tier (includes subtitle
+  cloud at the Pro 5 hr quota). Add Kuafuor Max later if there's demand.
+- Modal GPU class (T4 cheapest vs A10G faster) — pick after the real timing test in P1; quotas/prices can
+  be tuned up afterwards with the true cost in hand.
