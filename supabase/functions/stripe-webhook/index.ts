@@ -16,6 +16,15 @@ function mapStripeStatus(s: string): Ent {
   return 'past_due'; // past_due, unpaid, incomplete, incomplete_expired, paused, and anything new
 }
 
+// Which price IDs are the 'max' tier (spec §2.5). Everything else (the 'pro' prices) -> 'pro'.
+// Price is authoritative, so a portal plan-switch (Pro<->Max on the same subscription) is captured
+// on customer.subscription.updated. Add PRICE_ALL_MAX here if/when Kuafuor Max ships.
+const MAX_PRICES = new Set([Deno.env.get('PRICE_SUBTITLE_MAX')].filter(Boolean) as string[]);
+function tierForSub(sub: Stripe.Subscription): 'pro' | 'max' {
+  const priceId = sub.items?.data?.[0]?.price?.id;
+  return priceId && MAX_PRICES.has(priceId) ? 'max' : 'pro';
+}
+
 // Apply an update only if this event is newer than the last one applied to the row (ordering guard).
 async function applyIfNewer(match: Record<string, string>, eventCreated: number, patch: Record<string, unknown>) {
   const { data: existing } = await db.from('entitlements').select('last_event_at').match(match).maybeSingle();
@@ -42,6 +51,7 @@ Deno.serve(async (req) => {
       const sub = await stripe.subscriptions.retrieve(s.subscription as string); // authoritative snapshot
       await db.from('entitlements').upsert({
         user_id, product,
+        tier: tierForSub(sub),
         status: mapStripeStatus(sub.status),
         stripe_customer_id: s.customer as string,
         stripe_subscription_id: sub.id,
@@ -55,6 +65,7 @@ Deno.serve(async (req) => {
       const fresh = await stripe.subscriptions.retrieve(sub.id); // re-fetch to avoid stale payload
       await applyIfNewer({ stripe_subscription_id: sub.id }, event.created, {
         status: event.type === 'customer.subscription.deleted' ? 'canceled' : mapStripeStatus(fresh.status),
+        tier: tierForSub(fresh), // captures a portal Pro<->Max plan-switch on the same subscription
         current_period_end: new Date(fresh.current_period_end * 1000).toISOString(),
       });
 

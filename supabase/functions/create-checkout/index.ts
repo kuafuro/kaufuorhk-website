@@ -1,13 +1,18 @@
-// create-checkout — authenticated (user JWT). Returns { url } or { alreadyActive, portalUrl }.
-// Secrets required: STRIPE_SECRET_KEY, PRICE_ALL, PRICE_SUBTITLE, PRICE_MOTIONLAB.
+// create-checkout — authenticated (user JWT). Returns { url } | { alreadyActive, portalUrl } | { upgrade, portalUrl }.
+// Secrets required: STRIPE_SECRET_KEY, PRICE_ALL, PRICE_SUBTITLE, PRICE_MOTIONLAB. Optional (tiers): PRICE_SUBTITLE_MAX.
 // (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are auto-injected.)
 import Stripe from 'https://esm.sh/stripe@16?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
-const PRICES: Record<string, string> = {
-  all: Deno.env.get('PRICE_ALL')!, subtitle: Deno.env.get('PRICE_SUBTITLE')!, motionlab: Deno.env.get('PRICE_MOTIONLAB')!,
+// Price per `${product}:${tier}`. 'pro' is the existing set; '*_MAX' add the higher tier (spec §2.5).
+const PRICES: Record<string, string | undefined> = {
+  'all:pro':       Deno.env.get('PRICE_ALL'),
+  'subtitle:pro':  Deno.env.get('PRICE_SUBTITLE'),
+  'motionlab:pro': Deno.env.get('PRICE_MOTIONLAB'),
+  'subtitle:max':  Deno.env.get('PRICE_SUBTITLE_MAX'),
 };
+const TIER_RANK: Record<string, number> = { pro: 1, max: 2 };
 const ALLOWED_HOSTS = ['kuafuorhk.com', 'www.kuafuorhk.com', 'localhost'];
 const isAllowed = (u: string) => { try { return ALLOWED_HOSTS.includes(new URL(u).hostname); } catch { return false; } };
 const cors = {
@@ -28,22 +33,29 @@ Deno.serve(async (req) => {
     const { data: { user } } = await asUser.auth.getUser(authz.replace('Bearer ', ''));
     if (!user) return json({ error: 'not signed in' }, 401);
 
-    const { product, success_url, cancel_url } = await req.json();
-    if (!PRICES[product]) return json({ error: 'bad product' }, 400);
+    const body = await req.json();
+    const { product, success_url, cancel_url } = body;
+    const tier: string = body.tier === 'max' ? 'max' : 'pro';   // default 'pro'; only 'pro'|'max' valid
+    const reqRank = TIER_RANK[tier];
+    if (!PRICES[`${product}:${tier}`]) return json({ error: 'bad product' }, 400);
     if (!isAllowed(success_url) || !isAllowed(cancel_url)) return json({ error: 'bad redirect' }, 400);
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    // Redundant-purchase guard: already covered (e.g. by 'all')? Send to portal, don't double-charge.
-    const { data: covered } = await admin.rpc('has_pro', { p_user: user.id, p_product: product });
-    if (covered) {
+    // Redundant/upgrade guard: compare the requested tier to the tier the user already holds (via 'all' too).
+    const { data: currentTierRaw } = await admin.rpc('entitlement_tier', { p_user: user.id, p_product: product });
+    const currentRank = TIER_RANK[(currentTierRaw as string) ?? ''] ?? 0;
+    if (currentRank > 0) {
       const { data: row } = await admin.from('entitlements').select('stripe_customer_id')
         .eq('user_id', user.id).not('stripe_customer_id', 'is', null).limit(1).maybeSingle();
-      if (row?.stripe_customer_id) {
-        const portal = await stripe.billingPortal.sessions.create({ customer: row.stripe_customer_id, return_url: cancel_url });
-        return json({ alreadyActive: true, portalUrl: portal.url });
-      }
-      return json({ alreadyActive: true });
+      const portalUrl = row?.stripe_customer_id
+        ? (await stripe.billingPortal.sessions.create({ customer: row.stripe_customer_id, return_url: cancel_url })).url
+        : undefined;
+      // Already at/above requested tier -> nothing to buy (manage in portal). Below it -> upgrade:
+      // switch the plan on the existing subscription in the portal (avoids a double subscription).
+      return currentRank >= reqRank
+        ? json({ alreadyActive: true, portalUrl })
+        : json({ upgrade: true, portalUrl });
     }
 
     // Find-or-create the Stripe customer for this user (reuse any stored id).
@@ -58,10 +70,10 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer,
-      line_items: [{ price: PRICES[product], quantity: 1 }],
+      line_items: [{ price: PRICES[`${product}:${tier}`], quantity: 1 }],
       client_reference_id: user.id,
-      metadata: { product },
-      subscription_data: { metadata: { user_id: user.id, product } }, // CRITICAL: lifecycle events need this (spec §6.1)
+      metadata: { product, tier },
+      subscription_data: { metadata: { user_id: user.id, product, tier } }, // CRITICAL: lifecycle events need this (spec §6.1)
       success_url,
       cancel_url,
     });
