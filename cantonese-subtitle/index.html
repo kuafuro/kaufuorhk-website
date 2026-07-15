@@ -255,11 +255,22 @@
 
 <script type="module">
 import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm";
+import { Entitlements } from "/assets/entitlements.js";
+import { BILLING } from "/assets/billing-config.js";
 
 // 從 HF hub 攞模型（唔喺本地搵）
 env.allowLocalModels = false;
 
 const $ = id => document.getElementById(id);
+
+// ── Freemium 閘（非阻塞：免費層唔會等 billing 初始化）──
+let ent = null;
+const isPro = () => !!(ent && ent.hasAccess("subtitle"));
+Entitlements.init().then(e => {
+  ent = e;
+  e.on("change", () => applyGate());   // 升級後即時解鎖現有結果
+  applyGate();
+}).catch(err => console.warn("billing init", err));
 const toast = (msg) => {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), 1600);
@@ -397,6 +408,14 @@ function onDownload(p){
 let lastResult = null;
 $("run").addEventListener("click", run);
 
+// 付款後 Stripe 會 full-reload 返呢頁（?upgraded=1）；還原轉換前嘅字幕，等 ent 變 Pro 就自動解鎖全文
+try {
+  if (new URLSearchParams(location.search).get("upgraded") === "1") {
+    const saved = sessionStorage.getItem("kf-sub-last");
+    if (saved) { lastResult = JSON.parse(saved); sessionStorage.removeItem("kf-sub-last"); $("result").style.display = "block"; applyGate(); }
+  }
+} catch (_) {}
+
 async function run(){
   if (!audioFile) return;
   const key = modelSel.value;
@@ -503,13 +522,28 @@ function normSegments(output, duration){
 function renderResult(output, duration, secs){
   const segs = normSegments(output, duration);
   const fullText = (output.text || segs.map(s => s.text).join("")).trim();
-  lastResult = { segs, fullText };
+  lastResult = { segs, fullText, secs };
+  try { sessionStorage.setItem("kf-sub-last", JSON.stringify(lastResult)); } catch (_) {}   // 留返俾付款後還原
+  $("result").style.display = "block";
+  applyGate();
+  $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-  $("outText").value = fullText;
+// 免費：只顯示前 ~10% 段，全文＋匯出鎖住；Pro：全部顯示。ent 一變就重繪。
+function applyGate(){
+  if (!lastResult) return;
+  const { segs, fullText, secs } = lastResult;
+  const pro = isPro();
+  const shown = pro ? segs.length : Math.max(1, Math.ceil(segs.length * BILLING.SUBTITLE_FREE_PREVIEW_RATIO));
+  const shownSegs = segs.slice(0, shown);
+
+  const ta = $("outText");
+  ta.value = pro ? fullText : shownSegs.map(s => s.text).join("");
+  ta.readOnly = !pro;
 
   const sv = $("segView");
   sv.innerHTML = "";
-  segs.forEach(s => {
+  shownSegs.forEach(s => {
     const row = document.createElement("div");
     row.className = "seg";
     row.innerHTML = `<div class="ts">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
@@ -517,9 +551,33 @@ function renderResult(output, duration, secs){
     sv.appendChild(row);
   });
 
-  $("resultMeta").textContent = `${segs.length} 段 · 用咗 ${secs} 秒`;
-  $("result").style.display = "block";
-  $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  const en = (localStorage.getItem("kf-lang") || "zh").startsWith("en");
+  $("resultMeta").textContent = pro
+    ? `${segs.length} 段 · 用咗 ${secs} 秒`
+    : (en ? `Free preview ${shown} / ${segs.length} segments` : `免費預覽 ${shown} / ${segs.length} 段`);
+
+  renderPaywallCard(!pro && segs.length > shown, segs.length - shown, en);
+}
+
+function renderPaywallCard(show, hiddenCount, en){
+  let card = $("subPaywall");
+  if (!show) { if (card) card.style.display = "none"; return; }
+  if (!card) {
+    card = document.createElement("div");
+    card.id = "subPaywall";
+    card.style.cssText = "margin:14px 0;padding:16px 18px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-soft);color:var(--ink)";
+    $("tab-seg").after(card);
+  }
+  card.style.display = "block";
+  card.innerHTML = en
+    ? `<b>Free preview.</b> ${hiddenCount} more segments are hidden — unlock the full transcript and export .srt / .vtt subtitles.`
+    : `<b>免費預覽。</b>仲有 ${hiddenCount} 段收埋咗 —— 解鎖睇全文，同埋匯出 .srt / .vtt 字幕。`;
+  const btn = document.createElement("button");
+  btn.className = "btn primary";
+  btn.style.cssText = "margin-top:12px";
+  btn.textContent = en ? "Unlock full + export" : "解鎖全文 + 匯出";
+  btn.onclick = () => ent && ent.requirePro("subtitle", en ? "full transcript / export" : "全文／匯出");
+  card.appendChild(btn);
 }
 
 /* ---------- Tabs ---------- */
@@ -555,15 +613,23 @@ function baseName(){
   const n = (audioFile?.name || "transcript").replace(/\.[^.]+$/, "");
   return n || "transcript";
 }
-$("dlTxt").addEventListener("click", () => lastResult && download(baseName()+".txt", lastResult.fullText));
-$("dlSrt").addEventListener("click", () => lastResult && download(baseName()+".srt", buildSRT(lastResult.segs)));
-$("dlVtt").addEventListener("click", () => lastResult && download(baseName()+".vtt", buildVTT(lastResult.segs)));
+// 匯出／複製全文 = Pro；免費撳 → 彈 paywall
+function exportGate(){
+  if (isPro()) return true;
+  const en = (localStorage.getItem("kf-lang") || "zh").startsWith("en");
+  if (ent) ent.requirePro("subtitle", en ? "export" : "匯出");
+  else toast(en ? "One sec…" : "請稍等…");
+  return false;
+}
+$("dlTxt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".txt", lastResult.fullText); });
+$("dlSrt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".srt", buildSRT(lastResult.segs)); });
+$("dlVtt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".vtt", buildVTT(lastResult.segs)); });
 
 async function copy(text){
   try { await navigator.clipboard.writeText(text); toast("已複製 ✓"); }
   catch { toast("複製唔到，請手動揀"); }
 }
-$("copyText").addEventListener("click", () => lastResult && copy(lastResult.fullText));
+$("copyText").addEventListener("click", () => { if (!exportGate()) return; lastResult && copy(lastResult.fullText); });
 $("copyPrompt").addEventListener("click", () => copy($("promptText").textContent.trim()));
 </script>
 </body>
