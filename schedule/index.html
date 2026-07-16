@@ -118,6 +118,11 @@ const I18N={
     stOpen:"開放報名",stConfirmed:"已開班 ✓",stMine:"你已報名 ✓",stWait:"後補中",stFull:"已滿",stOff:"已取消",
     needMore:s=>`仲爭 ${s} 人開班`,cntLabel:(a,b)=>`${a}/${b} 人`,
     book:"報名",wait:"後補",cancel:"取消報名",roster:"名單",hideRoster:"收起",kick:"移除",
+    cancelAsk:"確定取消報名？",
+    cancelSlot:"取消時段",
+    csAsk1:w=>`確定取消成個時段（${w}）？已報名學員會見到堂被取消，唔會扣佢哋堂數。`,
+    csAsk2:"再確認一次：取消後冇得返轉頭。真係要取消呢個時段？",
+    csDone:"時段已取消 ✅",
     booked:"報咗名喇 ✅",waited:"排咗後補 ✅",cancelled:"已取消報名",already:"你之前已經報咗",
     added:"時段已開放 ✅",err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
     footNote:"報名只係排位；實際扣堂／出席照舊由教練點名決定。",backHome:"返主頁",
@@ -130,6 +135,11 @@ const I18N={
     stOpen:"Open",stConfirmed:"Confirmed ✓",stMine:"You're booked ✓",stWait:"Waitlisted",stFull:"Full",stOff:"Cancelled",
     needMore:s=>`${s} more to open`,cntLabel:(a,b)=>`${a}/${b}`,
     book:"Book",wait:"Waitlist",cancel:"Cancel",roster:"Roster",hideRoster:"Hide",kick:"Remove",
+    cancelAsk:"Cancel this booking?",
+    cancelSlot:"Cancel slot",
+    csAsk1:w=>`Cancel the whole slot (${w})? Booked students will see it as cancelled; no sessions are deducted.`,
+    csAsk2:"Confirm once more: this cannot be undone. Really cancel this slot?",
+    csDone:"Slot cancelled ✅",
     booked:"Booked ✅",waited:"Added to waitlist ✅",cancelled:"Booking cancelled",already:"You already booked",
     added:"Slot opened ✅",err:"Error: ",noDate:"Please pick a date",badEnd:"End time must be after start time",
     footNote:"Booking reserves a spot; class deduction/attendance is still set by the coach at roll-call.",backHome:"Home",
@@ -187,6 +197,7 @@ function actionBtn(s){
   const past = s.book_by && new Date(s.book_by) < new Date();
   if(s.my_status==="booked"||s.my_status==="waitlist")
     return `<button class="btn ghost" data-cancel="${s.id}">${t("cancel")}</button>`;
+  if(STAFF) return "";   // 菁英（教練）／Holder 唔報名上堂（server 都有擋）
   if(past) return `<button class="btn" disabled>${t("stOff")}</button>`;
   const full = s.booked_count>=s.capacity;
   return `<button class="btn solid" data-book="${s.id}">${full?t("wait"):t("book")}</button>`;
@@ -214,6 +225,7 @@ function render(){
         </div>
         ${statusTag(s)}
         ${actionBtn(s)}
+        ${ROLE==="admin"?`<button class="btn small ghost" data-cancelslot="${s.id}">${t("cancelSlot")}</button>`:""}
         ${STAFF?`<button class="btn small ghost" data-roster="${s.id}">${t("roster")}</button>
         <div class="roster" id="roster-${s.id}" style="display:none"></div>`:""}
       </div>`;
@@ -247,10 +259,24 @@ document.addEventListener("click",async e=>{
     await load(); return;
   }
   const cx=e.target.closest("[data-cancel]");
-  if(cx){ cx.disabled=true;
+  if(cx){
+    if(!confirm(t("cancelAsk"))) return;
+    cx.disabled=true;
     const { error }=await sb.rpc("cancel_booking",{p_slot_id:cx.dataset.cancel});
     if(error){toast(t("err")+error.message);cx.disabled=false;return;}
     toast(t("cancelled")); await load(); return;
+  }
+  // Holder（admin）取消成個時段：雙重確認
+  const cs=e.target.closest("[data-cancelslot]");
+  if(cs){
+    const s=SLOTS.find(x=>x.id===cs.dataset.cancelslot); if(!s) return;
+    const when=`${fmtDay(s.session_date)} ${hhmm(s.start_time)}${s.end_time?"–"+hhmm(s.end_time):""}`;
+    if(!confirm(t("csAsk1")(when))) return;
+    if(!confirm(t("csAsk2"))) return;
+    cs.disabled=true;
+    const { error }=await sb.from("class_slots").update({status:"cancelled"}).eq("id",cs.dataset.cancelslot);
+    if(error){toast(t("err")+error.message);cs.disabled=false;return;}
+    toast(t("csDone")); await load(); return;
   }
   const rs=e.target.closest("[data-roster]");
   if(rs){ const id=rs.dataset.roster; const box=$("#roster-"+id);

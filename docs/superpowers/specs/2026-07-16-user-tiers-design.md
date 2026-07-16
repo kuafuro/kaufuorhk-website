@@ -7,9 +7,13 @@
 
 | 軸 | 值 | 邊個決定 | 存喺邊 |
 |---|---|---|---|
-| **身份 role**(權限) | member（Holder 基本會員）/ student / coach / admin | admin 手動（`set_user_role`） | `profiles.role` |
-| **訂閱 plan**(網站課金・Stripe) | **Holder**（免費）/ **Pro** HK$70/月 / **Max** HK$120/月 | 用戶自己喺帳戶頁升級 | 由 `entitlements`（status+tier）衍生 |
+| **身份 role**(權限) | 普通會員 member / 學生 student / **菁英（教練）** coach / **Holder（主理人）** admin | Holder 手動（`set_user_role`） | `profiles.role` |
+| **訂閱 plan**(網站課金・Stripe) | 免費（無 badge）/ **Pro** HK$70/月 / **Max** HK$120/月 | 用戶自己喺帳戶頁升級 | 由 `entitlements`（status+tier）衍生 |
 | **堂數 level**(踢拳班・搵教練買) | **新星** 4堂 HK$800 / **挑戰者** 8堂 HK$1,400 / **苦行僧** 1對1 議價 | 職員記錄購買（`record_class_package`） | `class_packages` |
+
+**名銜（2026-07-16 更新）**：`coach` 對外顯示「菁英（教練）」（例：Tom），`admin` 顯示「Holder（主理人）」。「Holder」專指主理人身份；免費訂閱 plan 唔再顯示 badge，免撞名。分成計算器維持只有菁英＋Holder 用（guard `coach,admin`）。
+
+**排堂規則**：菁英／Holder 唔可以自己報名上堂（`book_slot` server-side 擋 + UI 唔顯示報名掣；代學員報名照舊）。Holder 可以喺排堂頁**取消成個時段**（雙重確認，唔扣學員堂數）；學員取消自己報名亦有單次確認。
 
 - **任何人都可以注册** → role `member` + plan `holder` + 未買堂數（無 level badge）。
 - **Plan 衍生**：任一 active entitlement `tier='max'` → Max；任一 active → Pro；否則 Holder。

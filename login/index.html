@@ -326,16 +326,16 @@ const I18N = {
     phoneTaken: "呢個號碼已經連結咗第二個帳戶，如有問題請搵 Ming。",
     featTitle: "功能權限", open: "開啟 →", needs: "需要：",
     logoutBtn: "登出",
-    adminTitle: "👥 用戶管理（管理員）",
+    adminTitle: "👥 用戶管理（Holder）",
     adminHint: "喺下拉揀身份即刻生效。唔可以改自己。",
     cantChangeSelf: "唔可以改自己",
-    footNote: "註冊後預設係「普通會員」；學生／教練身份由管理員開通。",
+    footNote: "註冊後預設係「普通會員」；學生／菁英（教練）身份由 Holder 開通。",
     backHome: "← 返回主頁",
     fillEmailPass: "請入電郵，密碼至少6位。",
     fillEmail: "請先入你嘅電郵。",
     passTooShort: "新密碼至少要6位。",
     nextNoRole: "你想去嘅頁面（{next}）需要 {roles} 身份，你而家係「{role}」。想開通請聯絡 Ming。",
-    roleNames: { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" },
+    roleNames: { member:"普通會員", student:"學生", coach:"菁英（教練）", admin:"Holder（主理人）" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"新星", challenger:"挑戰者", ascetic:"苦行僧" },
     planTitle:"💳 訂閱方案",
@@ -400,16 +400,16 @@ const I18N = {
     phoneTaken: "This number is already linked to another account — contact Ming if that's unexpected.",
     featTitle: "Feature access", open: "Open →", needs: "Requires: ",
     logoutBtn: "Log out",
-    adminTitle: "👥 User management (admin)",
+    adminTitle: "👥 User management (Holder)",
     adminHint: "Pick a role from the dropdown — it applies immediately. You can't change your own.",
     cantChangeSelf: "You can't change yourself",
-    footNote: "New accounts start as “Member”; Student / Coach roles are granted by an admin.",
+    footNote: "New accounts start as “Member”; Student / Elite (Coach) roles are granted by the Holder.",
     backHome: "← Back to home",
     fillEmailPass: "Enter your email; password needs at least 6 characters.",
     fillEmail: "Enter your email first.",
     passTooShort: "New password needs at least 6 characters.",
     nextNoRole: "The page you wanted ({next}) requires {roles}. You are currently “{role}”. Contact Ming to upgrade.",
-    roleNames: { member:"Member", student:"Student", coach:"Coach", admin:"Admin" },
+    roleNames: { member:"Member", student:"Student", coach:"Elite (Coach)", admin:"Holder (Owner)" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"Rising Star", challenger:"Challenger", ascetic:"Ascetic" },
     planTitle:"💳 Subscription",
@@ -575,10 +575,13 @@ async function render(){
       const { data: tiers } = await sb.rpc("my_tiers");
       if(!tiers) return;
       const dict = I18N[lang] || I18N.zh;
+      // 免費 plan 唔顯示 badge（「Holder」呢個名留返俾主理人身份用）；Pro/Max 先顯示
       const pp = $("#pPlan");
-      pp.textContent = dict.planNames[tiers.plan] || tiers.plan;
-      pp.className = "badge " + tiers.plan;
-      pp.style.display = "";
+      if(tiers.plan === "pro" || tiers.plan === "max"){
+        pp.textContent = dict.planNames[tiers.plan] || tiers.plan;
+        pp.className = "badge " + tiers.plan;
+        pp.style.display = "";
+      } else { pp.style.display = "none"; }
       // level = 學員買咗邊種堂數（新星4堂/挑戰者8堂/苦行僧1對1）；未買過 → 唔顯示
       const pl = $("#pLevel");
       if(tiers.level){
