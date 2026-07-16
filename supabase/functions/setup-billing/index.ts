@@ -1,9 +1,9 @@
 // setup-billing — idempotent Stripe provisioning for whichever mode STRIPE_SECRET_KEY is in
-// (test or live). Ensures the products + monthly HKD prices exist (Kuafuor Pro 70 / Subtitle
-// Pro 30 + Subtitle Max 88 on the SAME product, for portal plan-switching / Motion Lab Pro 50),
-// ensures our webhook endpoint exists (its signing secret goes straight into Vault — no human
-// ever sees it), configures the billing portal for Pro<->Max switching, and stores all price ids
-// in Vault (billing_config). Re-run after swapping in a live key to provision live mode.
+// (test or live). Ensures the products + monthly HKD prices exist (Kuafuor Pro 70 / Kuafuor Max 120 /
+// Subtitle Pro 30 + Subtitle Max 88 / Motion Lab Pro 50 — max tiers as their OWN products for
+// portal plan-switching), ensures our webhook endpoint exists (its signing secret goes straight
+// into Vault — no human ever sees it), configures the billing portal for Pro<->Max switching,
+// and stores all price ids in Vault (billing_config). Re-run after swapping in a live key.
 // Auth: x-setup-secret must equal Vault SETUP_SECRET. Deploy with verify_jwt=false.
 import Stripe from 'https://esm.sh/stripe@16?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -60,6 +60,8 @@ Deno.serve(async (req) => {
     const pAll = await ensure('PRICE_ALL', 'Kuafuor Pro', 7000);
     const pSub = await ensure('PRICE_SUBTITLE', 'Subtitle Pro', 3000);
     const pMot = await ensure('PRICE_MOTIONLAB', 'Motion Lab Pro', 5000);
+    // Kuafuor Max：全站 max tier，自己一個 product（portal 先切到 plan）
+    const pAllMax = await ensure('PRICE_ALL_MAX', 'Kuafuor Max', 12000);
 
     // Subtitle Max is its OWN product: the billing portal can only switch plans across
     // products when the prices share a billing interval (same-product monthly+monthly is rejected).
@@ -73,7 +75,7 @@ Deno.serve(async (req) => {
       });
     }
     await setV('PRICE_SUBTITLE_MAX', pMax.id);
-    out.prices = { all: pAll.id, subtitle: pSub.id, motionlab: pMot.id, subtitle_max: pMax.id };
+    out.prices = { all: pAll.id, all_max: pAllMax.id, subtitle: pSub.id, motionlab: pMot.id, subtitle_max: pMax.id };
 
     // Webhook endpoint: create only if absent (the signing secret is only revealed at creation).
     const eps = await stripe.webhookEndpoints.list({ limit: 100 });
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
       out.webhook = 'exists (signing secret unchanged)';
     }
 
-    // Billing portal: cancel at period end + Pro<->Max plan switch on the subtitle product.
+    // Billing portal: cancel at period end + Pro<->Max plan switch (subtitle + site-wide pairs).
     try {
       const features: Stripe.BillingPortal.ConfigurationUpdateParams.Features = {
         payment_method_update: { enabled: true },   // required for subscription_update
@@ -96,6 +98,8 @@ Deno.serve(async (req) => {
           products: [
             { product: pSub.product as string, prices: [pSub.id] },
             { product: pMax.product as string, prices: [pMax.id] },
+            { product: pAll.product as string, prices: [pAll.id] },
+            { product: pAllMax.product as string, prices: [pAllMax.id] },
           ],
         },
         invoice_history: { enabled: true },

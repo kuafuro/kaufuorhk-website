@@ -11,6 +11,7 @@ function priceMap(cfg: Record<string, string>): Record<string, string | undefine
   const pick = (n: string) => cfg[n] || Deno.env.get(n) || undefined;
   return {
     'all:pro':       pick('PRICE_ALL'),
+    'all:max':       pick('PRICE_ALL_MAX'),
     'subtitle:pro':  pick('PRICE_SUBTITLE'),
     'motionlab:pro': pick('PRICE_MOTIONLAB'),
     'subtitle:max':  pick('PRICE_SUBTITLE_MAX'),
