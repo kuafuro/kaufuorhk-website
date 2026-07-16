@@ -81,3 +81,23 @@ jobs:
             -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\"}}")
           echo "register response: $RES"
           [ "$(jq -r '.registered // false' <<<"$RES")" = "true" ]
+
+      # Post-deploy verification: wait for old-version warm containers to drain (Modal can route
+      # spawns to them for up to the scaledown window), fire one real transcription against the
+      # public Cantonese sample with a throwaway job id, then dump the app logs so a failure's
+      # traceback is visible right here in the run log. The sample audio is public; no secrets
+      # are ever printed.
+      - name: Smoke test (fresh containers) + logs
+        run: |
+          set -euo pipefail
+          echo "draining old-version warm containers (5.5 min)..."
+          sleep 330
+          echo "spawning smoke transcription..."
+          curl -sS -X POST "$ENDPOINT_URL" \
+            -H "Authorization: Bearer $SENSEVOICE_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"audio_url":"https://huggingface.co/FunAudioLLM/SenseVoiceSmall/resolve/main/example/yue.mp3","job_id":"00000000-0000-0000-0000-0000000000ce","language":"yue","diarize":true}'
+          echo; echo "waiting for the background job (5 min)..."
+          sleep 300
+          echo "===== modal app logs (tail) ====="
+          (timeout 30 modal app logs kuafuor-sensevoice 2>&1 || true) | tail -200

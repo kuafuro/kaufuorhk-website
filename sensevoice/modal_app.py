@@ -25,7 +25,7 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg")
     .pip_install(
-        "funasr==1.2.6",
+        "funasr",  # unpinned on purpose: matches the empirically-validated Colab environment
         "torch==2.4.1",
         "torchaudio==2.4.1",
         "opencc-python-reimplemented==0.1.7",
