@@ -100,4 +100,10 @@ jobs:
           echo; echo "waiting for the background job (5 min)..."
           sleep 300
           echo "===== modal app logs (tail) ====="
-          (timeout 30 modal app logs kuafuor-sensevoice 2>&1 || true) | tail -200
+          (timeout 30 modal app logs kuafuor-sensevoice 2>&1 || true) | tail -200 | tee applogs.txt
+          if grep -q "Runner failed" applogs.txt; then
+            echo "::error::smoke transcription crashed — see logs above"; exit 1
+          fi
+          if grep -q "falling back to plain" applogs.txt; then
+            echo "::warning::diarization pipeline fell back to plain transcription"
+          fi

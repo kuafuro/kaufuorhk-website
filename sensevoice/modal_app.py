@@ -25,13 +25,16 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg")
     .pip_install(
-        "funasr",  # unpinned on purpose: matches the empirically-validated Colab environment
+        # funasr 1.2.6 = the version the Colab quality-gate run used. 1.3.x needs torch>=2.5
+        # (DTensor) and fails model registration on this stack — keep the whole set pinned.
+        "funasr==1.2.6",
         "torch==2.4.1",
         "torchaudio==2.4.1",
         "opencc-python-reimplemented==0.1.7",
         "modelscope==1.20.1",
         "requests==2.32.3",
         "fastapi[standard]==0.115.6",
+        "more-itertools",  # optional funasr import (sense_voice whisper_lib normalizers)
     )
     .env({"MODELSCOPE_CACHE": MODEL_DIR, "HF_HOME": MODEL_DIR})
 )
