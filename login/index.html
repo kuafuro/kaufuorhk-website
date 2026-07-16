@@ -113,6 +113,10 @@
   .badge.student{color:var(--ink);background:var(--soft)}
   .badge.coach{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
   .badge.admin{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+  /* 訂閱 plan（課金）+ 修行 level（練返嚟）badges */
+  .badge.holder{color:var(--muted);border-color:var(--muted);border-style:dashed}
+  .badge.pro,.badge.max{background:#a83228;color:#fff;border-color:#a83228}
+  .badge.lv{border-color:var(--line-strong);background:none;color:var(--ink)}
   .features{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
   .features h3{font-size:.78rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px}
   .feat{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;font-size:.9rem;border-bottom:1px dashed var(--line)}
@@ -223,7 +227,7 @@
     <div class="avatar" id="avatar">?</div>
     <div style="flex:1">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <b id="pName"></b><span class="badge member" id="pRole">…</span>
+        <b id="pName"></b><span class="badge member" id="pRole">…</span><span class="badge holder" id="pPlan" style="display:none"></span><span class="badge lv" id="pLevel" style="display:none"></span>
       </div>
       <div class="email" id="pEmail"></div>
     </div>
@@ -318,6 +322,9 @@ const I18N = {
     passTooShort: "新密碼至少要6位。",
     nextNoRole: "你想去嘅頁面（{next}）需要 {roles} 身份，你而家係「{role}」。想開通請聯絡 Ming。",
     roleNames: { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" },
+    planNames: { holder:"Holder", pro:"Pro", max:"Max" },
+    levelNames: { rising:"新星", challenger:"挑戰者", ascetic:"苦行僧" },
+    levelAttended: n=>`（上咗 ${n} 堂）`,
     errInvalidLogin: "電郵或密碼唔啱。未註冊過？撳上面「註冊」開個新帳戶；唔記得密碼就撳下面「唔記得密碼」重設。",
     errNotConfirmed: "你仲未完成第2步（確認電郵）。去你個信箱撳確認連結；搵唔到封信就撳下面「寄多次確認信」。",
     errExists: "呢個電郵已經註冊咗 — 請直接登入；唔記得密碼就用「唔記得密碼」重設。",
@@ -382,6 +389,9 @@ const I18N = {
     passTooShort: "New password needs at least 6 characters.",
     nextNoRole: "The page you wanted ({next}) requires {roles}. You are currently “{role}”. Contact Ming to upgrade.",
     roleNames: { member:"Member", student:"Student", coach:"Coach", admin:"Admin" },
+    planNames: { holder:"Holder", pro:"Pro", max:"Max" },
+    levelNames: { rising:"Rising Star", challenger:"Challenger", ascetic:"Ascetic" },
+    levelAttended: n=>` (${n} classes)`,
     errInvalidLogin: "Wrong email or password. New here? Tap “Register” above. Forgot your password? Use the reset link below.",
     errNotConfirmed: "You haven't finished Step 2 (email confirmation). Click the link in your inbox; can't find it? Tap “Resend confirmation email” below.",
     errExists: "This email is already registered — log in instead, or use “Forgot your password” to reset.",
@@ -413,7 +423,9 @@ const roleName = r => (I18N[lang] || I18N.zh).roleNames[r] || r;
 
 /* ================= state ================= */
 const FEATURES = [
-  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["student","coach","admin"] },
+  // Motion Lab 個頁本身公開（主頁 showcase）；雲端拳手檔案／訓練紀錄喺 app 入面先要登入
+  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["member","student","coach","admin"] },
+  { zh:"排堂報名", en:"Class booking", url:"/schedule/", roles:["member","student","coach","admin"] },
   { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","admin"] },
 ];
 const $ = s => document.querySelector(s);
@@ -529,6 +541,22 @@ async function render(){
   const badge = $("#pRole");
   badge.textContent = roleName(role);
   badge.className = "badge " + role;
+  // 訂閱 plan + 修行 level（my_tiers RPC；攞唔到就靜靜哋唔顯示）
+  (async ()=>{
+    try{
+      const { data: tiers } = await sb.rpc("my_tiers");
+      if(!tiers) return;
+      const dict = I18N[lang] || I18N.zh;
+      const pp = $("#pPlan");
+      pp.textContent = dict.planNames[tiers.plan] || tiers.plan;
+      pp.className = "badge " + tiers.plan;
+      pp.style.display = "";
+      const pl = $("#pLevel");
+      pl.textContent = (dict.levelNames[tiers.level] || tiers.level) + dict.levelAttended(tiers.attended || 0);
+      pl.className = "badge lv";
+      pl.style.display = "";
+    }catch(e){}
+  })();
   $("#featList").innerHTML = FEATURES.map(f=>{
     const ok = f.roles.includes(role);
     return `<div class="feat ${ok?"":"locked"}">
