@@ -6,7 +6,8 @@ export const BILLING = {
   STRIPE_PK: 'pk_test_51TtIDUCC4yRJntm5eKGSpWN6nE7xE8xziAYoqZZ2K3MGdI4eqU6VDQtSIeniyR2uC12xqzdzlCNGRfxPvHRAV1Rr008yL4X4CD',
   // Stripe test-mode price IDs (created 2026-07-15).
   PRODUCTS: {
-    all:       { price: 'price_1TtJZOCC4yRJntm59wlSzwqu', label: 'Kuafuor Pro',    monthly: 70 },
+    all:       { price: 'price_1TtJZOCC4yRJntm59wlSzwqu', label: 'Kuafuor Pro',    monthly: 70,
+                 maxLabel: 'Kuafuor Max', maxMonthly: 120 },   // all:max 價由 setup-billing provision（Vault PRICE_ALL_MAX）
     subtitle:  { price: 'price_1TtJZoCC4yRJntm5VErg8RCD', label: 'Subtitle Pro',   monthly: 30 },
     motionlab: { price: 'price_1TtJaECC4yRJntm58lU2KhUb', label: 'Motion Lab Pro', monthly: 50 },
   },

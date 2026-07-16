@@ -245,6 +245,20 @@
     <h3 data-t="featTitle"></h3>
     <div id="featList"></div>
   </div>
+  <!-- 訂閱方案（Stripe）：Holder 免費 → Pro / Max -->
+  <div class="features" id="planBox" style="display:none">
+    <h3 data-t="planTitle"></h3>
+    <div class="feat" id="rowPro" style="display:none">
+      <span data-t="planProDesc"></span><a href="#" id="upPro" data-t="upPro"></a>
+    </div>
+    <div class="feat" id="rowMax" style="display:none">
+      <span data-t="planMaxDesc"></span><a href="#" id="upMax" data-t="upMax"></a>
+    </div>
+    <div class="feat" id="rowManage" style="display:none">
+      <span data-t="planManageDesc"></span><a href="#" id="manageSub" data-t="manageSub"></a>
+    </div>
+    <p class="hint" data-t="planHint" style="margin-top:8px"></p>
+  </div>
   <div class="msg" id="profMsg"></div>
   <button class="ghost" id="logout" data-t="logoutBtn" style="margin-top:14px"></button>
 </div>
@@ -324,7 +338,14 @@ const I18N = {
     roleNames: { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"新星", challenger:"挑戰者", ascetic:"苦行僧" },
-    levelAttended: n=>`（上咗 ${n} 堂）`,
+    planTitle:"💳 訂閱方案",
+    planProDesc:"Kuafuor Pro — 解鎖全部網站付費功能（HK$70/月）", upPro:"升級 Pro",
+    planMaxDesc:"Kuafuor Max — Pro 全部＋最高用量（HK$120/月）", upMax:"升級 Max",
+    planManageDesc:"改卡、轉 plan、取消訂閱或睇發票", manageSub:"管理訂閱",
+    planHint:"經 Stripe 安全付款。踢拳堂數（新星／挑戰者／苦行僧）係上堂用嘅，請直接搵教練購買。",
+    pkgPick:"＋堂數…", pkgRising:"新星 4堂 $800", pkgChallenger:"挑戰者 8堂 $1,400", pkgAscetic:"苦行僧 1對1（自訂）",
+    pkgAskSessions:"苦行僧堂數（例：4）", pkgAskPrice:"議定總價 HK$（例：1200）",
+    pkgFail:"記錄失敗：",
     errInvalidLogin: "電郵或密碼唔啱。未註冊過？撳上面「註冊」開個新帳戶；唔記得密碼就撳下面「唔記得密碼」重設。",
     errNotConfirmed: "你仲未完成第2步（確認電郵）。去你個信箱撳確認連結；搵唔到封信就撳下面「寄多次確認信」。",
     errExists: "呢個電郵已經註冊咗 — 請直接登入；唔記得密碼就用「唔記得密碼」重設。",
@@ -391,7 +412,14 @@ const I18N = {
     roleNames: { member:"Member", student:"Student", coach:"Coach", admin:"Admin" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"Rising Star", challenger:"Challenger", ascetic:"Ascetic" },
-    levelAttended: n=>` (${n} classes)`,
+    planTitle:"💳 Subscription",
+    planProDesc:"Kuafuor Pro — unlock all paid site features (HK$70/mo)", upPro:"Upgrade to Pro",
+    planMaxDesc:"Kuafuor Max — everything in Pro + top quotas (HK$120/mo)", upMax:"Upgrade to Max",
+    planManageDesc:"Change card, switch plan, cancel or view invoices", manageSub:"Manage subscription",
+    planHint:"Payments are handled securely by Stripe. Kickboxing class packs (Rising Star / Challenger / Ascetic) are bought from your coach directly.",
+    pkgPick:"+ Class pack…", pkgRising:"Rising Star · 4 classes $800", pkgChallenger:"Challenger · 8 classes $1,400", pkgAscetic:"Ascetic · 1-on-1 (custom)",
+    pkgAskSessions:"Ascetic sessions (e.g. 4)", pkgAskPrice:"Agreed total HK$ (e.g. 1200)",
+    pkgFail:"Failed to record: ",
     errInvalidLogin: "Wrong email or password. New here? Tap “Register” above. Forgot your password? Use the reset link below.",
     errNotConfirmed: "You haven't finished Step 2 (email confirmation). Click the link in your inbox; can't find it? Tap “Resend confirmation email” below.",
     errExists: "This email is already registered — log in instead, or use “Forgot your password” to reset.",
@@ -541,7 +569,7 @@ async function render(){
   const badge = $("#pRole");
   badge.textContent = roleName(role);
   badge.className = "badge " + role;
-  // 訂閱 plan + 修行 level（my_tiers RPC；攞唔到就靜靜哋唔顯示）
+  // 訂閱 plan badge + 堂數 level badge（my_tiers RPC；攞唔到就靜靜哋唔顯示）
   (async ()=>{
     try{
       const { data: tiers } = await sb.rpc("my_tiers");
@@ -551,10 +579,14 @@ async function render(){
       pp.textContent = dict.planNames[tiers.plan] || tiers.plan;
       pp.className = "badge " + tiers.plan;
       pp.style.display = "";
+      // level = 學員買咗邊種堂數（新星4堂/挑戰者8堂/苦行僧1對1）；未買過 → 唔顯示
       const pl = $("#pLevel");
-      pl.textContent = (dict.levelNames[tiers.level] || tiers.level) + dict.levelAttended(tiers.attended || 0);
-      pl.className = "badge lv";
-      pl.style.display = "";
+      if(tiers.level){
+        pl.textContent = dict.levelNames[tiers.level] || tiers.level;
+        pl.className = "badge lv";
+        pl.style.display = "";
+      } else { pl.style.display = "none"; }
+      renderPlanBox(tiers.plan);
     }catch(e){}
   })();
   $("#featList").innerHTML = FEATURES.map(f=>{
@@ -574,6 +606,28 @@ async function render(){
   else { $("#adminCard").style.display="none"; $("#enquiryCard").style.display="none"; }
 }
 
+/* 訂閱升級（Stripe，經 entitlements.js）。lazy-load：撳掣先入 billing 代碼 */
+let _entLib = null;
+async function entLib(){
+  if(_entLib) return _entLib;
+  const { Entitlements } = await import("/assets/entitlements.js");
+  _entLib = await Entitlements.init();
+  return _entLib;
+}
+function renderPlanBox(plan){
+  $("#planBox").style.display = "";
+  $("#rowPro").style.display = plan==="holder" ? "" : "none";
+  $("#rowMax").style.display = plan!=="max" ? "" : "none";
+  $("#rowManage").style.display = plan!=="holder" ? "" : "none";
+  $("#upPro").onclick = async e=>{ e.preventDefault(); (await entLib()).upgrade("all","pro"); };
+  $("#upMax").onclick = async e=>{ e.preventDefault(); (await entLib()).upgrade("all","max"); };
+  $("#manageSub").onclick = async e=>{ e.preventDefault(); (await entLib()).manage(); };
+  // 由 Stripe Checkout 返嚟（?upgraded=1）：等 webhook 寫好 entitlement 就 reload 更新 badge
+  if(new URLSearchParams(location.search).get("upgraded")==="1"){
+    entLib().then(ent=>ent.on("change", ()=>location.reload()));
+  }
+}
+
 async function renderAdmin(){
   $("#adminCard").style.display = "";
   const { data, error } = await sb.from("profiles").select("*").order("created_at");
@@ -584,6 +638,12 @@ async function renderAdmin(){
       <select data-uid="${p.id}" ${p.id===user.id?`disabled title="${esc(t("cantChangeSelf"))}"`:""}>
         ${["member","student","coach","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
       </select>
+      <select data-pkg="${p.id}">
+        <option value="">${esc(t("pkgPick"))}</option>
+        <option value="rising">${esc(t("pkgRising"))}</option>
+        <option value="challenger">${esc(t("pkgChallenger"))}</option>
+        <option value="ascetic">${esc(t("pkgAscetic"))}</option>
+      </select>
     </div>`).join("");
   $("#userList").querySelectorAll("select[data-uid]").forEach(sel=>{
     sel.addEventListener("change", async ()=>{
@@ -591,6 +651,23 @@ async function renderAdmin(){
       if(error){ alert(t("changeFail")+error.message); renderAdmin(); return; }
       sel.style.outline = "2px solid var(--line-strong)";
       setTimeout(()=>sel.style.outline="", 1200);
+    });
+  });
+  // 記堂數（新星/挑戰者標準價自動帶入；苦行僧問堂數＋議價）
+  $("#userList").querySelectorAll("select[data-pkg]").forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const pkg = sel.value; if(!pkg) return;
+      const args = { p_student: sel.dataset.pkg, p_package: pkg };
+      if(pkg==="ascetic"){
+        const s = parseInt(prompt(t("pkgAskSessions")) || "", 10);
+        const pr = parseFloat(prompt(t("pkgAskPrice")) || "");
+        if(!s || !pr){ sel.value=""; return; }
+        args.p_sessions = s; args.p_price = pr;
+      }
+      const { error } = await sb.rpc("record_class_package", args);
+      if(error) alert(t("pkgFail")+error.message);
+      else { sel.style.outline = "2px solid var(--line-strong)"; setTimeout(()=>sel.style.outline="",1200); }
+      sel.value = "";
     });
   });
 }
