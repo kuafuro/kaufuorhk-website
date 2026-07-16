@@ -83,6 +83,7 @@
       <div class="grid">
         <label class="f"><span data-t="fDate"></span><input type="date" id="a-date"></label>
         <label class="f"><span data-t="fTime"></span><input type="time" id="a-time" value="19:00"></label>
+        <label class="f"><span data-t="fEnd"></span><input type="time" id="a-end" value="20:00"></label>
         <label class="f"><span data-t="fVenue"></span>
           <select id="a-venue"><option value="KT" data-t="vKT"></option><option value="MK" data-t="vMK"></option></select></label>
         <label class="f"><span data-t="fCoach"></span>
@@ -110,7 +111,7 @@ const SB_KEY="sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O";
 
 const I18N={
   zh:{title:"🥊 排堂報名",sub:"揀你想上嘅堂，撳報名。夠人（預設 2 位）就自動開班。",
-    addTitle:"➕ 開放時段（教練）",fDate:"日期",fTime:"開始時間",fVenue:"地點",fCoach:"教練",
+    addTitle:"➕ 開放時段（教練）",fDate:"日期",fTime:"開始時間",fEnd:"結束時間",fVenue:"地點",fCoach:"教練",
     fCap:"人數上限",fMin:"開班門檻（夠幾人開）",fDeadline:"報名截止（可留空）",fNotes:"備註（可留空）",
     addBtn:"開放呢個時段",loading:"載入緊…",empty:"暫時未有開放時段。",
     vKT:"觀塘 KT",vMK:"旺角 MK",
@@ -118,11 +119,11 @@ const I18N={
     needMore:s=>`仲爭 ${s} 人開班`,cntLabel:(a,b)=>`${a}/${b} 人`,
     book:"報名",wait:"後補",cancel:"取消報名",roster:"名單",hideRoster:"收起",kick:"移除",
     booked:"報咗名喇 ✅",waited:"排咗後補 ✅",cancelled:"已取消報名",already:"你之前已經報咗",
-    added:"時段已開放 ✅",err:"出錯：",noDate:"請揀日期",
+    added:"時段已開放 ✅",err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
     footNote:"報名只係排位；實際扣堂／出席照舊由教練點名決定。",backHome:"返主頁",
     wk:["日","一","二","三","四","五","六"]},
   en:{title:"🥊 Class Booking",sub:"Pick a class and tap book. It opens automatically once enough people (default 2) join.",
-    addTitle:"➕ Open a slot (coach)",fDate:"Date",fTime:"Start time",fVenue:"Venue",fCoach:"Coach",
+    addTitle:"➕ Open a slot (coach)",fDate:"Date",fTime:"Start time",fEnd:"End time",fVenue:"Venue",fCoach:"Coach",
     fCap:"Capacity",fMin:"Min to open",fDeadline:"Booking deadline (optional)",fNotes:"Notes (optional)",
     addBtn:"Open this slot",loading:"Loading…",empty:"No open slots yet.",
     vKT:"Kwun Tong (KT)",vMK:"Mong Kok (MK)",
@@ -130,7 +131,7 @@ const I18N={
     needMore:s=>`${s} more to open`,cntLabel:(a,b)=>`${a}/${b}`,
     book:"Book",wait:"Waitlist",cancel:"Cancel",roster:"Roster",hideRoster:"Hide",kick:"Remove",
     booked:"Booked ✅",waited:"Added to waitlist ✅",cancelled:"Booking cancelled",already:"You already booked",
-    added:"Slot opened ✅",err:"Error: ",noDate:"Please pick a date",
+    added:"Slot opened ✅",err:"Error: ",noDate:"Please pick a date",badEnd:"End time must be after start time",
     footNote:"Booking reserves a spot; class deduction/attendance is still set by the coach at roll-call.",backHome:"Home",
     wk:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]},
 };
@@ -265,9 +266,21 @@ document.addEventListener("click",async e=>{
   }
 });
 
+// 結束時間自動跟開始時間 +1 小時，教練自己改過就唔再跟
+let endTouched=false;
+$("#a-end").addEventListener("input",()=>{endTouched=true;});
+$("#a-time").addEventListener("input",()=>{
+  if(endTouched) return;
+  const v=$("#a-time").value; if(!v) return;
+  const [h,m]=v.split(":").map(Number);
+  $("#a-end").value=String((h+1)%24).padStart(2,"0")+":"+String(m).padStart(2,"0");
+});
+
 $("#addBtn").onclick=async()=>{
   const date=$("#a-date").value; if(!date){toast(t("noDate"));return;}
-  const row={ session_date:date, start_time:$("#a-time").value||"19:00",
+  const start=$("#a-time").value||"19:00", end=$("#a-end").value||null;
+  if(end&&end<=start){toast(t("badEnd"));return;}
+  const row={ session_date:date, start_time:start, end_time:end,
     venue:$("#a-venue").value, coach:$("#a-coach").value,
     capacity:+$("#a-cap").value||6, min_to_open:+$("#a-min").value||2,
     book_by:$("#a-by").value?new Date($("#a-by").value).toISOString():null,
