@@ -1,15 +1,16 @@
-// transcribe-fast — authenticated (user JWT). Runs SenseVoice cloud transcription for a Pro
-// subtitle user, metered against the tier's monthly minute quota (spec §6).
-//   input:  { storage_path, duration_ms }   (audio already uploaded to `subtitle-audio` by the client)
-//   200:    { segments, duration_ms, tier, used_min, quota }
-//   402:    { error:'quota', tier, used_min, quota }   -> client shows upgrade-to-Max, free local still works
-//   403 not_pro / forbidden path · 503 endpoint_unconfigured · 502 endpoint error
-// Secrets required: SENSEVOICE_URL, SENSEVOICE_TOKEN. (SUPABASE_* are auto-injected.)
+// transcribe-fast — START an async cloud transcription (spec §6, async redesign).
+//   auth (user JWT) -> has_pro('subtitle') -> tier quota pre-flight -> create a pending job ->
+//   ask the Modal endpoint to transcribe in the BACKGROUND (returns fast) -> return { job_id }.
+// The client polls public.transcribe_jobs until status = done/error. Modal posts the result to
+// transcribe-callback when finished, so a long cold start never times out this request.
+//   200: { job_id, tier, quota }
+//   402: { error:'quota', tier, used_min, quota }   403 not_pro / forbidden path
+//   503 endpoint_unconfigured · 502 spawn/endpoint error
+// Secrets: SENSEVOICE_URL, SENSEVOICE_TOKEN. (SUPABASE_* auto-injected.)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SENSEVOICE_URL = Deno.env.get('SENSEVOICE_URL') ?? '';
 const SENSEVOICE_TOKEN = Deno.env.get('SENSEVOICE_TOKEN') ?? '';
-// Monthly cloud-fast minute quota per tier (spec §2.5). Priced to never lose money at full quota.
 const QUOTA_MIN: Record<string, number> = { pro: 300, max: 1200 };
 
 const cors = {
@@ -32,65 +33,55 @@ Deno.serve(async (req) => {
 
     const { storage_path, duration_ms } = await req.json();
     if (!storage_path || typeof storage_path !== 'string') return json({ error: 'storage_path required' }, 400);
-    // Ownership: the path must live under this user's folder ("{uid}/…").
     if (!storage_path.startsWith(user.id + '/')) return json({ error: 'forbidden path' }, 403);
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    // Pro gate (server-side; Storage RLS also enforces on upload).
     const { data: pro } = await admin.rpc('has_pro', { p_user: user.id, p_product: 'subtitle' });
     if (!pro) return json({ error: 'not_pro' }, 403);
 
-    // Tier + monthly quota.
     const { data: tierRaw } = await admin.rpc('entitlement_tier', { p_user: user.id, p_product: 'subtitle' });
     const tier = (tierRaw as string) || 'pro';
     const quota = QUOTA_MIN[tier] ?? QUOTA_MIN.pro;
     const { data: usedRaw } = await admin.rpc('transcribe_minutes_this_month', { p_user: user.id });
     const usedMin = Number(usedRaw ?? 0);
     const estMin = Math.max(0, Number(duration_ms ?? 0)) / 60000;
-
-    // Pre-flight: block a request that would clearly exceed the remaining quota — so we don't pay
-    // the GPU for a transcription we then refuse. Over quota -> 402 -> client offers upgrade-to-Max.
     if (usedMin >= quota || (estMin > 0 && usedMin + estMin > quota)) {
       return json({ error: 'quota', tier, used_min: Math.round(usedMin), quota }, 402);
     }
 
     if (!SENSEVOICE_URL || !SENSEVOICE_TOKEN) return json({ error: 'endpoint_unconfigured' }, 503);
 
-    // Short-lived signed URL for the endpoint to fetch the audio (service role bypasses RLS).
+    // Signed URL valid long enough to cover a cold start + long transcription (30 min).
     const { data: signed, error: signErr } =
-      await admin.storage.from('subtitle-audio').createSignedUrl(storage_path, 300);
+      await admin.storage.from('subtitle-audio').createSignedUrl(storage_path, 1800);
     if (signErr || !signed?.signedUrl) return json({ error: 'sign_failed', detail: signErr?.message }, 500);
 
-    // Call the SenseVoice endpoint (POST directly to SENSEVOICE_URL — it IS the /transcribe endpoint).
-    let payload: { segments?: unknown[]; duration_ms?: number };
+    // Create the pending job first, so a poll always finds a row.
+    const { data: job, error: jobErr } = await admin.from('transcribe_jobs')
+      .insert({ user_id: user.id, status: 'pending', storage_path, tier, quota_min: quota })
+      .select('id').single();
+    if (jobErr || !job) return json({ error: 'job_create_failed', detail: jobErr?.message }, 500);
+
+    // Ask Modal to spawn the background job. This returns fast (just an ack); the heavy work runs
+    // on Modal and posts back to transcribe-callback.
     try {
       const r = await fetch(SENSEVOICE_URL, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${SENSEVOICE_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio_url: signed.signedUrl, language: 'yue', diarize: true }),
+        body: JSON.stringify({ audio_url: signed.signedUrl, job_id: job.id, language: 'yue', diarize: true }),
       });
       if (!r.ok) {
         const t = await r.text();
-        return json({ error: 'transcribe_failed', status: r.status, detail: t.slice(0, 300) }, 502);
+        await admin.from('transcribe_jobs').update({ status: 'error', error: ('spawn failed: ' + t).slice(0, 500) }).eq('id', job.id);
+        return json({ error: 'spawn_failed', status: r.status, detail: t.slice(0, 300) }, 502);
       }
-      payload = await r.json();
     } catch (e) {
+      await admin.from('transcribe_jobs').update({ status: 'error', error: ('endpoint unreachable: ' + e).slice(0, 500) }).eq('id', job.id);
       return json({ error: 'endpoint_unreachable', detail: String(e) }, 502);
     }
 
-    // Meter the ACTUAL duration reported by the endpoint (authoritative), not the client's estimate.
-    const actualMin = Math.max(0, Number(payload.duration_ms ?? duration_ms ?? 0)) / 60000;
-    await admin.from('usage_transcribe').insert({
-      user_id: user.id, minutes: Number(actualMin.toFixed(3)), storage_path,
-    });
-
-    return json({
-      segments: payload.segments ?? [],
-      duration_ms: payload.duration_ms ?? 0,
-      tier, quota,
-      used_min: Math.round(usedMin + actualMin),
-    });
+    return json({ job_id: job.id, tier, quota });
   } catch (e) {
     console.error('transcribe-fast error', e);
     return json({ error: (e as Error).message }, 500);

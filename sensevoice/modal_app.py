@@ -1,35 +1,25 @@
-# SenseVoice cloud transcription endpoint — Kuafuor HK (Subtitle Pro)
-# Implements the endpoint contract in
-#   docs/superpowers/specs/2026-07-15-sensevoice-cloud-transcription-design.md §5
+# SenseVoice cloud transcription endpoint — Kuafuor HK (Subtitle Pro) · ASYNC
+# The web endpoint only SPAWNS a background GPU job and returns immediately, so a cold start
+# never times out the caller. When the job finishes it POSTs the result to the Supabase
+# transcribe-callback function; the website polls the job row. See the design spec §6 (async).
 #
-#   POST {url}/transcribe   Authorization: Bearer {SENSEVOICE_TOKEN}
-#   body:  { "audio_url": "<signed url>", "language": "yue", "diarize": true }
-#   200:   { "segments": [ { "start_ms", "end_ms", "spk", "text" } ], "duration_ms": <int> }
-#   401 unauthorized · 400 bad request · 413 audio too long · 500 transcription failed
+#   POST {url}   Authorization: Bearer {SENSEVOICE_TOKEN}
+#   body:  { "audio_url": "<signed url>", "job_id": "<uuid>", "language": "yue", "diarize": true }
+#   202:   { "spawned": true, "job_id": "<uuid>" }   (result arrives later via the callback)
 #
-# The heavy libs (funasr/torch/opencc/requests) are imported INSIDE the container methods
-# on purpose — this file is also executed locally by `modal deploy` to build the app graph,
-# and the local machine only has `modal` installed, not the GPU stack.
-#
-# Deploy + get your URL/TOKEN: see sensevoice/README.md
-# SenseVoice / FunASR © Alibaba — commercial use permitted with attribution.
+# Modal secret "sensevoice" must provide: SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET.
+# Deploy: see sensevoice/README.md (or the Colab notebook). SenseVoice/FunASR © Alibaba (attribution).
 
 import modal
 
-# fastapi is needed LOCALLY too: `Header(...)` in the endpoint signature is evaluated when
-# `modal deploy` builds the app graph on your machine. If this import fails, run
-# `pip install fastapi` alongside `modal` (see README). It is also in the container image.
+# fastapi is needed LOCALLY too (Header(...) default is evaluated when `modal deploy` builds the graph).
 from fastapi import Header, HTTPException
 
 app = modal.App("kuafuor-sensevoice")
 
-# Model weights are cached in a Volume so we download once, not on every cold start.
 MODEL_DIR = "/models"
 model_cache = modal.Volume.from_name("kuafuor-sensevoice-cache", create_if_missing=True)
-
-# Reject audio longer than this to hard-cap per-request GPU cost (spec §5 "Limits").
-# The real per-user monthly cap lives in the Edge Function quota; this is a per-file backstop.
-MAX_MINUTES = 120
+MAX_MINUTES = 120  # per-file backstop (the real monthly cap is the Edge Function quota)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -43,7 +33,6 @@ image = (
         "requests==2.32.3",
         "fastapi[standard]==0.115.6",
     )
-    # FunASR downloads from ModelScope by default; point its cache at the mounted Volume.
     .env({"MODELSCOPE_CACHE": MODEL_DIR, "HF_HOME": MODEL_DIR})
 )
 
@@ -52,33 +41,25 @@ image = (
     gpu="T4",
     image=image,
     volumes={MODEL_DIR: model_cache},
-    secrets=[modal.Secret.from_name("sensevoice")],  # provides SENSEVOICE_TOKEN
-    scaledown_window=300,   # scale to zero 5 min after the last request (older Modal: container_idle_timeout)
-    timeout=900,            # allow long files to finish a cold start + transcribe
-)                           # min_containers defaults to 0 -> no always-on cost; first request pays a cold start
+    secrets=[modal.Secret.from_name("sensevoice")],  # SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET
+    scaledown_window=300,   # stay warm 5 min after a job (older Modal: container_idle_timeout)
+    timeout=1800,           # a background job may run a while (cold start + long audio)
+)
 class SenseVoice:
     @modal.enter()
     def load(self):
-        """Runs once per container start. Loads SenseVoice + VAD + speaker model onto the GPU."""
-        import torch
-        import opencc
+        import torch, opencc
         from funasr import AutoModel
-
-        self.cc = opencc.OpenCC("s2hk")  # Simplified -> Traditional (Hong Kong standard)
+        self.cc = opencc.OpenCC("s2hk")
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.model = AutoModel(
-            model="iic/SenseVoiceSmall",
-            trust_remote_code=True,
-            vad_model="fsmn-vad",
-            vad_kwargs={"max_single_segment_time": 30000},
-            spk_model="cam++",          # speaker diarization -> per-sentence `spk`
-            device=self.device,
-            disable_update=True,        # don't phone home for a version check on every start
+            model="iic/SenseVoiceSmall", trust_remote_code=True,
+            vad_model="fsmn-vad", vad_kwargs={"max_single_segment_time": 30000},
+            spk_model="cam++", device=self.device, disable_update=True,
         )
-        model_cache.commit()            # persist any freshly downloaded weights to the Volume
+        model_cache.commit()
 
     def _probe_ms(self, path):
-        """Audio duration in ms via ffprobe (used for the length limit AND billing minutes)."""
         import subprocess
         out = subprocess.run(
             ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
@@ -91,12 +72,8 @@ class SenseVoice:
             return 0
 
     def _transcribe(self, wav_path, duration_ms):
-        """Run SenseVoice; return (segments, duration_ms) per the §5 contract."""
         from funasr.utils.postprocess_utils import rich_transcription_postprocess
-
-        res = self.model.generate(
-            input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300,
-        )
+        res = self.model.generate(input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300)
         info = res[0].get("sentence_info")
         segments = []
         if info:
@@ -105,40 +82,35 @@ class SenseVoice:
                 if not text:
                     continue
                 segments.append({
-                    "start_ms": int(seg["start"]),
-                    "end_ms": int(seg["end"]),
-                    "spk": int(seg.get("spk", 0)),
-                    "text": text,
+                    "start_ms": int(seg["start"]), "end_ms": int(seg["end"]),
+                    "spk": int(seg.get("spk", 0)), "text": text,
                 })
         else:
-            # Diarization/VAD produced no sentence breakdown -> fall back to one whole-file segment.
             text = self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip())
             if text:
                 segments.append({"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text})
         return segments
 
-    @modal.fastapi_endpoint(method="POST", docs=False)
-    def transcribe(self, data: dict, authorization: str = Header(default=None)):
-        import os
-        import tempfile
-        import subprocess
-        import requests
+    @modal.method()
+    def run(self, audio_url: str, job_id: str):
+        """Background job: download -> transcribe -> POST the result to the Supabase callback."""
+        import os, tempfile, subprocess, requests
 
-        # --- auth: constant string compare against the Modal secret ---
-        expected = "Bearer " + os.environ["SENSEVOICE_TOKEN"]
-        if not authorization or authorization != expected:
-            raise HTTPException(status_code=401, detail="unauthorized")
+        callback_url = os.environ["CALLBACK_URL"]
+        callback_secret = os.environ["CALLBACK_SECRET"]
 
-        audio_url = (data or {}).get("audio_url")
-        if not audio_url or not isinstance(audio_url, str):
-            raise HTTPException(status_code=400, detail="audio_url required")
-
-        with tempfile.TemporaryDirectory() as tmp:
-            src = os.path.join(tmp, "src")
-            wav = os.path.join(tmp, "audio.wav")
-
-            # --- download the signed audio (stream; cap at ~500 MB to avoid a runaway file) ---
+        def report(payload):
             try:
+                requests.post(callback_url, json={"job_id": job_id, **payload},
+                              headers={"x-callback-secret": callback_secret}, timeout=30)
+            except Exception as e:  # noqa: BLE001
+                print("callback POST failed:", e)
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, "src")
+                wav = os.path.join(tmp, "audio.wav")
+
                 with requests.get(audio_url, stream=True, timeout=120) as r:
                     r.raise_for_status()
                     total = 0
@@ -146,46 +118,36 @@ class SenseVoice:
                         for chunk in r.iter_content(chunk_size=1 << 20):
                             total += len(chunk)
                             if total > 500 * (1 << 20):
-                                raise HTTPException(status_code=413, detail="audio too large")
+                                return report({"error": "audio too large (>500MB)"})
                             f.write(chunk)
-            except HTTPException:
-                raise
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"could not fetch audio_url: {e}")
 
-            # --- normalise to 16 kHz mono wav (most robust input for FunASR) ---
-            norm = subprocess.run(
-                ["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ar", "16000", "-ac", "1", wav],
-                capture_output=True, text=True,
-            )
-            if norm.returncode != 0 or not os.path.exists(wav):
-                raise HTTPException(status_code=400, detail="unsupported or corrupt audio")
+                norm = subprocess.run(
+                    ["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ar", "16000", "-ac", "1", wav],
+                    capture_output=True, text=True,
+                )
+                if norm.returncode != 0 or not os.path.exists(wav):
+                    return report({"error": "unsupported or corrupt audio"})
 
-            duration_ms = self._probe_ms(wav)
-            if duration_ms > MAX_MINUTES * 60 * 1000:
-                raise HTTPException(status_code=413, detail=f"audio exceeds {MAX_MINUTES} min limit")
+                duration_ms = self._probe_ms(wav)
+                if duration_ms > MAX_MINUTES * 60 * 1000:
+                    return report({"error": f"audio exceeds {MAX_MINUTES} min limit"})
 
-            try:
                 segments = self._transcribe(wav, duration_ms)
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"transcription failed: {e}")
-
-        return {"segments": segments, "duration_ms": duration_ms}
-
-
-# `modal run sensevoice/modal_app.py` -> pre-download the weights into the Volume once,
-# so the first live request after `modal deploy` isn't a multi-minute cold download.
-@app.function(image=image, volumes={MODEL_DIR: model_cache}, gpu="T4", timeout=1800)
-def prewarm():
-    from funasr import AutoModel
-    AutoModel(
-        model="iic/SenseVoiceSmall", trust_remote_code=True,
-        vad_model="fsmn-vad", spk_model="cam++", disable_update=True,
-    )
-    model_cache.commit()
-    print("✓ SenseVoice + fsmn-vad + cam++ weights cached in the Volume")
+            report({"segments": segments, "duration_ms": duration_ms})
+        except Exception as e:  # noqa: BLE001
+            report({"error": str(e)[:300]})
 
 
-@app.local_entrypoint()
-def main():
-    prewarm.remote()
+# Lightweight CPU web endpoint: authenticate, spawn the GPU job, return immediately.
+@app.function(image=image, secrets=[modal.Secret.from_name("sensevoice")])
+@modal.fastapi_endpoint(method="POST", docs=False)
+def transcribe(data: dict, authorization: str = Header(default=None)):
+    import os
+    if not authorization or authorization != "Bearer " + os.environ["SENSEVOICE_TOKEN"]:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    audio_url = (data or {}).get("audio_url")
+    job_id = (data or {}).get("job_id")
+    if not audio_url or not job_id:
+        raise HTTPException(status_code=400, detail="audio_url and job_id required")
+    SenseVoice().run.spawn(audio_url, job_id)   # fire-and-forget; result arrives via the callback
+    return {"spawned": True, "job_id": job_id}
