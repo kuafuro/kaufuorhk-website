@@ -1,12 +1,15 @@
 # SenseVoice cloud fast transcription (Subtitle Pro) — Design Spec
 
 - **Date:** 2026-07-15
-- **Status:** APPROVED + **BUILT (P1–P3)**. P1 `sensevoice/modal_app.py` + README. P2 migrations
-  (tier/quota/bucket/grants) + `transcribe-fast` + `sweep-audio` **deployed** to ikzoxrvnpsseyjviawti;
-  tier-aware `create-checkout`/`stripe-webhook` committed but **not redeployed** (waiting on the Stripe
-  Max price). P3 local/cloud toggle in the subtitle tool. **Go-live blockers (user):** `modal deploy` →
-  SENSEVOICE_URL/TOKEN secrets · create "Subtitle Max" HK$88/mo → PRICE_SUBTITLE_MAX secret · SWEEP_SECRET +
-  schedule sweep-audio · then redeploy create-checkout/webhook + merge frontend to main.
+- **Status:** **LIVE (P1–P4, E2E-verified 2026-07-16).** Architecture became ASYNC: `transcribe-fast`
+  creates a `transcribe_jobs` row + asks Modal to spawn a background GPU job; Modal POSTs the result to
+  `transcribe-callback`; the site polls the job row — cold starts can no longer time out a request.
+  Modal deploys via CI (`.github/workflows/modal-deploy.yml`, GitHub-OIDC-authenticated against the
+  `ci-config` Edge Function; zero secrets in the repo). All pipeline config lives in Supabase **Vault**
+  (service-role RPCs), not dashboard env secrets. Hourly `sweep-audio` cron enforces the 6h retention.
+  E2E: job → spawn → SenseVoice (funasr 1.2.6 + punc + plain fallback) → 繁體 segments + usage row ✓.
+  **Remaining:** Stripe "Subtitle Max" price (PRICE_SUBTITLE_MAX) to open the Max upgrade path — Pro
+  cloud works without it; diarization falls back to plain text on degenerate/short clips.
 - **Depends on:** the freemium/Stripe billing (shipped) — this is a new Subtitle **Pro** capability.
 - **Quality gate:** PASSED — SenseVoice tested on a real Cantonese meeting clip; it preserves colloquial 口語 (瞓死咗/係啦/佢哋/唔該), converts cleanly to Traditional (OpenCC `s2hk`), and supports timestamps + speaker diarization (`cam++`).
 

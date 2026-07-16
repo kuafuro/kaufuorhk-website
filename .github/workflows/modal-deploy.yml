@@ -1,0 +1,109 @@
+# Deploys the SenseVoice endpoint (sensevoice/modal_app.py) to Modal — zero secrets in this repo.
+# The job authenticates with its GitHub-issued OIDC token to the Supabase ci-config function
+# (which verifies the token against GitHub's JWKS and strict repo/workflow claims), fetches the
+# deploy credentials from Vault, deploys, then registers the resulting *.modal.run URL back.
+# Nothing secret is committed or printed; every fetched value is masked before use.
+name: modal-deploy
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main, claude/website-improvement-review-wr8keq]
+    paths:
+      - 'sensevoice/**'
+      - '.github/workflows/modal-deploy.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency: modal-deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Modal CLI
+        run: pip install -q modal fastapi
+
+      - name: Fetch deploy credentials (OIDC)
+        run: |
+          set -euo pipefail
+          OIDC=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=kuafuor-ci" | jq -r .value)
+          CFG=$(curl -sS -X POST \
+            "https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1/ci-config" \
+            -H 'Content-Type: application/json' \
+            -d "{\"oidc_token\":\"$OIDC\"}")
+          for KEY in MODAL_TOKEN_ID MODAL_TOKEN_SECRET SENSEVOICE_TOKEN CALLBACK_SECRET CALLBACK_URL; do
+            VAL=$(jq -r --arg k "$KEY" '.[$k] // empty' <<<"$CFG")
+            if [ -z "$VAL" ]; then echo "missing $KEY from ci-config" >&2; exit 1; fi
+            echo "::add-mask::$VAL"
+            echo "$KEY=$VAL" >> "$GITHUB_ENV"
+          done
+
+      - name: Authenticate to Modal
+        run: |
+          modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET" --profile ci-deploy
+          modal profile activate ci-deploy
+
+      - name: Install endpoint secrets into Modal
+        run: |
+          modal secret create sensevoice \
+            SENSEVOICE_TOKEN="$SENSEVOICE_TOKEN" \
+            CALLBACK_URL="$CALLBACK_URL" \
+            CALLBACK_SECRET="$CALLBACK_SECRET" \
+            --force
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          modal deploy sensevoice/modal_app.py 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.modal\.run' deploy.log | tail -1)
+          if [ -z "$URL" ]; then echo "no endpoint URL in deploy output" >&2; exit 1; fi
+          echo "ENDPOINT_URL=$URL" >> "$GITHUB_ENV"
+          echo "Deployed endpoint: $URL"
+
+      - name: Register endpoint URL
+        run: |
+          set -euo pipefail
+          OIDC=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=kuafuor-ci" | jq -r .value)
+          RES=$(curl -sS -X POST \
+            "https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1/ci-config" \
+            -H 'Content-Type: application/json' \
+            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\"}}")
+          echo "register response: $RES"
+          [ "$(jq -r '.registered // false' <<<"$RES")" = "true" ]
+
+      # Post-deploy verification: wait for old-version warm containers to drain (Modal can route
+      # spawns to them for up to the scaledown window), fire one real transcription against the
+      # public Cantonese sample with a throwaway job id, then dump the app logs so a failure's
+      # traceback is visible right here in the run log. The sample audio is public; no secrets
+      # are ever printed.
+      - name: Smoke test (fresh containers) + logs
+        run: |
+          set -euo pipefail
+          echo "draining old-version warm containers (5.5 min)..."
+          sleep 330
+          echo "spawning smoke transcription..."
+          curl -sS -X POST "$ENDPOINT_URL" \
+            -H "Authorization: Bearer $SENSEVOICE_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"audio_url":"https://huggingface.co/FunAudioLLM/SenseVoiceSmall/resolve/main/example/yue.mp3","job_id":"00000000-0000-0000-0000-0000000000ce","language":"yue","diarize":true}'
+          echo; echo "waiting for the background job (5 min)..."
+          sleep 300
+          echo "===== modal app logs (tail) ====="
+          (timeout 30 modal app logs kuafuor-sensevoice 2>&1 || true) | tail -200 | tee applogs.txt
+          if grep -q "Runner failed" applogs.txt; then
+            echo "::error::smoke transcription crashed — see logs above"; exit 1
+          fi
+          if grep -q "falling back to plain" applogs.txt; then
+            echo "::warning::diarization pipeline fell back to plain transcription"
+          fi

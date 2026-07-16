@@ -188,7 +188,7 @@
       </button>
     </div>
     <div class="notice info" id="cloudNote" style="display:none">
-      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,1 個鐘錄音大約 15–60 秒搞掂,仲會分「邊個講」同出時間軸。
+      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,分「邊個講」+ 時間軸。<b>背景處理</b> —— 首次開機約 1–2 分鐘,之後好快,唔使企喺度等。
       音檔會上傳到我哋嘅私密處理伺服器,轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
     </div>
 
@@ -564,7 +564,7 @@ async function runCloud(){
     });
     if (up.error) throw new Error((en ? "upload failed: " : "上傳失敗：") + up.error.message);
 
-    setBar(55); setText(`<span class="spinner"></span>${en ? "Transcribing on SenseVoice cloud…" : "雲端 SenseVoice 轉字幕中…（廣東話原生，好快）"}`);
+    setBar(45); setText(`<span class="spinner"></span>${en ? "Submitting to cloud…" : "提交到雲端…"}`);
     const resp = await fetch(`${BILLING.EDGE_BASE}/transcribe-fast`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "apikey": BILLING.SB_KEY },
@@ -575,8 +575,14 @@ async function runCloud(){
     if (resp.status === 503) throw new Error(en ? "cloud not enabled yet" : "雲端服務暫未開通,請用返本地引擎");
     if (!resp.ok) { const j = await resp.json().catch(() => ({})); throw new Error(j.detail || j.error || ("HTTP " + resp.status)); }
 
-    const j = await resp.json();
-    const segs = (j.segments || []).map(s => ({
+    const started = await resp.json();
+    if (!started.job_id) throw new Error(en ? "no job id" : "冇 job id");
+
+    // 背景轉字幕:每 4 秒查一次個 job。cold start 幾耐都唔會 timeout（結果由 Modal 寫返）。
+    setBar(65);
+    const t0 = Date.now();
+    const job = await pollJob(db, started.job_id, en, t0);
+    const segs = (job.segments || []).map(s => ({
       start: (s.start_ms || 0) / 1000, end: (s.end_ms || 0) / 1000,
       spk: (typeof s.spk === "number" ? s.spk : null), text: (s.text || "").trim(),
     })).filter(s => s.text);
@@ -584,11 +590,11 @@ async function runCloud(){
 
     const multiSpk = new Set(segs.map(s => s.spk).filter(v => v != null)).size > 1;
     const fullText = segs.map(s => (multiSpk && s.spk != null ? `講者${s.spk + 1}：` : "") + s.text).join("\n");
-    lastResult = { segs, fullText, secs: 0, cloud: true, multiSpk, name: baseName() };
+    lastResult = { segs, fullText, secs: Math.round((Date.now() - t0) / 1000), cloud: true, multiSpk, name: baseName() };
     try { sessionStorage.removeItem("kf-sub-last"); } catch(_){}
     statusBox.style.display = "none";
     $("result").style.display = "block";
-    updateCloudQuota(j);
+    updateCloudQuota({ tier: job.tier, quota: job.quota_min, used_min: job.used_min });
     applyGate();
     $("result").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
@@ -601,6 +607,30 @@ async function runCloud(){
     b.onclick = () => { $("err").style.display = "none"; setEngine("local"); runLocal(); };
     box.appendChild(document.createElement("br")); box.appendChild(b);
   } finally { $("run").disabled = false; }
+}
+
+function sleepMs(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// 每 4 秒查一次 transcribe_jobs（RLS：只讀自己嘅）。done → 回傳；error → throw；逾時 → throw。
+async function pollJob(db, jobId, en, t0){
+  const MAX_MS = 8 * 60 * 1000;   // 畀足夠時間畀 cold start（首次開機 ~1–2 分鐘）+ 長檔
+  while (Date.now() - t0 < MAX_MS){
+    await sleepMs(4000);
+    let row = null;
+    try {
+      const { data } = await db.from("transcribe_jobs")
+        .select("status,segments,duration_ms,error,used_min,tier,quota_min").eq("id", jobId).single();
+      row = data;
+    } catch(_){}
+    if (!row) continue;
+    if (row.status === "done") return row;
+    if (row.status === "error") throw new Error(row.error || (en ? "transcription failed" : "轉錄失敗"));
+    const s = Math.round((Date.now() - t0) / 1000);
+    setText(`<span class="spinner"></span>${en
+      ? `Transcribing on SenseVoice cloud… (${s}s)`
+      : `雲端 SenseVoice 轉字幕中…（已 ${s} 秒;首次開機約 1–2 分鐘,可以唔使企喺度等）`}`);
+  }
+  throw new Error(en ? "cloud timed out — try again (engine now warm)" : "等太耐 —— 引擎啱啱開好,再撳多次通常即刻得");
 }
 
 function updateCloudQuota(j){
