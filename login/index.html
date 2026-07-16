@@ -232,6 +232,11 @@
     <label class="f"><span data-t="editNameLabel"></span><input type="text" id="editName"></label>
     <button class="ghost" id="saveName" data-t="saveBtn"></button>
   </div>
+  <div class="row2">
+    <label class="f"><span data-t="editPhoneLabel"></span><input type="tel" id="editPhone" inputmode="tel" maxlength="20" placeholder="9123 4567"></label>
+    <button class="ghost" id="savePhone" data-t="saveBtn"></button>
+  </div>
+  <p class="hint" data-t="phoneHint" style="margin-top:-6px"></p>
   <div class="features">
     <h3 data-t="featTitle"></h3>
     <div id="featList"></div>
@@ -297,6 +302,10 @@ const I18N = {
     signupOk: "✔ 帳戶建立咗！而家去到第2步。",
     resendOk: "✔ 已再寄一次確認信，記得睇埋垃圾郵件。",
     editNameLabel: "改顯示名", saveBtn: "儲存", saved: "✔ 已儲存",
+    editPhoneLabel: "WhatsApp 電話（連結排堂機械人用）",
+    phoneHint: "填咗之後，之後喺 WhatsApp 排堂機械人度會自動認到你。淨係填香港號碼 8 位數字就得。",
+    phoneBad: "電話格式唔啱：請入 8 位香港號碼（可以連 +852）。",
+    phoneTaken: "呢個號碼已經連結咗第二個帳戶，如有問題請搵 Ming。",
     featTitle: "功能權限", open: "開啟 →", needs: "需要：",
     logoutBtn: "登出",
     adminTitle: "👥 用戶管理（管理員）",
@@ -357,6 +366,10 @@ const I18N = {
     signupOk: "✔ Account created! You are now on Step 2.",
     resendOk: "✔ Confirmation email re-sent. Remember to check spam.",
     editNameLabel: "Display name", saveBtn: "Save", saved: "✔ Saved",
+    editPhoneLabel: "WhatsApp phone (links the booking bot)",
+    phoneHint: "Once saved, the WhatsApp booking bot will recognise you automatically. Enter your 8-digit Hong Kong number.",
+    phoneBad: "That doesn't look right — enter an 8-digit HK number (with or without +852).",
+    phoneTaken: "This number is already linked to another account — contact Ming if that's unexpected.",
     featTitle: "Feature access", open: "Open →", needs: "Requires: ",
     logoutBtn: "Log out",
     adminTitle: "👥 User management (admin)",
@@ -510,6 +523,8 @@ async function render(){
   $("#pName").textContent = profile.name || (user.email||"").split("@")[0];
   $("#pEmail").textContent = user.email || "";
   $("#editName").value = profile.name || "";
+  // 顯示已儲存嘅 WhatsApp 號碼（去咗 852 前綴方便睇）
+  $("#editPhone").value = (profile.phone || "").replace(/^852(?=\d{8}$)/, "");
   $("#avatar").textContent = (profile.name || user.email || "?").trim().charAt(0).toUpperCase();
   const badge = $("#pRole");
   badge.textContent = roleName(role);
@@ -645,6 +660,23 @@ $("#saveName").onclick = async ()=>{
   const { error } = await sb.from("profiles").update({ name }).eq("id", user.id);
   const box = $("#profMsg");
   if(error){ msg(box, t("saveFail")+error.message, "err"); return; }
+  msg(box, t("saved"), "ok"); render();
+};
+$("#savePhone").onclick = async ()=>{
+  const box = $("#profMsg");
+  // 標準化做「純數字＋國家碼」：8523xxxxxxx；容許 +852 / 852 / 淨 8 位
+  let raw = $("#editPhone").value.replace(/[^0-9]/g, "");
+  let phone = "";
+  if(raw){
+    if(/^\d{8}$/.test(raw)) phone = "852" + raw;
+    else if(/^852\d{8}$/.test(raw)) phone = raw;
+    else { msg(box, t("phoneBad"), "err"); return; }
+  }
+  const { error } = await sb.from("profiles").update({ phone: phone || null }).eq("id", user.id);
+  if(error){
+    msg(box, /duplicate|unique/i.test(error.message) ? t("phoneTaken") : t("saveFail")+error.message, "err");
+    return;
+  }
   msg(box, t("saved"), "ok"); render();
 };
 $("#logout").onclick = async ()=>{ await sb.auth.signOut(); showView("auth"); setMode("login"); };
