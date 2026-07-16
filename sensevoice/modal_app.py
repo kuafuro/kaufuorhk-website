@@ -55,6 +55,7 @@ class SenseVoice:
         self.model = AutoModel(
             model="iic/SenseVoiceSmall", trust_remote_code=True,
             vad_model="fsmn-vad", vad_kwargs={"max_single_segment_time": 30000},
+            punc_model="ct-punc",       # REQUIRED with spk_model: sentence assembly reads punc_res
             spk_model="cam++", device=self.device, disable_update=True,
         )
         model_cache.commit()
@@ -90,6 +91,20 @@ class SenseVoice:
             if text:
                 segments.append({"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text})
         return segments
+
+    def _transcribe_plain(self, wav_path, duration_ms):
+        """Fallback when the diarization pipeline errors: plain SenseVoice, one whole-file segment."""
+        from funasr import AutoModel
+        from funasr.utils.postprocess_utils import rich_transcription_postprocess
+        if not hasattr(self, "plain_model"):
+            self.plain_model = AutoModel(
+                model="iic/SenseVoiceSmall", trust_remote_code=True,
+                vad_model="fsmn-vad", vad_kwargs={"max_single_segment_time": 30000},
+                device=self.device, disable_update=True,
+            )
+        res = self.plain_model.generate(input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300)
+        text = self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip())
+        return [{"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text}] if text else []
 
     @modal.method()
     def run(self, audio_url: str, job_id: str):
@@ -132,7 +147,11 @@ class SenseVoice:
                 if duration_ms > MAX_MINUTES * 60 * 1000:
                     return report({"error": f"audio exceeds {MAX_MINUTES} min limit"})
 
-                segments = self._transcribe(wav, duration_ms)
+                try:
+                    segments = self._transcribe(wav, duration_ms)
+                except Exception as e:  # noqa: BLE001
+                    print("diarized transcribe failed, falling back to plain:", e)
+                    segments = self._transcribe_plain(wav, duration_ms)
             report({"segments": segments, "duration_ms": duration_ms})
         except Exception as e:  # noqa: BLE001
             report({"error": str(e)[:300]})
