@@ -1,0 +1,69 @@
+# Deploys the SenseVoice endpoint (sensevoice/modal_app.py) to Modal.
+# Manually dispatched; all credentials arrive as dispatch inputs and are masked — nothing
+# secret is committed to the repo or printed to logs. The only printed output is the
+# resulting public *.modal.run endpoint URL.
+name: modal-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      modal_token_id:
+        description: Modal API token id
+        required: true
+      modal_token_secret:
+        description: Modal API token secret
+        required: true
+      sensevoice_token:
+        description: Bearer token the endpoint will require
+        required: true
+      callback_secret:
+        description: Shared secret for the Supabase transcribe-callback
+        required: true
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Mask inputs in logs
+        run: |
+          echo "::add-mask::${{ inputs.modal_token_id }}"
+          echo "::add-mask::${{ inputs.modal_token_secret }}"
+          echo "::add-mask::${{ inputs.sensevoice_token }}"
+          echo "::add-mask::${{ inputs.callback_secret }}"
+
+      - name: Install Modal CLI
+        run: pip install -q modal fastapi
+
+      - name: Authenticate to Modal
+        env:
+          TID: ${{ inputs.modal_token_id }}
+          TS: ${{ inputs.modal_token_secret }}
+        run: |
+          modal token set --token-id "$TID" --token-secret "$TS" --profile ci-deploy
+          modal profile activate ci-deploy
+
+      - name: Install endpoint secrets into Modal
+        env:
+          SV: ${{ inputs.sensevoice_token }}
+          CB: ${{ inputs.callback_secret }}
+        run: |
+          modal secret create sensevoice \
+            SENSEVOICE_TOKEN="$SV" \
+            CALLBACK_URL="https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1/transcribe-callback" \
+            CALLBACK_SECRET="$CB" \
+            --force
+
+      - name: Deploy
+        run: |
+          modal deploy sensevoice/modal_app.py 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.modal\.run' deploy.log | tail -1)
+          if [ -z "$URL" ]; then echo "No endpoint URL found in deploy output" >&2; exit 1; fi
+          echo "ENDPOINT_URL=$URL"

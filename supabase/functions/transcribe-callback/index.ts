@@ -1,12 +1,14 @@
 // transcribe-callback — Modal posts a finished (or failed) job result here when the background
 // transcription completes. verify_jwt=false; authenticated by a shared x-callback-secret (Modal
-// holds the same value). Marks the job done/error and records actual usage. Idempotent: only the
-// call that transitions the job out of pending/processing records usage. Secret: CALLBACK_SECRET.
+// holds the same value; ours lives in Vault via transcribe_config(), env fallback). Marks the job
+// done/error and records actual usage. Idempotent: only the call that transitions the job out of
+// pending/processing records usage.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const CALLBACK_SECRET = Deno.env.get('CALLBACK_SECRET') ?? '';
-
 Deno.serve(async (req) => {
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const { data: cfg } = await admin.rpc('transcribe_config');
+  const CALLBACK_SECRET = (cfg?.CALLBACK_SECRET as string) || Deno.env.get('CALLBACK_SECRET') || '';
   if (!CALLBACK_SECRET || req.headers.get('x-callback-secret') !== CALLBACK_SECRET) {
     return new Response('forbidden', { status: 403 });
   }
@@ -14,8 +16,6 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return new Response('bad json', { status: 400 }); }
   const { job_id, segments, duration_ms, error } = body || {};
   if (!job_id) return new Response('job_id required', { status: 400 });
-
-  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   if (error) {
     await admin.from('transcribe_jobs')

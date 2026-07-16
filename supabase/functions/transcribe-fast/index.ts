@@ -6,11 +6,10 @@
 //   200: { job_id, tier, quota }
 //   402: { error:'quota', tier, used_min, quota }   403 not_pro / forbidden path
 //   503 endpoint_unconfigured · 502 spawn/endpoint error
-// Secrets: SENSEVOICE_URL, SENSEVOICE_TOKEN. (SUPABASE_* auto-injected.)
+// Config: SENSEVOICE_URL + SENSEVOICE_TOKEN from Vault via transcribe_config() (service-role RPC),
+// env-var fallback. (SUPABASE_* auto-injected.)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SENSEVOICE_URL = Deno.env.get('SENSEVOICE_URL') ?? '';
-const SENSEVOICE_TOKEN = Deno.env.get('SENSEVOICE_TOKEN') ?? '';
 const QUOTA_MIN: Record<string, number> = { pro: 300, max: 1200 };
 
 const cors = {
@@ -50,6 +49,9 @@ Deno.serve(async (req) => {
       return json({ error: 'quota', tier, used_min: Math.round(usedMin), quota }, 402);
     }
 
+    const { data: cfg } = await admin.rpc('transcribe_config');
+    const SENSEVOICE_URL = (cfg?.SENSEVOICE_URL as string) || Deno.env.get('SENSEVOICE_URL') || '';
+    const SENSEVOICE_TOKEN = (cfg?.SENSEVOICE_TOKEN as string) || Deno.env.get('SENSEVOICE_TOKEN') || '';
     if (!SENSEVOICE_URL || !SENSEVOICE_TOKEN) return json({ error: 'endpoint_unconfigured' }, 503);
 
     // Signed URL valid long enough to cover a cold start + long transcription (30 min).

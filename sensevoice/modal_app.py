@@ -139,7 +139,11 @@ class SenseVoice:
 
 
 # Lightweight CPU web endpoint: authenticate, spawn the GPU job, return immediately.
-@app.function(image=image, secrets=[modal.Secret.from_name("sensevoice")])
+# Slim image (fastapi only) so the ack path never waits on the multi-GB GPU image.
+web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi[standard]==0.115.6")
+
+
+@app.function(image=web_image, secrets=[modal.Secret.from_name("sensevoice")])
 @modal.fastapi_endpoint(method="POST", docs=False)
 def transcribe(data: dict, authorization: str = Header(default=None)):
     import os
