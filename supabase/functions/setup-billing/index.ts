@@ -61,12 +61,14 @@ Deno.serve(async (req) => {
     const pSub = await ensure('PRICE_SUBTITLE', 'Subtitle Pro', 3000);
     const pMot = await ensure('PRICE_MOTIONLAB', 'Motion Lab Pro', 5000);
 
-    // Subtitle Max must live on the SAME product as Subtitle Pro (portal plan switch requirement).
+    // Subtitle Max is its OWN product: the billing portal can only switch plans across
+    // products when the prices share a billing interval (same-product monthly+monthly is rejected).
     let pMax = await existingPrice('PRICE_SUBTITLE_MAX');
-    if (pMax && pMax.product !== pSub.product) pMax = null;
+    if (pMax && pMax.product === pSub.product) pMax = null;   // migrate off the shared product
     if (!pMax) {
+      const maxProduct = await stripe.products.create({ name: 'Subtitle Max' });
       pMax = await stripe.prices.create({
-        product: pSub.product as string, currency: 'hkd', unit_amount: 8800,
+        product: maxProduct.id, currency: 'hkd', unit_amount: 8800,
         recurring: { interval: 'month' }, nickname: 'Subtitle Max',
       });
     }
@@ -87,10 +89,14 @@ Deno.serve(async (req) => {
     // Billing portal: cancel at period end + Pro<->Max plan switch on the subtitle product.
     try {
       const features: Stripe.BillingPortal.ConfigurationUpdateParams.Features = {
+        payment_method_update: { enabled: true },   // required for subscription_update
         subscription_cancel: { enabled: true, mode: 'at_period_end' },
         subscription_update: {
           enabled: true, default_allowed_updates: ['price'],
-          products: [{ product: pSub.product as string, prices: [pSub.id, pMax.id] }],
+          products: [
+            { product: pSub.product as string, prices: [pSub.id] },
+            { product: pMax.product as string, prices: [pMax.id] },
+          ],
         },
         invoice_history: { enabled: true },
       };
