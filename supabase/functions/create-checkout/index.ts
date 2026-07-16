@@ -5,13 +5,17 @@ import Stripe from 'https://esm.sh/stripe@16?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
-// Price per `${product}:${tier}`. 'pro' is the existing set; '*_MAX' add the higher tier (spec §2.5).
-const PRICES: Record<string, string | undefined> = {
-  'all:pro':       Deno.env.get('PRICE_ALL'),
-  'subtitle:pro':  Deno.env.get('PRICE_SUBTITLE'),
-  'motionlab:pro': Deno.env.get('PRICE_MOTIONLAB'),
-  'subtitle:max':  Deno.env.get('PRICE_SUBTITLE_MAX'),
-};
+// Price per `${product}:${tier}` — Vault-first (billing_config RPC, kept current by setup-billing),
+// env fallback. Fetched per request so a test->live re-provisioning needs no redeploy.
+function priceMap(cfg: Record<string, string>): Record<string, string | undefined> {
+  const pick = (n: string) => cfg[n] || Deno.env.get(n) || undefined;
+  return {
+    'all:pro':       pick('PRICE_ALL'),
+    'subtitle:pro':  pick('PRICE_SUBTITLE'),
+    'motionlab:pro': pick('PRICE_MOTIONLAB'),
+    'subtitle:max':  pick('PRICE_SUBTITLE_MAX'),
+  };
+}
 const TIER_RANK: Record<string, number> = { pro: 1, max: 2 };
 const ALLOWED_HOSTS = ['kuafuorhk.com', 'www.kuafuorhk.com', 'localhost'];
 const isAllowed = (u: string) => { try { return ALLOWED_HOSTS.includes(new URL(u).hostname); } catch { return false; } };
@@ -37,10 +41,12 @@ Deno.serve(async (req) => {
     const { product, success_url, cancel_url } = body;
     const tier: string = body.tier === 'max' ? 'max' : 'pro';   // default 'pro'; only 'pro'|'max' valid
     const reqRank = TIER_RANK[tier];
-    if (!PRICES[`${product}:${tier}`]) return json({ error: 'bad product' }, 400);
     if (!isAllowed(success_url) || !isAllowed(cancel_url)) return json({ error: 'bad redirect' }, 400);
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data: bcfg } = await admin.rpc('billing_config');
+    const PRICES = priceMap((bcfg ?? {}) as Record<string, string>);
+    if (!PRICES[`${product}:${tier}`]) return json({ error: 'bad product' }, 400);
 
     // Redundant/upgrade guard: compare the requested tier to the tier the user already holds (via 'all' too).
     const { data: currentTierRaw } = await admin.rpc('entitlement_tier', { p_user: user.id, p_product: product });
