@@ -20,7 +20,7 @@
   try { lang = localStorage.getItem("kf-lang") || "zh"; } catch (e) {}
   var T = {
     zh: {
-      roles: { member: "普通會員", student: "學生", coach: "教練", admin: "管理員" },
+      roles: { member: "普通會員", student: "學生", coach: "菁英（教練）", admin: "Holder（主理人）" },
       noPerm: "呢個功能你未有權限用",
       noPermDetail: function (role, need) { return "你而家嘅身份係「" + role + "」，呢頁需要：" + need + "。想開通請聯絡 Ming。"; },
       verifyFail: "驗證唔到你嘅身份",
@@ -28,7 +28,7 @@
       goLogin: "去登入頁 →",
     },
     en: {
-      roles: { member: "Member", student: "Student", coach: "Coach", admin: "Admin" },
+      roles: { member: "Member", student: "Student", coach: "Elite (Coach)", admin: "Holder (Owner)" },
       noPerm: "You don't have access to this feature",
       noPermDetail: function (role, need) { return "Your current role is “" + role + "”; this page requires: " + need + ". Contact Ming to upgrade."; },
       verifyFail: "We couldn't verify your identity",
