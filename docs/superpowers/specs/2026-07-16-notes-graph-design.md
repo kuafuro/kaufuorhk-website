@@ -14,12 +14,11 @@ An Obsidian-style knowledge graph that links every note/article on the site, per
 
 ## Data model
 
-- `NODES`: `{id, type, url, zh, en, sumZh, sumEn}` — 21 nodes across 5 types:
-  - `page` (hubs): home, stats notes, data-insights article
+- `NODES`: `{id, type, url, zh, en, sumZh, sumEn}` — 19 nodes across 4 types (2026-07-16 revision: page-hub nodes removed per owner feedback — 頁面唔使存在喺筆記圖譜):
   - `note` (stats/ topics ×4), `chapter` (data-insights chapters ×6)
   - `service`: process automation (+3 sub-services), data analysis
   - `tool`: Motion Lab, Cantonese subtitles, split calculator, class booking
-- `EDGES`: directed `[from, to]` pairs (30) — structural links (page → its notes) plus concept links (e.g. stats "相關≠因果" → article ch.1 虛假關係; 抽樣偏差 → both 選擇性偏差 and 倖存者偏差; 倖存者偏差 → 均值回歸). Directionality feeds the panel's Links vs Backlinks split; rendering is undirected.
+- `EDGES`: directed `[from, to]` pairs (19) — the data-analysis service links the four stats notes; chapters hang off the notes via concept links (e.g. stats "相關≠因果" → article ch.1 虛假關係; 抽樣偏差 → both 選擇性偏差 and 倖存者偏差; 倖存者偏差 → 均值回歸); the automation service links its three sub-services plus its two live examples (Motion Lab, Cantonese subtitles). Directionality feeds the panel's Links vs Backlinks split; rendering is undirected.
 
 ## Components
 
