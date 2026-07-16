@@ -120,6 +120,7 @@
       <ul class="nav-links">
         <li><a href="../#business" data-t="navBiz"></a></li>
         <li><a href="../#data" data-t="navData"></a></li>
+        <li><a href="../notes/" data-t="navGraph"></a></li>
         <li><a href="../#contact" data-t="navContact"></a></li>
       </ul>
       <div class="lang" role="group" data-taria="ariaLang">
@@ -140,7 +141,7 @@
 
   <section class="wrap threads">
 
-    <article class="thread">
+    <article class="thread" id="t1">
       <div class="thread-rail"><div class="thread-num">01</div><div class="thread-spine"></div></div>
       <div class="thread-body">
         <span class="thread-tag" data-t="t1tag"></span>
@@ -152,7 +153,7 @@
       </div>
     </article>
 
-    <article class="thread">
+    <article class="thread" id="t2">
       <div class="thread-rail"><div class="thread-num">02</div><div class="thread-spine"></div></div>
       <div class="thread-body">
         <span class="thread-tag" data-t="t2tag"></span>
@@ -164,7 +165,7 @@
       </div>
     </article>
 
-    <article class="thread">
+    <article class="thread" id="t3">
       <div class="thread-rail"><div class="thread-num">03</div><div class="thread-spine"></div></div>
       <div class="thread-body">
         <span class="thread-tag" data-t="t3tag"></span>
@@ -176,7 +177,7 @@
       </div>
     </article>
 
-    <article class="thread">
+    <article class="thread" id="t4">
       <div class="thread-rail"><div class="thread-num">04</div><div class="thread-spine"></div></div>
       <div class="thread-body">
         <span class="thread-tag" data-t="t4tag"></span>
@@ -202,6 +203,7 @@
     <a href="../" data-t="footHome"></a><span class="sep" aria-hidden="true">·</span>
     <a href="../#business" data-t="navBiz"></a><span class="sep" aria-hidden="true">·</span>
     <a href="../#data" data-t="navData"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="../notes/" data-t="navGraph"></a><span class="sep" aria-hidden="true">·</span>
     <a href="../#contact" data-t="navContact"></a>
   </span>
 </footer>
@@ -210,7 +212,7 @@
 const I18N = {
   zh: {
     skip:"跳去內文",
-    navBiz:"流程自動化", navData:"數據分析", navContact:"聯絡我哋",
+    navBiz:"流程自動化", navData:"數據分析", navGraph:"筆記圖譜", navContact:"聯絡我哋",
     ariaLang:"語言",
     kicker:"數據筆記 · STATS NOTES",
     title:"數據筆記",
@@ -248,7 +250,7 @@ const I18N = {
   },
   en: {
     skip:"Skip to content",
-    navBiz:"Automation", navData:"Data Analysis", navContact:"Contact",
+    navBiz:"Automation", navData:"Data Analysis", navGraph:"Notes Graph", navContact:"Contact",
     ariaLang:"Language",
     kicker:"STATS NOTES · 數據筆記",
     title:"Stats Notes",
