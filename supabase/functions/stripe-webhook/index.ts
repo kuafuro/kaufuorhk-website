@@ -5,8 +5,14 @@ import Stripe from 'https://esm.sh/stripe@16?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
-const WHSEC = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+// Config is Vault-first (billing_config RPC) with env fallback, fetched per request so a
+// re-provisioning (e.g. test -> live via setup-billing) takes effect without a redeploy.
+async function billingCfg(): Promise<Record<string, string>> {
+  const { data } = await db.rpc('billing_config');
+  return (data ?? {}) as Record<string, string>;
+}
 
 type Ent = 'active' | 'past_due' | 'canceled' | 'inactive';
 // Never store Stripe's raw status (CHECK only allows the 4 above). Fail-closed to past_due.
@@ -19,10 +25,9 @@ function mapStripeStatus(s: string): Ent {
 // Which price IDs are the 'max' tier (spec §2.5). Everything else (the 'pro' prices) -> 'pro'.
 // Price is authoritative, so a portal plan-switch (Pro<->Max on the same subscription) is captured
 // on customer.subscription.updated. Add PRICE_ALL_MAX here if/when Kuafuor Max ships.
-const MAX_PRICES = new Set([Deno.env.get('PRICE_SUBTITLE_MAX')].filter(Boolean) as string[]);
-function tierForSub(sub: Stripe.Subscription): 'pro' | 'max' {
+function tierForSub(sub: Stripe.Subscription, maxPrices: Set<string>): 'pro' | 'max' {
   const priceId = sub.items?.data?.[0]?.price?.id;
-  return priceId && MAX_PRICES.has(priceId) ? 'max' : 'pro';
+  return priceId && maxPrices.has(priceId) ? 'max' : 'pro';
 }
 
 // Apply an update only if this event is newer than the last one applied to the row (ordering guard).
@@ -34,6 +39,9 @@ async function applyIfNewer(match: Record<string, string>, eventCreated: number,
 }
 
 Deno.serve(async (req) => {
+  const cfg = await billingCfg();
+  const WHSEC = cfg.STRIPE_WEBHOOK_SECRET || Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+  const maxPrices = new Set([cfg.PRICE_SUBTITLE_MAX || Deno.env.get('PRICE_SUBTITLE_MAX')].filter(Boolean) as string[]);
   const sig = req.headers.get('stripe-signature');
   const body = await req.text(); // RAW body — required for signature verification
   let event: Stripe.Event;
@@ -51,7 +59,7 @@ Deno.serve(async (req) => {
       const sub = await stripe.subscriptions.retrieve(s.subscription as string); // authoritative snapshot
       await db.from('entitlements').upsert({
         user_id, product,
-        tier: tierForSub(sub),
+        tier: tierForSub(sub, maxPrices),
         status: mapStripeStatus(sub.status),
         stripe_customer_id: s.customer as string,
         stripe_subscription_id: sub.id,
@@ -65,7 +73,7 @@ Deno.serve(async (req) => {
       const fresh = await stripe.subscriptions.retrieve(sub.id); // re-fetch to avoid stale payload
       await applyIfNewer({ stripe_subscription_id: sub.id }, event.created, {
         status: event.type === 'customer.subscription.deleted' ? 'canceled' : mapStripeStatus(fresh.status),
-        tier: tierForSub(fresh), // captures a portal Pro<->Max plan-switch on the same subscription
+        tier: tierForSub(fresh, maxPrices), // captures a portal Pro<->Max plan-switch on the same subscription
         current_period_end: new Date(fresh.current_period_end * 1000).toISOString(),
       });
 
