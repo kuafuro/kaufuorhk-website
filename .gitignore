@@ -1,0 +1,10 @@
+# Local secrets — never commit
+.env
+.env.*
+supabase/.env
+stripe-*.env
+*.secret
+
+# Python
+__pycache__/
+*.pyc

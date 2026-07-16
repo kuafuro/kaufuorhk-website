@@ -5,30 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>分成計算器｜踢拳小班</title>
 <script src="/assets/guard.js" data-roles="coach,admin"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
 <style>
+  /* 書卷編輯風 — 沿用主頁 token（紅／黑／米白，淨淺色；Ming/Tom 功能色保留方便分辨） */
   :root{
-    color-scheme: light dark;
-    /* 黑白主色（Ming/Tom 兩隻功能色保留方便分辨） */
-    --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
-    --line:#e2e2e2; --accent:#111111; --accent-ink:#ffffff; --accent-soft:#eeeeee;
+    color-scheme: light;
+    --bg:#f3f2f2; --card:#f8f4f4; --ink:#201f1d; --muted:#605d5d;
+    --line:#d7d3d3; --accent:#a83228; --accent-ink:#ffffff; --accent-soft:#fdeeec;
     --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#7a5400; --warn-soft:#fff6de;
     --bad:#b3261e; --bad-soft:#fdecea;
     --ming:#1655b8; --ming-soft:#e8f0fd; --tom:#7a3ab8; --tom-soft:#f2eafc;
   }
+  /* 統一淺色識別：深色模式都用返同一套（同主頁一致） */
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a;
-      --line:#333333; --accent:#f2f2f2; --accent-ink:#111111; --accent-soft:#2a2a2a;
-      --ok:#5fd08d; --ok-soft:#1d3327; --warn:#ffd166; --warn-soft:#3a3018;
-      --bad:#ff8a80; --bad-soft:#3a1d1a;
-      --ming:#7aa8ff; --ming-soft:#1c2a44; --tom:#c79bf2; --tom-soft:#2e2140;
+      --bg:#f3f2f2; --card:#f8f4f4; --ink:#201f1d; --muted:#605d5d;
+      --line:#d7d3d3; --accent:#a83228; --accent-ink:#ffffff; --accent-soft:#fdeeec;
+      --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#7a5400; --warn-soft:#fff6de;
+      --bad:#b3261e; --bad-soft:#fdecea;
+      --ming:#1655b8; --ming-soft:#e8f0fd; --tom:#7a3ab8; --tom-soft:#f2eafc;
     }
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{
-    font-family:-apple-system,"PingFang HK","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    font-family:"Lora","Noto Serif TC",serif;
     background:var(--bg); color:var(--ink); line-height:1.55; padding:16px 12px 80px;
   }
+  h1,h2,h3,h4{font-family:"Cormorant Garamond","Noto Serif TC",serif; letter-spacing:-0.005em}
+  header.top h1{letter-spacing:.02em}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  a{text-underline-offset:3px}
   .wrap{max-width:860px;margin:0 auto}
   header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
   header.top h1{font-size:1.25rem;letter-spacing:.5px}
