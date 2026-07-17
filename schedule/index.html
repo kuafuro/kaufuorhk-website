@@ -5,46 +5,63 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>排堂報名｜踢拳小班</title>
 <script src="/assets/guard.js" data-roles=""></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
 <style>
+  /* 書卷編輯風 — 沿用主頁／登入頁 token（紅／黑／米白，淨淺色） */
   :root{
-    color-scheme: light dark;
-    --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
-    --line:#e2e2e2; --line-strong:#111111; --accent:#a83228; --accent-soft:#fdeeec;
-    --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#7a5400; --warn-soft:#fff6de; --btn:#111; --btn-ink:#fff;
+    color-scheme: light;
+    --bg:#f3f2f2; --card:#f8f4f4; --ink:#201f1d; --muted:#605d5d;
+    --line:#d7d3d3; --line-strong:#201f1d; --accent:#a83228; --accent-soft:#fdeeec;
+    --ok:#1e7d46; --ok-soft:#e6f0e9; --warn:#7a5400; --warn-soft:#f3ecd9;
+    --btn:#a83228; --btn-ink:#ffffff;
   }
+  /* 統一淺色識別：深色模式都用返同一套（同主頁一致，唔做 dark） */
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a; --line:#333;
-      --line-strong:#f2f2f2; --accent:#ff8a80; --accent-soft:#3a1d1a; --ok:#5fd08d; --ok-soft:#1d3327;
-      --warn:#ffd166; --warn-soft:#3a3018; --btn:#f2f2f2; --btn-ink:#111; }
+    :root{
+      --bg:#f3f2f2; --card:#f8f4f4; --ink:#201f1d; --muted:#605d5d;
+      --line:#d7d3d3; --line-strong:#201f1d; --accent:#a83228; --accent-soft:#fdeeec;
+      --ok:#1e7d46; --ok-soft:#e6f0e9; --warn:#7a5400; --warn-soft:#f3ecd9;
+      --btn:#a83228; --btn-ink:#ffffff;
+    }
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,"PingFang HK","Noto Sans TC","Microsoft JhengHei",sans-serif;
-    background:var(--bg); color:var(--ink); line-height:1.55; padding:16px 12px 60px}
+  body{font-family:"Lora","Noto Serif TC",serif;
+    background:var(--bg); color:var(--ink); line-height:1.6; padding:20px 14px 60px}
+  h1,h2{font-family:"Cormorant Garamond","Noto Serif TC",serif; letter-spacing:-0.01em}
   .wrap{max-width:720px;margin:0 auto}
-  header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-  header.top h1{font-size:1.25rem}
-  header.top .sub{font-size:.75rem;color:var(--muted);width:100%}
-  .lang{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:99px;overflow:hidden;flex:none}
-  .lang button{padding:5px 11px;border:none;background:none;color:var(--ink);font-size:.75rem;font-weight:700;cursor:pointer}
+  header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  header.top h1{font-size:1.6rem;font-weight:600}
+  header.top .sub{font-size:.8rem;color:var(--muted);width:100%}
+  .lang{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;flex:none}
+  .lang button{padding:5px 12px;border:none;background:none;color:var(--ink);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit}
   .lang button.on{background:var(--btn);color:var(--btn-ink)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
-  .daygroup h2{font-size:.9rem;color:var(--muted);margin:18px 4px 8px;letter-spacing:.5px}
-  .slot{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--card);
+  .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+  .daygroup h2{
+    font-size:1.15rem;font-weight:600;color:var(--ink);margin:22px 2px 10px;
+    padding-bottom:6px;border-bottom:1px solid var(--line);
+  }
+  .slot{border:1px solid var(--line);border-radius:6px;padding:13px 15px;margin-bottom:10px;background:var(--card);
     display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .slot .when{font-weight:700;font-size:1.02rem;min-width:96px}
+  .slot .when{
+    font-family:"Cormorant Garamond","Noto Serif TC",serif;font-weight:600;font-size:1.25rem;
+    min-width:104px;font-feature-settings:'tnum';color:var(--ink);
+  }
   .slot .meta{font-size:.82rem;color:var(--muted);display:flex;gap:6px 12px;flex-wrap:wrap;flex:1}
   .slot .meta b{color:var(--ink);font-weight:600}
-  .tag{display:inline-flex;align-items:center;font-size:.72rem;padding:2px 9px;border-radius:99px;font-weight:700;white-space:nowrap}
-  .tag.open{background:var(--warn-soft);color:var(--warn)}
-  .tag.confirmed{background:var(--ok-soft);color:var(--ok)}
-  .tag.mine{background:var(--accent-soft);color:var(--accent)}
-  .tag.full{background:var(--line);color:var(--muted)}
-  .tag.off{background:var(--line);color:var(--muted)}
-  .btn{border:1px solid var(--accent);background:none;color:var(--accent);border-radius:10px;
-    padding:9px 16px;font-size:.88rem;font-weight:700;cursor:pointer;min-height:40px;white-space:nowrap}
+  .tag{display:inline-flex;align-items:center;font-size:.72rem;padding:2px 10px;border-radius:99px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+  .tag.open{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb, var(--warn) 25%, transparent)}
+  .tag.confirmed{background:var(--ok-soft);color:var(--ok);border-color:color-mix(in srgb, var(--ok) 25%, transparent)}
+  .tag.mine{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb, var(--accent) 30%, transparent)}
+  .tag.full,.tag.off{background:var(--bg);color:var(--muted);border-color:var(--line)}
+  .btn{border:1.5px solid var(--accent);background:none;color:var(--accent);border-radius:4px;
+    padding:9px 16px;font-size:.88rem;font-weight:600;cursor:pointer;min-height:40px;white-space:nowrap;font-family:inherit}
   .btn:hover{background:var(--accent-soft)}
   .btn.solid{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+  .btn.solid:hover{background:#8c2a21;border-color:#8c2a21}
   .btn.ghost{border-color:var(--line-strong);color:var(--ink)}
+  .btn.ghost:hover{background:var(--bg)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .btn.small{padding:5px 11px;min-height:0;font-size:.78rem}
   .empty{text-align:center;color:var(--muted);font-size:.9rem;padding:26px}
@@ -52,18 +69,20 @@
   .roster .r{display:flex;gap:8px;align-items:center;padding:3px 0}
   .roster .r .rn{flex:1}
   .roster .r .rs{font-size:.72rem;color:var(--muted)}
-  details.addslot summary{cursor:pointer;font-weight:700;font-size:.95rem}
+  details.addslot summary{cursor:pointer;font-weight:600;font-size:.95rem;font-family:"Cormorant Garamond","Noto Serif TC",serif;letter-spacing:.02em}
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
   @media(max-width:520px){.grid{grid-template-columns:1fr}}
   label.f{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--muted)}
-  label.f input,label.f select{font-size:.95rem;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+  label.f input,label.f select{font-size:.95rem;padding:9px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font-family:inherit}
+  label.f input:focus,label.f select:focus{outline:2px solid var(--line-strong)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .staff-only{display:none}
   html[data-user-role="coach"] .staff-only,html[data-user-role="admin"] .staff-only{display:block}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
-    padding:10px 18px;border-radius:99px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;max-width:90%}
+    padding:10px 18px;border-radius:4px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:90%}
   .toast.show{opacity:1}
   .foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:20px}
-  .foot a{color:var(--muted)}
+  .foot a{color:var(--muted);text-underline-offset:3px}
 </style>
 </head>
 <body>
