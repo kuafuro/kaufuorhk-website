@@ -1,0 +1,19 @@
+{
+  "name": "kuafuor-whatsapp-bot",
+  "version": "0.1.0",
+  "description": "WhatsApp class-reminder bot for Kuafuor Motion Lab (Supabase + WhatsApp Cloud API, deploy on Railway)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "run-once": "node src/run-once.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  }
+}
