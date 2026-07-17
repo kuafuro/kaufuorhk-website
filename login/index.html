@@ -339,6 +339,7 @@ const I18N = {
     fillEmailPass: "請入電郵，密碼至少6位。",
     fillEmail: "請先入你嘅電郵。",
     passTooShort: "新密碼至少要6位。",
+    passLeaked: "呢個密碼喺公開外洩資料庫出現過，唔安全 — 請改用另一個。（檢查只送出密碼指紋頭5個字元，密碼唔會離開你部機）",
     nextNoRole: "你想去嘅頁面（{next}）需要 {roles} 身份，你而家係「{role}」。想開通請聯絡 Ming。",
     roleNames: { member:"普通會員", student:"學生", coach:"菁英（教練）", admin:"Holder（主理人）" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
@@ -414,6 +415,7 @@ const I18N = {
     fillEmailPass: "Enter your email; password needs at least 6 characters.",
     fillEmail: "Enter your email first.",
     passTooShort: "New password needs at least 6 characters.",
+    passLeaked: "This password appears in public breach databases — please choose a different one. (Only the first 5 characters of its fingerprint are checked; the password never leaves your device.)",
     nextNoRole: "The page you wanted ({next}) requires {roles}. You are currently “{role}”. Contact Ming to upgrade.",
     roleNames: { member:"Member", student:"Student", coach:"Elite (Coach)", admin:"Holder (Owner)" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
@@ -721,6 +723,25 @@ $("#backToLogin2").onclick = ()=>{ showView("auth"); setMode("login"); };
 $("#backToLogin3").onclick = ()=>{ showView("auth"); setMode("login"); };
 $("#forgot").onclick = ()=>{ $("#forgotEmail").value = $("#email").value.trim(); showView("forgot"); };
 
+// 外洩密碼檢查（HaveIBeenPwned k-anonymity）：只送出 SHA-1 頭 5 個字元，
+// 密碼本身唔會離開瀏覽器。查唔到（網絡／API 問題）就放行，唔好窒礙註冊。
+// （Supabase 內置版要 Pro plan；呢個免費做到同樣保護。）
+async function isLeakedPassword(pw){
+  try{
+    const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
+    const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+    const res = await fetch("https://api.pwnedpasswords.com/range/" + hex.slice(0,5), {
+      headers: { "Add-Padding": "true" },   // 回應加 padding，連 prefix 群組大小都唔洩露
+    });
+    if(!res.ok) return false;
+    const suffix = hex.slice(5);
+    return (await res.text()).split("\n").some(line=>{
+      const [suf, count] = line.trim().split(":");
+      return suf === suffix && parseInt(count, 10) > 0;
+    });
+  }catch(e){ return false; }
+}
+
 $("#submitBtn").onclick = async ()=>{
   const email = $("#email").value.trim(), password = $("#password").value;
   const box = $("#authMsg");
@@ -728,6 +749,7 @@ $("#submitBtn").onclick = async ()=>{
   $("#submitBtn").disabled = true;
   try{
     if(mode==="signup"){
+      if(await isLeakedPassword(password)){ msg(box, t("passLeaked"), "err"); return; }
       const name = $("#name").value.trim();
       const { data, error } = await sb.auth.signUp({
         email, password,
@@ -786,6 +808,10 @@ $("#setPassBtn").onclick = async ()=>{
   const box = $("#authMsg");
   const pw = $("#newPassword").value;
   if(pw.length < 6){ msg(box, t("passTooShort"), "err"); return; }
+  $("#setPassBtn").disabled = true;
+  const leaked = await isLeakedPassword(pw);
+  $("#setPassBtn").disabled = false;
+  if(leaked){ msg(box, t("passLeaked"), "err"); return; }
   const { error } = await sb.auth.updateUser({ password: pw });
   if(error){ msg(box, friendlyError(error), "err"); return; }
   showView("auth");
