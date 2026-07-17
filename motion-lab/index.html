@@ -385,6 +385,30 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
     <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。畫面有多人時，<b>撳一下人物＝鎖定做拳手A</b>；<b>長撳（按住半秒）＝指定做拳手B</b>；撳橙色B＝A/B對調。</p>
   </div>
 
+  <!-- ☁️ 雲端精析（Pro）：上載片 → 伺服器 yolo11m-pose + ByteTrack 多人追蹤 → 標註影片＋統計 -->
+  <div class="card" id="clCard" style="border-color:var(--brand)">
+    <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">Pro · 伺服器級 AI（yolo11m-pose ＋ ByteTrack 多人追蹤）</small></h3>
+    <p class="hint">同上面即時分析唔同：呢個會上載成條片去雲端，伺服器逐格畫骨架、同時追蹤場上<b>每一個人</b>，計出手速同揮拳次數，再俾返一條<b>已標註好嘅影片</b>俾你下載。啱多人、遠鏡、想留底對比嘅片段。運算喺雲端做（<b>唔佔你部機</b>），影片 12 小時後自動刪除。每條片上限 3 分鐘。</p>
+    <div class="controls">
+      <button class="btn primary" id="clUploadBtn">🎬 揀片・開始精析</button>
+      <input type="file" id="clFile" accept="video/*" hidden>
+      <span class="hint" id="clQuota" style="align-self:center;margin:0"></span>
+    </div>
+    <div id="clProgWrap" style="display:none;margin-top:12px">
+      <div style="height:6px;border-radius:99px;background:var(--surface);overflow:hidden">
+        <div id="clProgFill" style="height:100%;width:10%;background:var(--brand);transition:width .3s"></div>
+      </div>
+      <div class="hint" id="clStatusMsg" style="margin-top:6px"></div>
+    </div>
+    <div id="clResult" style="display:none;margin-top:12px">
+      <div style="background:#000;border-radius:10px;overflow:hidden">
+        <video id="clVideo" controls playsinline style="width:100%;display:block"></video>
+      </div>
+      <div id="clStats" style="margin-top:10px"></div>
+      <a class="btn" id="clDownload" download="motion-lab.mp4" style="margin-top:10px;display:none">⬇︎ 下載標註影片</a>
+    </div>
+  </div>
+
   <div class="grid-2">
     <div>
       <div class="stage" id="mStage">
@@ -3916,6 +3940,170 @@ document.addEventListener("visibilitychange", ()=>{
    demand with real footage. Nothing in the app reads this. */
 window.__ml = { handleDetections, tracker, coreVisOf,
   get mRun(){ return mRun; }, get mState(){ return mState; } };
+
+/* ==================== ☁️ 雲端精析（Pro）：async cloud pose pipeline ====================
+   本地即時分析永遠免費；呢個係 Pro 功能——上載片去 Supabase private bucket（RLS：Pro 先
+   寫得、只寫自己 uid 路徑）→ POST pose-fast（先查月配額先開 GPU）→ poll motion_jobs →
+   done 就用 signed URL 播返標註影片＋統計。唔佔用戶部機、影片 12 小時後 sweep 剷走。 */
+const POSE_FN = SB_URL + "/functions/v1/pose-fast";
+const CL_MAX_MS = 183_000, CL_MAX_BYTES = 200 * 1024 * 1024;
+let clBusy = false, clQuotaCeil = null, clPollTimer = null;
+
+function clSetProg(pct, msg){
+  $("clProgWrap").style.display = "";
+  $("clProgFill").style.width = Math.max(5, Math.min(100, pct)) + "%";
+  $("clStatusMsg").textContent = msg;
+}
+function clHideProg(){ $("clProgWrap").style.display = "none"; }
+
+async function clRefreshQuota(){
+  const el = $("clQuota"); if(!el) return;
+  if(!sbUser || !mlPro()){ el.textContent = ""; return; }
+  try{
+    const { data } = await sb.rpc("motionlab_minutes_this_month", { p_user: sbUser.id });
+    const used = Number(data ?? 0);
+    const ceil = clQuotaCeil ? ` / ${clQuotaCeil}` : "";
+    el.textContent = mlEN() ? `Used ${used.toFixed(0)}${ceil} min this month`
+                            : `本月已用 ${used.toFixed(0)}${ceil} 分鐘`;
+  }catch(e){ el.textContent = ""; }
+}
+
+function clProbe(file){        // → { url, durationMs }；讀唔到就 reject
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata"; v.muted = true;
+    v.onloadedmetadata = () => resolve({ url, durationMs: isFinite(v.duration) ? Math.round(v.duration * 1000) : 0 });
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error("unreadable")); };
+    v.src = url;
+  });
+}
+
+$("clUploadBtn").addEventListener("click", () => {
+  if(clBusy) return;
+  if(!sbUser){
+    toast(mlEN() ? "Please log in on the 📊 Records tab first" : "請先去「📊 紀錄」分頁登入／註冊");
+    document.querySelector('.tab-btn[data-tab="records"]')?.click();
+    return;
+  }
+  if(!mlGate(mlEN() ? "cloud analysis" : "雲端精析")) return;
+  $("clFile").click();
+});
+
+$("clFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  if(f.size > CL_MAX_BYTES){ toast(mlEN() ? "Video too large (max 200 MB)" : "影片太大（上限 200MB）"); return; }
+  clBusy = true;
+  $("clResult").style.display = "none"; $("clDownload").style.display = "none"; $("clStats").innerHTML = "";
+  try{
+    clSetProg(10, mlEN() ? "Reading video…" : "讀取影片中…");
+    let probe;
+    try{ probe = await clProbe(f); }
+    catch{ clHideProg(); clBusy = false; toast(mlEN() ? "Can't read this video (try MP4/WebM)" : "讀唔到呢條片（建議 MP4/WebM）"); return; }
+    if(probe.durationMs > CL_MAX_MS){
+      URL.revokeObjectURL(probe.url); clHideProg(); clBusy = false;
+      toast(mlEN() ? "Video too long (max 3 min)" : "影片太長（上限 3 分鐘）"); return;
+    }
+
+    clSetProg(25, mlEN() ? "Uploading…" : "上載中…");
+    const ext = (f.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "mp4";
+    const path = `${sbUser.id}/in/${Date.now()}.${ext}`;
+    const up = await sb.storage.from("motionlab-video").upload(path, f, { contentType: f.type || "video/mp4", upsert: false });
+    URL.revokeObjectURL(probe.url);
+    if(up.error){ clHideProg(); clBusy = false; toast((mlEN() ? "Upload failed: " : "上載失敗：") + up.error.message); return; }
+
+    clSetProg(45, mlEN() ? "Starting analysis…" : "啟動精析…");
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(POSE_FN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ storage_path: path, duration_ms: probe.durationMs }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok){
+      clHideProg(); clBusy = false;
+      if(res.status === 402){
+        clQuotaCeil = body.quota ?? clQuotaCeil; clRefreshQuota();
+        if(ent) ent.requirePro("motionlab", mlEN() ? "more cloud minutes" : "更多雲端分鐘");
+        toast(mlEN() ? `Monthly quota used up (${body.quota} min)` : `本月配額用晒（${body.quota} 分鐘）`);
+      }else if(res.status === 403){
+        if(ent) ent.requirePro("motionlab", mlEN() ? "cloud analysis" : "雲端精析");
+      }else if(res.status === 503){
+        toast(mlEN() ? "Cloud engine warming up — try again shortly" : "雲端引擎啟動緊，一陣再試");
+      }else{
+        toast((mlEN() ? "Analysis failed: " : "精析失敗：") + (body.error || res.status));
+      }
+      return;
+    }
+    clQuotaCeil = body.quota ?? clQuotaCeil;
+    clPoll(body.job_id);
+  }catch(err){
+    clHideProg(); clBusy = false;
+    toast((mlEN() ? "Error: " : "出錯：") + (err.message || err));
+  }
+});
+
+function clPoll(jobId){
+  const started = Date.now(), MAX = 6 * 60 * 1000;
+  clSetProg(60, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（唔佔你部機）");
+  clearInterval(clPollTimer);
+  clPollTimer = setInterval(async () => {
+    if(Date.now() - started > MAX){
+      clearInterval(clPollTimer); clBusy = false; clHideProg();
+      toast(mlEN() ? "Timed out — please try again" : "等太耐喇，請再試"); return;
+    }
+    let row;
+    try{ row = (await sb.from("motion_jobs").select("status,out_path,stats,error").eq("id", jobId).maybeSingle()).data; }
+    catch(e){ return; }
+    if(!row) return;
+    if(row.status === "processing") clSetProg(78, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（唔佔你部機）");
+    if(row.status === "error"){
+      clearInterval(clPollTimer); clBusy = false; clHideProg();
+      toast((mlEN() ? "Analysis failed: " : "精析失敗：") + (row.error || "")); return;
+    }
+    if(row.status === "done"){
+      clearInterval(clPollTimer); clBusy = false;
+      clSetProg(95, mlEN() ? "Fetching result…" : "攞緊結果…");
+      await clShowResult(row);
+      clHideProg(); clRefreshQuota();
+    }
+  }, 3000);
+}
+
+async function clShowResult(row){
+  try{
+    const { data: signed } = await sb.storage.from("motionlab-video").createSignedUrl(row.out_path, 3600);
+    if(signed?.signedUrl){
+      $("clVideo").src = signed.signedUrl;
+      $("clDownload").href = signed.signedUrl;
+      $("clDownload").style.display = "";
+    }
+  }catch(e){}
+  const ppl = (row.stats && row.stats.people) || [];
+  if(ppl.length){
+    const hd = mlEN() ? ["#", "On-screen (s)", "Peak hand speed", "Avg hand speed", "Est. strikes"]
+                      : ["人物", "出鏡（秒）", "最快手速", "平均手速", "估計揮拳"];
+    const unit = mlEN() ? " body/s" : " 身位/秒";
+    const cell = "padding:6px 8px;border-bottom:1px solid var(--border)";
+    let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.86rem">`
+      + `<thead><tr>${hd.map(h => `<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--ink);white-space:nowrap">${h}</th>`).join("")}</tr></thead><tbody>`;
+    ppl.forEach((p, i) => {
+      html += `<tr><td style="${cell}">${i + 1}</td><td style="${cell}">${p.seconds ?? "–"}</td>`
+        + `<td style="${cell}">${p.max_hand_speed ?? "–"}${unit}</td>`
+        + `<td style="${cell}">${p.avg_hand_speed ?? "–"}${unit}</td>`
+        + `<td style="${cell}">${p.punch_estimate ?? "–"}</td></tr>`;
+    });
+    html += `</tbody></table></div><p class="hint" style="margin-top:8px">${mlEN()
+      ? "Speeds are wrist travel per second, normalised by body height (comparable across camera distances). Videos auto-delete after 12h."
+      : "手速＝手腕每秒移動距離，以身高歸一化（唔同鏡頭距離都可比較）。影片 12 小時後自動刪除。"}</p>`;
+    $("clStats").innerHTML = html;
+  }
+  $("clResult").style.display = "";
+}
+
+setTimeout(clRefreshQuota, 1800);   // ent 載完後顯示本月配額
 </script>
 
 </body>

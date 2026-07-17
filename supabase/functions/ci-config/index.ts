@@ -2,7 +2,7 @@
 // The modal-deploy GitHub Actions workflow authenticates with its GitHub-issued OIDC token
 // (verified here against GitHub's public JWKS + strict repo/workflow claims), then either:
 //   { oidc_token }                                  -> returns deploy credentials from Vault
-//   { oidc_token, register: { SENSEVOICE_URL } }    -> stores the deployed endpoint URL in Vault
+//   { oidc_token, register: { SENSEVOICE_URL?, POSE_URL? } } -> stores deployed endpoint URLs in Vault
 // Only a workflow run of .github/workflows/modal-deploy.yml in kuafuro/kaufuorhk-website can
 // pass verification — forks present their own repository claim and are rejected.
 // Deploy with verify_jwt=false (it does its own, stronger, verification).
@@ -20,7 +20,7 @@ const json = (b: unknown, status = 200) =>
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
-  let body: { oidc_token?: string; register?: { SENSEVOICE_URL?: string } };
+  let body: { oidc_token?: string; register?: Record<string, string> };
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
   if (!body.oidc_token) return json({ error: 'oidc_token required' }, 400);
 
@@ -38,10 +38,14 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   if (body.register) {
-    const url = body.register.SENSEVOICE_URL ?? '';
-    if (!/^https:\/\/[a-zA-Z0-9._-]+\.modal\.run$/.test(url)) return json({ error: 'bad url' }, 400);
-    const { error } = await admin.rpc('vault_set_secret', { p_name: 'SENSEVOICE_URL', p_value: url });
-    if (error) return json({ error: error.message }, 500);
+    const ALLOWED = ['SENSEVOICE_URL', 'POSE_URL'];   // whitelist: only endpoint URLs, only these names
+    const entries = Object.entries(body.register).filter(([k]) => ALLOWED.includes(k));
+    if (!entries.length) return json({ error: 'nothing to register' }, 400);
+    for (const [name, url] of entries) {
+      if (!/^https:\/\/[a-zA-Z0-9._-]+\.modal\.run$/.test(url ?? '')) return json({ error: 'bad url', name }, 400);
+      const { error } = await admin.rpc('vault_set_secret', { p_name: name, p_value: url });
+      if (error) return json({ error: error.message }, 500);
+    }
     return json({ registered: true });
   }
 

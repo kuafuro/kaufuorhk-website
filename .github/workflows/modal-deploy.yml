@@ -11,6 +11,7 @@ on:
     branches: [main, claude/website-improvement-review-wr8keq]
     paths:
       - 'sensevoice/**'
+      - 'motionlab-cloud/**'
       - '.github/workflows/modal-deploy.yml'
 
 permissions:
@@ -70,6 +71,15 @@ jobs:
           echo "ENDPOINT_URL=$URL" >> "$GITHUB_ENV"
           echo "Deployed endpoint: $URL"
 
+      - name: Deploy pose endpoint (Motion Lab cloud)
+        run: |
+          set -euo pipefail
+          modal deploy motionlab-cloud/modal_app.py 2>&1 | tee pose-deploy.log
+          PURL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.modal\.run' pose-deploy.log | tail -1)
+          if [ -z "$PURL" ]; then echo "no pose endpoint URL in deploy output" >&2; exit 1; fi
+          echo "POSE_ENDPOINT_URL=$PURL" >> "$GITHUB_ENV"
+          echo "Deployed pose endpoint: $PURL"
+
       - name: Register endpoint URL
         run: |
           set -euo pipefail
@@ -78,7 +88,7 @@ jobs:
           RES=$(curl -sS -X POST \
             "https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1/ci-config" \
             -H 'Content-Type: application/json' \
-            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\"}}")
+            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\",\"POSE_URL\":\"$POSE_ENDPOINT_URL\"}}")
           echo "register response: $RES"
           [ "$(jq -r '.registered // false' <<<"$RES")" = "true" ]
 

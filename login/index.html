@@ -322,8 +322,9 @@ const I18N = {
     recoveryTitle: "設定新密碼",
     newPassLabel: "新密碼（至少6位）", setPassBtn: "確認新密碼",
     passUpdated: "✔ 密碼改好喇！你而家已經登入。",
-    signupOk: "✔ 帳戶建立咗！而家去到第2步。",
+    signupOk: "✔ 帳戶建立咗！確認信寄緊去你信箱（有時要等一兩分鐘，記得睇埋垃圾郵件）。",
     resendOk: "✔ 已再寄一次確認信，記得睇埋垃圾郵件。",
+    resendWait: "可再寄（{secs} 秒後）",
     editNameLabel: "改顯示名", saveBtn: "儲存", saved: "✔ 已儲存",
     editPhoneLabel: "WhatsApp 電話（連結排堂機械人用）",
     phoneHint: "填咗之後，之後喺 WhatsApp 排堂機械人度會自動認到你。淨係填香港號碼 8 位數字就得。",
@@ -398,8 +399,9 @@ const I18N = {
     recoveryTitle: "Set a new password",
     newPassLabel: "New password (min. 6 characters)", setPassBtn: "Confirm new password",
     passUpdated: "✔ Password updated! You are now logged in.",
-    signupOk: "✔ Account created! You are now on Step 2.",
+    signupOk: "✔ Account created! The confirmation email is on its way (it can take a minute or two — check spam too).",
     resendOk: "✔ Confirmation email re-sent. Remember to check spam.",
+    resendWait: "Resend available in {secs}s",
     editNameLabel: "Display name", saveBtn: "Save", saved: "✔ Saved",
     editPhoneLabel: "WhatsApp phone (links the booking bot)",
     phoneHint: "Once saved, the WhatsApp booking bot will recognise you automatically. Enter your 8-digit Hong Kong number.",
@@ -767,6 +769,7 @@ $("#submitBtn").onclick = async ()=>{
       $("#sentTo").textContent = email;
       showView("checkmail");
       msg($("#authMsg"), t("signupOk"), "ok");
+      startResendCooldown(60);   // 同一封確認信 60 秒內唔俾再寄，避免撞 429
     }else{
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if(error){
@@ -785,11 +788,30 @@ $("#submitBtn").onclick = async ()=>{
 };
 $("#password").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#submitBtn").click(); });
 
+// 確認信重寄冷卻：GoTrue 對同一地址有 per-request 冷卻（同埋內置電郵服務有每小時上限），
+// 客戶端封住個掣做倒數，避免用戶連撳撞 429。語言切換時 applyStatic 會蓋走個 label，
+// 倒數 tick（每秒）會即刻補返，所以照樣顯示。
+let resendTimer = null, resendLeft = 0;
+function startResendCooldown(secs){
+  const btn = $("#resendBtn");
+  if(!btn) return;
+  clearInterval(resendTimer);
+  resendLeft = secs;
+  btn.disabled = true;
+  btn.textContent = t("resendWait", { secs: resendLeft });
+  resendTimer = setInterval(()=>{
+    resendLeft--;
+    if(resendLeft <= 0){ clearInterval(resendTimer); resendTimer = null; btn.disabled = false; btn.textContent = t("resendBtn"); }
+    else btn.textContent = t("resendWait", { secs: resendLeft });
+  }, 1000);
+}
 $("#resendBtn").onclick = async ()=>{
+  if(resendLeft > 0) return;
   const box = $("#authMsg");
   const { error } = await sb.auth.resend({ type:"signup", email: lastSignupEmail, options:{ emailRedirectTo: location.origin + "/login/" } });
   if(error){ msg(box, friendlyError(error), "err"); return; }
   msg(box, t("resendOk"), "ok");
+  startResendCooldown(60);
 };
 
 $("#sendResetBtn").onclick = async ()=>{
