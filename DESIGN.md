@@ -6,8 +6,10 @@ login, schedule, split-calculator, cantonese-subtitle, guard.js). Two dialects, 
 ## Theme
 
 Classical 書卷編輯風 — scholarly editorial print on paper. Single light theme by design
-(`color-scheme: light`; dark-mode media queries pin the same light tokens). Motion Lab is
-exempt: it keeps its own dark product identity.
+(`color-scheme: light`; dark-mode media queries pin the same light tokens). Motion Lab's
+page chrome follows the same system; only its video stage (`#000`) and the canvas/SVG
+overlays drawn onto video frames keep a high-contrast overlay palette (skeleton `#3987e5`,
+faults `#e34948`, status chips on dark scrims) — those are content, not chrome.
 
 ## Color
 
