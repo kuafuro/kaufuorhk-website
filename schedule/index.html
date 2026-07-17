@@ -129,7 +129,7 @@ const I18N={
     cancelSlot:"取消時段",
     csAsk1:w=>`確定取消成個時段（${w}）？已報名學員會見到堂被取消，唔會扣佢哋堂數。`,
     csAsk2:"再確認一次：取消後冇得返轉頭。真係要取消呢個時段？",
-    csDone:"時段已取消 ✅",
+    csDone:"時段已取消 ✅",csDoneN:n=>`時段已取消，會 WhatsApp 通知 ${n} 位學員 ✅`,
     booked:"報咗名喇 ✅",waited:"排咗後補 ✅",cancelled:"已取消報名",already:"你之前已經報咗",
     err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
     fSplit:"拆做每小時一堂（例：19:00–22:00 → 3 堂）",
@@ -152,7 +152,7 @@ const I18N={
     cancelSlot:"Cancel slot",
     csAsk1:w=>`Cancel the whole slot (${w})? Booked students will see it as cancelled; no sessions are deducted.`,
     csAsk2:"Confirm once more: this cannot be undone. Really cancel this slot?",
-    csDone:"Slot cancelled ✅",
+    csDone:"Slot cancelled ✅",csDoneN:n=>`Slot cancelled; ${n} student${n>1?"s":""} will be notified on WhatsApp ✅`,
     booked:"Booked ✅",waited:"Added to waitlist ✅",cancelled:"Booking cancelled",already:"You already booked",
     err:"Error: ",noDate:"Please pick a date",badEnd:"End time must be after start time",
     fSplit:"Split into one class per hour (e.g. 19:00–22:00 → 3 classes)",
@@ -293,9 +293,10 @@ document.addEventListener("click",async e=>{
     if(!confirm(t("csAsk1")(when))) return;
     if(!confirm(t("csAsk2"))) return;
     cs.disabled=true;
-    const { error }=await sb.from("class_slots").update({status:"cancelled"}).eq("id",cs.dataset.cancelslot);
+    // cancel_slot：取消時段 + 為已報名學員排 WhatsApp 取消通知
+    const { data,error }=await sb.rpc("cancel_slot",{p_slot_id:cs.dataset.cancelslot});
     if(error){toast(t("err")+error.message);cs.disabled=false;return;}
-    toast(t("csDone")); await load(); return;
+    toast(data && data.notified ? t("csDoneN")(data.notified) : t("csDone")); await load(); return;
   }
   const rs=e.target.closest("[data-roster]");
   if(rs){ const id=rs.dataset.roster; const box=$("#roster-"+id);

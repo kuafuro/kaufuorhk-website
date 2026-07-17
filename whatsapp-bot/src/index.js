@@ -2,6 +2,14 @@
 import express from 'express';
 import cron from 'node-cron';
 import { runReminders } from './reminders.js';
+import { runCancelNotices } from './notices.js';
+
+// 每次掃描:先發到期提醒,再發取消通知
+async function runAll() {
+  const reminders = await runReminders();
+  const cancels = await runCancelNotices();
+  return { reminders, cancels };
+}
 
 const app = express();
 app.use(express.json());
@@ -34,7 +42,7 @@ app.post('/webhook', (req, res) => {
 app.get('/run-reminders', async (req, res) => {
   if (req.query.key !== VERIFY_TOKEN) return res.sendStatus(403);
   try {
-    const r = await runReminders();
+    const r = await runAll();
     res.json(r);
   } catch (e) {
     console.error(e);
@@ -49,8 +57,8 @@ app.listen(PORT, () => console.log(`[server] listening on ${PORT}`));
 cron.schedule(
   '*/15 * * * *',
   () => {
-    console.log('[cron] running reminders…');
-    runReminders().catch((e) => console.error('[cron] failed', e));
+    console.log('[cron] running reminders + cancel notices…');
+    runAll().catch((e) => console.error('[cron] failed', e));
   },
   { timezone: TZ }
 );
