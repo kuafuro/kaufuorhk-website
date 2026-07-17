@@ -92,6 +92,11 @@
         <label class="f"><span data-t="fMin"></span><input type="number" id="a-min" min="1" step="1" value="2"></label>
         <label class="f"><span data-t="fDeadline"></span><input type="datetime-local" id="a-by"></label>
         <label class="f"><span data-t="fNotes"></span><input type="text" id="a-notes" maxlength="120"></label>
+        <label class="f" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:9px">
+          <input type="checkbox" id="a-split" checked style="width:18px;height:18px;accent-color:var(--accent);flex:none">
+          <span data-t="fSplit" style="font-size:.85rem;color:var(--ink)"></span>
+        </label>
+        <div id="splitPv" style="grid-column:1/-1;font-size:.78rem;color:var(--muted);margin-top:-4px"></div>
       </div>
       <button class="btn solid" id="addBtn" style="margin-top:12px;width:100%" data-t="addBtn"></button>
     </details>
@@ -124,7 +129,11 @@ const I18N={
     csAsk2:"再確認一次：取消後冇得返轉頭。真係要取消呢個時段？",
     csDone:"時段已取消 ✅",
     booked:"報咗名喇 ✅",waited:"排咗後補 ✅",cancelled:"已取消報名",already:"你之前已經報咗",
-    added:"時段已開放 ✅",err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
+    err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
+    fSplit:"拆做每小時一堂（例：19:00–22:00 → 3 堂）",
+    pvN:n=>`會開 ${n} 堂：`,
+    badSplit:"要拆做每小時一堂，時間範圍必須係整數粒鐘（例：19:00–22:00）",
+    addedN:n=>n>1?`開咗 ${n} 堂 ✅`:"時段已開放 ✅",
     footNote:"報名只係排位；實際扣堂／出席照舊由教練點名決定。",backHome:"返主頁",
     wk:["日","一","二","三","四","五","六"]},
   en:{title:"🥊 Class Booking",sub:"Pick a class and tap book. It opens automatically once enough people (default 2) join.",
@@ -141,7 +150,11 @@ const I18N={
     csAsk2:"Confirm once more: this cannot be undone. Really cancel this slot?",
     csDone:"Slot cancelled ✅",
     booked:"Booked ✅",waited:"Added to waitlist ✅",cancelled:"Booking cancelled",already:"You already booked",
-    added:"Slot opened ✅",err:"Error: ",noDate:"Please pick a date",badEnd:"End time must be after start time",
+    err:"Error: ",noDate:"Please pick a date",badEnd:"End time must be after start time",
+    fSplit:"Split into one class per hour (e.g. 19:00–22:00 → 3 classes)",
+    pvN:n=>`Will open ${n} class${n>1?"es":""}: `,
+    badSplit:"To split hourly, the range must be whole hours (e.g. 19:00–22:00)",
+    addedN:n=>n>1?`Opened ${n} classes ✅`:"Slot opened ✅",
     footNote:"Booking reserves a spot; class deduction/attendance is still set by the coach at roll-call.",backHome:"Home",
     wk:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]},
 };
@@ -153,6 +166,7 @@ function applyLang(){
   document.querySelectorAll("[data-t]").forEach(el=>{ const v=t(el.getAttribute("data-t")); if(typeof v==="string") el.textContent=v; });
   $("#langZh").classList.toggle("on",lang==="zh"); $("#langEn").classList.toggle("on",lang==="en");
   document.documentElement.lang=lang==="zh"?"zh-Hant-HK":"en";
+  if(typeof updatePreview==="function") updatePreview();   // 開班預覽跟語言更新
 }
 function setLang(l){lang=l;try{localStorage.setItem("kf-lang",l);}catch(e){} applyLang(); render();}
 $("#langZh").onclick=()=>setLang("zh"); $("#langEn").onclick=()=>setLang("en");
@@ -294,28 +308,58 @@ document.addEventListener("click",async e=>{
 
 // 結束時間自動跟開始時間 +1 小時，教練自己改過就唔再跟
 let endTouched=false;
-$("#a-end").addEventListener("input",()=>{endTouched=true;});
+$("#a-end").addEventListener("input",()=>{endTouched=true; updatePreview();});
 $("#a-time").addEventListener("input",()=>{
-  if(endTouched) return;
-  const v=$("#a-time").value; if(!v) return;
-  const [h,m]=v.split(":").map(Number);
-  $("#a-end").value=String((h+1)%24).padStart(2,"0")+":"+String(m).padStart(2,"0");
+  if(!endTouched){
+    const v=$("#a-time").value;
+    if(v){ const [h,m]=v.split(":").map(Number);
+      $("#a-end").value=String((h+1)%24).padStart(2,"0")+":"+String(m).padStart(2,"0"); }
+  }
+  updatePreview();
 });
+$("#a-split").addEventListener("change", updatePreview);
+
+// 時間範圍 → 每小時 [開始,結束] 段；唔係整數粒鐘就回 {err:true}（每堂一小時）
+function hourChunks(start, end){
+  const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
+  const toHM=m=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+  const s=toMin(start), e=toMin(end);
+  if(e<=s) return null;
+  if((e-s)%60!==0) return {err:true};
+  const out=[];
+  for(let m=s;m<e;m+=60) out.push([toHM(m), toHM(m+60)]);
+  return out;
+}
+function plannedSlots(){
+  const start=$("#a-time").value||"19:00", end=$("#a-end").value||null;
+  if(!end||end<=start) return {start, end, err:"badEnd"};
+  if(!$("#a-split").checked) return {start, end, list:[[start,end]]};
+  const chunks=hourChunks(start,end);
+  if(!chunks||chunks.err) return {start, end, err:"badSplit"};
+  return {start, end, list:chunks};
+}
+function updatePreview(){
+  const pv=$("#splitPv"); if(!pv) return;
+  const plan=plannedSlots();
+  if(plan.err){ pv.textContent = plan.err==="badSplit" ? t("badSplit") : ""; return; }
+  pv.textContent = t("pvN")(plan.list.length) + plan.list.map(([s,e])=>`${s}–${e}`).join(" · ");
+}
 
 $("#addBtn").onclick=async()=>{
   const date=$("#a-date").value; if(!date){toast(t("noDate"));return;}
-  const start=$("#a-time").value||"19:00", end=$("#a-end").value||null;
-  if(end&&end<=start){toast(t("badEnd"));return;}
-  const row={ session_date:date, start_time:start, end_time:end,
+  const plan=plannedSlots();
+  if(plan.err){toast(t(plan.err));return;}
+  const base={ session_date:date,
     venue:$("#a-venue").value, coach:$("#a-coach").value,
     capacity:+$("#a-cap").value||6, min_to_open:+$("#a-min").value||2,
     book_by:$("#a-by").value?new Date($("#a-by").value).toISOString():null,
     notes:$("#a-notes").value.trim()||null };
+  const rows=plan.list.map(([s,e])=>({ ...base, start_time:s, end_time:e }));
   const btn=$("#addBtn"); btn.disabled=true;
-  const { error }=await sb.from("class_slots").insert(row);
+  const { error }=await sb.from("class_slots").insert(rows);
   btn.disabled=false;
   if(error){toast(t("err")+error.message);return;}
-  toast(t("added")); $("#a-notes").value="";
+  toast(t("addedN")(rows.length)); $("#a-notes").value="";
   await load();
 };
 
