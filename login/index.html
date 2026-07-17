@@ -241,6 +241,11 @@
     <button class="ghost" id="savePhone" data-t="saveBtn"></button>
   </div>
   <p class="hint" data-t="phoneHint" style="margin-top:-6px"></p>
+  <!-- 踢拳堂數餘額（買咗幾多、剩幾多、到期） -->
+  <div class="features" id="pkgBox" style="display:none">
+    <h3 data-t="pkgTitle"></h3>
+    <div id="pkgList"></div>
+  </div>
   <div class="features">
     <h3 data-t="featTitle"></h3>
     <div id="featList"></div>
@@ -346,6 +351,7 @@ const I18N = {
     pkgPick:"＋堂數…", pkgRising:"新星 4堂 $800", pkgChallenger:"挑戰者 8堂 $1,400", pkgAscetic:"苦行僧 1對1（自訂）",
     pkgAskSessions:"苦行僧堂數（例：4）", pkgAskPrice:"議定總價 HK$（例：1200）",
     pkgFail:"記錄失敗：",
+    pkgTitle:"🥋 我的堂數", pkgLeft:"堂", pkgExpires:"到期：", pkgExpired:"已過期",
     errInvalidLogin: "電郵或密碼唔啱。未註冊過？撳上面「註冊」開個新帳戶；唔記得密碼就撳下面「唔記得密碼」重設。",
     errNotConfirmed: "你仲未完成第2步（確認電郵）。去你個信箱撳確認連結；搵唔到封信就撳下面「寄多次確認信」。",
     errExists: "呢個電郵已經註冊咗 — 請直接登入；唔記得密碼就用「唔記得密碼」重設。",
@@ -420,6 +426,7 @@ const I18N = {
     pkgPick:"+ Class pack…", pkgRising:"Rising Star · 4 classes $800", pkgChallenger:"Challenger · 8 classes $1,400", pkgAscetic:"Ascetic · 1-on-1 (custom)",
     pkgAskSessions:"Ascetic sessions (e.g. 4)", pkgAskPrice:"Agreed total HK$ (e.g. 1200)",
     pkgFail:"Failed to record: ",
+    pkgTitle:"🥋 My class packs", pkgLeft:"left", pkgExpires:"Expires: ", pkgExpired:"Expired",
     errInvalidLogin: "Wrong email or password. New here? Tap “Register” above. Forgot your password? Use the reset link below.",
     errNotConfirmed: "You haven't finished Step 2 (email confirmation). Click the link in your inbox; can't find it? Tap “Resend confirmation email” below.",
     errExists: "This email is already registered — log in instead, or use “Forgot your password” to reset.",
@@ -592,6 +599,7 @@ async function render(){
       renderPlanBox(tiers.plan);
     }catch(e){}
   })();
+  renderPackages();
   $("#featList").innerHTML = FEATURES.map(f=>{
     const ok = f.roles.includes(role);
     return `<div class="feat ${ok?"":"locked"}">
@@ -607,6 +615,28 @@ async function render(){
   }
   if(role==="admin"){ renderAdmin(); renderEnquiries(); }
   else { $("#adminCard").style.display="none"; $("#enquiryCard").style.display="none"; }
+}
+
+/* 踢拳堂數餘額（學員睇自己買咗幾多、剩幾多、到期） */
+async function renderPackages(){
+  const box = $("#pkgBox"), list = $("#pkgList");
+  try{
+    const { data, error } = await sb.rpc("my_packages");
+    if(error || !data || !data.length){ box.style.display = "none"; return; }
+    const dict = I18N[lang] || I18N.zh;
+    list.innerHTML = data.map(p=>{
+      const nm = dict.levelNames[p.package] || p.package;
+      const exp = p.expired
+        ? `<span style="color:var(--muted)">${esc(t("pkgExpired"))}</span>`
+        : `${esc(t("pkgExpires"))}${esc(p.expires_at)}`;
+      const low = !p.expired && p.remaining <= 1;
+      return `<div class="feat">
+        <span>${esc(nm)}<div class="need">${exp}</div></span>
+        <b style="${p.expired?"color:var(--muted);text-decoration:line-through":low?"color:var(--accent)":""}">${p.remaining}/${p.sessions} ${esc(t("pkgLeft"))}</b>
+      </div>`;
+    }).join("");
+    box.style.display = "";
+  }catch(e){ box.style.display = "none"; }
 }
 
 /* 訂閱升級（Stripe，經 entitlements.js）。lazy-load：撳掣先入 billing 代碼 */

@@ -123,6 +123,8 @@ const I18N={
     stOpen:"開放報名",stConfirmed:"已開班 ✓",stMine:"你已報名 ✓",stWait:"後補中",stFull:"已滿",stOff:"已取消",
     needMore:s=>`仲爭 ${s} 人開班`,cntLabel:(a,b)=>`${a}/${b} 人`,
     book:"報名",wait:"後補",cancel:"取消報名",roster:"名單",hideRoster:"收起",kick:"移除",
+    markAttend:"點名出席",attended:"✓ 已出席",
+    attDeducted:"已點名，扣咗一堂 ✅",attNoPack:"已點名（冇有效堂數可扣）",attUndone:"已取消出席，退返堂",
     cancelAsk:"確定取消報名？",
     cancelSlot:"取消時段",
     csAsk1:w=>`確定取消成個時段（${w}）？已報名學員會見到堂被取消，唔會扣佢哋堂數。`,
@@ -144,6 +146,8 @@ const I18N={
     stOpen:"Open",stConfirmed:"Confirmed ✓",stMine:"You're booked ✓",stWait:"Waitlisted",stFull:"Full",stOff:"Cancelled",
     needMore:s=>`${s} more to open`,cntLabel:(a,b)=>`${a}/${b}`,
     book:"Book",wait:"Waitlist",cancel:"Cancel",roster:"Roster",hideRoster:"Hide",kick:"Remove",
+    markAttend:"Mark present",attended:"✓ Present",
+    attDeducted:"Marked present, 1 session deducted ✅",attNoPack:"Marked present (no active pack to deduct)",attUndone:"Attendance undone, session refunded",
     cancelAsk:"Cancel this booking?",
     cancelSlot:"Cancel slot",
     csAsk1:w=>`Cancel the whole slot (${w})? Booked students will see it as cancelled; no sessions are deducted.`,
@@ -260,6 +264,7 @@ async function showRoster(id){
   box.innerHTML=data.map(r=>`<div class="r">
     <span class="rn">${esc(r.name||r.email||"?")}</span>
     <span class="rs">${r.status==="booked"?"✓":r.status==="waitlist"?t("stWait"):t("stOff")}</span>
+    ${r.status==="booked"?`<button class="btn small ${r.attended?"solid":"ghost"}" data-attend="${r.booking_id}|${r.attended?0:1}">${r.attended?t("attended"):t("markAttend")}</button>`:""}
     ${r.status!=="cancelled"?`<button class="btn small ghost" data-kick="${id}|${r.student_id}">${t("kick")}</button>`:""}
   </div>`).join("");
 }
@@ -303,6 +308,17 @@ document.addEventListener("click",async e=>{
     const { error }=await sb.rpc("cancel_booking",{p_slot_id:sid,p_student:stu});
     if(error){toast(t("err")+error.message);kk.disabled=false;return;}
     toast(t("cancelled")); await load(); return;
+  }
+  // 點名出席 → 扣一堂（再撳一次 = 取消出席、退返堂）
+  const at=e.target.closest("[data-attend]");
+  if(at){ const [bid,val]=at.dataset.attend.split("|"); at.disabled=true;
+    const { data,error }=await sb.rpc("mark_attendance",{p_booking_id:bid,p_attended:val==="1"});
+    if(error){toast(t("err")+error.message);at.disabled=false;return;}
+    toast(val==="1" ? (data.deducted?t("attDeducted"):t("attNoPack")) : t("attUndone"));
+    // 只刷新呢張名單，唔重載成頁（唔會影響其他已開名單）
+    const slotId=[...openRosters].find(id=>$("#roster-"+id)?.contains(at));
+    if(slotId) await showRoster(slotId); else await load();
+    return;
   }
 });
 
