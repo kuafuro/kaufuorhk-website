@@ -11,11 +11,12 @@ export function normalizeHkPhone(raw) {
   return d.length >= 10 ? d : null;           // 太短當無效
 }
 
-// 發一個 template 訊息。params 係 body 入面 {{1}} {{2}} ... 嘅值（順序）
-export async function sendTemplate(toPhone, params) {
+// 發一個 template 訊息。params 係 body 入面 {{1}} {{2}} ... 嘅值（順序）。
+// templateName 可覆寫（例如取消通知用另一個 template），唔傳就用預設提醒 template。
+export async function sendTemplate(toPhone, params, templateName) {
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const token = process.env.WHATSAPP_TOKEN;
-  const templateName = process.env.WHATSAPP_TEMPLATE_NAME || 'class_reminder';
+  templateName = templateName || process.env.WHATSAPP_TEMPLATE_NAME || 'class_reminder';
   const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'zh_HK';
 
   const to = normalizeHkPhone(toPhone);
