@@ -457,7 +457,7 @@
         <a class="btn btn-secondary" href="stats/" data-t="daNotesCta"></a>
       </div>
       <p class="ml-note">
-        <span data-t="daArtTeaser"></span><a href="data-insights/" data-t="daArtLink"></a>
+        <span data-t="daArtTeaser"></span><a id="daArtA" href="data-insights/" data-t="daArtLink"></a>
       </p>
     </div>
     <div class="plate da-plate fade">
@@ -697,7 +697,7 @@ const I18N = {
     daFinding:"1973 Berkeley graduate admissions: on the surface men were admitted at 44% and women at 35% — apparent gender bias. But department by department the bias vanished, even slightly favouring women — women had simply applied more to the most competitive departments. The aggregate lied; the right grouping reversed the conclusion.",
     daFindNote:"*This is Simpson's Paradox: on the same data, looking at the whole vs the parts can give opposite answers. Finding the right cut is exactly what data analysis is for.",
     daFindLink:"See more stats notes",
-    daArtTeaser:"In depth: ", daArtLink:"Six statistical concepts every decision-maker should know (Chinese)",
+    daArtTeaser:"In depth: ", daArtLink:"Six statistical concepts every decision-maker should know",
     mlTitle:"Motion Lab: our in-house automation demo",
     mlSub:"Watch, score, report — fully automated. We handed an entire sports-analysis pipeline to computer vision as an in-house side project to sharpen and showcase what our automation can do. Future experiments live here too.",
     ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
@@ -743,6 +743,9 @@ function applyLang(){
   document.querySelectorAll("[data-taria]").forEach(el => {
     el.setAttribute("aria-label", t(el.getAttribute("data-taria")));
   });
+  // 深度文章連結：跟語言去中／英版
+  const artA = $("#daArtA");
+  if (artA) artA.href = lang === "en" ? "data-insights/en/" : "data-insights/";
   // 已顯示嘅逐欄錯誤：跟住切語言重新翻譯（佢哋無 data-t，用記低嘅 key）
   document.querySelectorAll(".field-err.show").forEach(el => {
     if (el.dataset.k) el.textContent = t(el.dataset.k);
