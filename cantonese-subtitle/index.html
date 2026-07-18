@@ -186,80 +186,37 @@
 
   <!-- STEP 2: 設定 -->
   <div class="card">
-    <h2>② 設定 <span class="hint">預設已經係「廣東話口語」最佳組合</span></h2>
-
-    <!-- 引擎：本地（免費／私密）vs 雲端（Pro）——雲端一律用最準嗰個 model，唔俾人揀 -->
-    <div class="engine" role="tablist" aria-label="轉字幕引擎">
-      <button id="engLocal" class="eng on" role="tab" aria-selected="true">
-        💻 本地 <span class="s">免費 · 私密 · 慢</span>
-      </button>
-      <button id="engCloud" class="eng" role="tab" aria-selected="false">
-        ☁️ 雲端 <span class="s">Pro · 最準 · 分講者</span>
-      </button>
-    </div>
-    <div class="notice info" id="cloudNote" style="display:none">
-      首次開機要等幾分鐘,之後就快,唔使企喺度等。音檔轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
-    </div>
-
-    <div class="grid2">
-      <label class="f">字幕每行上限 <span class="muted">（自動分割・免費）</span>
-        <select id="maxLine">
-          <option value="0" selected>唔限（原句）</option>
-          <option value="14">14 字 — 豎屏短片</option>
-          <option value="20">20 字 — 一般影片</option>
-          <option value="28">28 字 — 闊屏</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="grid2" id="localOpts">
-      <label class="f">模型 Model
-        <select id="model"></select>
-      </label>
-      <label class="f">語言 Language
-        <select id="lang">
-          <option value="zh" selected>廣東話 / 中文（zh）— 建議</option>
-          <option value="yue">Cantonese（yue）— 實驗性</option>
-          <option value="">自動偵測 Auto</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="notice info" id="modelNote"></div>
-
-    <details class="adv">
-      <summary>進階設定 &amp; 點解要咁揀（秘技說明）</summary>
-      <div class="body">
-        <div class="notice warn">
-          <b>點解語言要揀「zh」唔揀「yue」？</b><br>
-          Whisper 一強制 <code class="k">yue</code>（Cantonese）好多時會「decoder 塌」——
-          不停重複、出亂碼、成段廢咗。實測強制 <code class="k">zh</code> + 用
-          <b>large-v3-turbo</b> 反而會穩定咁打出「係、喺、佢哋、咁樣、㗎、喇」呢啲原汁原味口語字。
-          所以呢版工具預設就係 <code class="k">zh</code> + turbo。想試 <code class="k">yue</code> 可以喺上面轉，覺得亂就轉返 zh。
-        </div>
-
-        <label class="f">
-          時間戳精度 Timestamps
-          <select id="ts">
-            <option value="segment" selected>句子級（做字幕用 · 快）</option>
-            <option value="word">逐字級（更精準 · 慢好多）</option>
-          </select>
-        </label>
-
-        <div class="promptbox">
-          <div class="fs-sm" style="margin-bottom:6px">
-            <b>提示詞（Initial Prompt）</b> —
-            <span class="muted">畀你喺電腦版 Buzz / faster-whisper 用。<u>瀏覽器版 Whisper 暫時未支援 initial prompt</u>，所以呢度淨係方便你 copy 去 desktop app。</span>
-          </div>
-          <pre id="promptText">這是一段廣東話口語對話，請完全保留原汁原味的廣東話字詞，不要翻譯成書面語。例如：係囉、咁樣、佢哋、喺度、嘅、㗎、喇。</pre>
-          <button class="btn fs-sm" id="copyPrompt" style="margin-top:8px;padding:7px 14px">📋 Copy 提示詞</button>
-        </div>
+    <div id="advSettings" hidden>
+      <!-- 引擎／模型／語言／進階全部自動：Pro→雲端最準，免費→本地。呢啲元素保留返俾 JS bind，用戶睇唔到。 -->
+      <div class="engine" role="tablist" aria-label="轉字幕引擎">
+        <button id="engLocal" class="eng on" role="tab" aria-selected="true">💻 本地</button>
+        <button id="engCloud" class="eng" role="tab" aria-selected="false">☁️ 雲端</button>
       </div>
-    </details>
+      <div class="grid2" id="localOpts">
+        <label class="f">模型 <select id="model"></select></label>
+        <label class="f">語言 <select id="lang">
+          <option value="zh" selected>zh</option>
+          <option value="yue">yue</option>
+          <option value="">auto</option>
+        </select></label>
+      </div>
+      <div class="notice info" id="modelNote"></div>
+      <label class="f">時間戳 <select id="ts">
+        <option value="segment" selected>segment</option>
+        <option value="word">word</option>
+      </select></label>
+      <pre id="promptText" hidden>這是一段廣東話口語對話，請完全保留原汁原味的廣東話字詞。</pre>
+      <button id="copyPrompt" hidden></button>
+    </div>
+
+    <div class="notice info" id="cloudNote" style="display:none">
+      首次開機要等幾分鐘,之後就快。音檔轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
+    </div>
 
     <div class="btnrow">
-      <button class="btn primary block" id="run" disabled>▶️ 開始轉字幕 Transcribe</button>
+      <button class="btn primary block" id="run" disabled>▶️ 開始轉字幕</button>
     </div>
+    <div id="engHint" class="fs-xs muted" style="margin-top:10px;text-align:center;line-height:1.7"></div>
 
     <div id="status">
       <div class="bar"><i id="barFill"></i></div>
@@ -270,7 +227,7 @@
 
   <!-- STEP 3: 結果 -->
   <div class="card" id="result">
-    <h2>③ 字幕結果 <span class="hint" id="resultMeta"></span></h2>
+    <h2>② 字幕結果 <span class="hint" id="resultMeta"></span></h2>
     <div class="tabs">
       <button data-tab="text" class="on">純文字</button>
       <button data-tab="seg">分段時間軸</button>
@@ -289,6 +246,14 @@
       <button class="btn" id="dlSrt">⬇️ 下載 .srt 字幕</button>
       <button class="btn" id="dlVtt">⬇️ 下載 .vtt</button>
       <button class="btn" id="saveCloud">☁️ 存去雲端</button>
+      <label class="fs-xs muted" style="display:inline-flex;align-items:center;gap:5px;margin-left:auto">每行字數
+        <select id="maxLine" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-family:inherit">
+          <option value="0" selected>唔限</option>
+          <option value="14">14</option>
+          <option value="20">20</option>
+          <option value="28">28</option>
+        </select>
+      </label>
     </div>
   </div>
 
@@ -298,8 +263,8 @@
     <div id="cloudList" class="fs-xs muted">—</div>
   </div>
 
-  <div class="card fs-xs muted">
-    <b>私隱：</b>本地模式喺你部機處理，錄音<u>唔會上傳</u>。雲端模式（Pro）會上傳音檔轉字幕，轉完 <b>6 個鐘內自動刪除</b>，只留返字幕文字。
+  <div class="card fs-xs muted" style="text-align:center">
+    使用本工具即表示你同意私隱條款（音檔轉完即刪、只留字幕）。
   </div>
 
 </div>
@@ -321,8 +286,9 @@ let ent = null;
 const isPro = () => !!(ent && ent.hasAccess("subtitle"));
 Entitlements.init().then(e => {
   ent = e;
-  e.on("change", () => { applyGate(); loadHistory(); });   // 升級後即時解鎖 + 顯示雲端歷史
+  e.on("change", () => { applyGate(); loadHistory(); autoEngine(); });   // 升級後即時解鎖 + 換雲端
   applyGate();
+  autoEngine();
   loadHistory();
 }).catch(err => console.warn("billing init", err));
 const toast = (msg) => {
@@ -394,11 +360,20 @@ function setEngine(e){
   engLocalBtn.classList.toggle("on", !cloud); engLocalBtn.setAttribute("aria-selected", String(!cloud));
   $("localOpts").style.display = cloud ? "none" : "";
   $("modelNote").style.display = cloud ? "none" : "";
-  const adv = document.querySelector("details.adv"); if (adv) adv.style.display = cloud ? "none" : "";
   $("cloudNote").style.display = cloud ? "block" : "none";
-  $("run").textContent = cloud ? "☁️ 開始轉字幕（雲端）" : "▶️ 開始轉字幕 Transcribe";
+}
+// 引擎自動揀：Pro → 雲端最準；未登入／免費 → 本地。用戶唔使揀。
+function autoEngine(){
+  setEngine(isPro() ? "cloud" : "local");
+  const eh = $("engHint"); if (!eh) return;
+  if (isPro()) eh.textContent = "☁️ 雲端最準模式（廣東話最準，首次開機要等幾分鐘）";
+  else {
+    eh.innerHTML = '免費本地模式 · <a href="#" id="goProLink" style="color:var(--accent);font-weight:600">升級 Pro 用雲端最準</a>';
+    const gp = $("goProLink"); if (gp) gp.onclick = (ev) => { ev.preventDefault(); if (ent) ent.requirePro("subtitle", "雲端轉字幕"); };
+  }
 }
 engLocalBtn.addEventListener("click", () => setEngine("local"));
+try { autoEngine(); } catch(_) {}   // 即時render引擎提示（ent 未load都有預設）
 engCloudBtn.addEventListener("click", () => {
   if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud transcription" : "雲端轉字幕"); else toast("請稍等…"); return; }
   setEngine("cloud");
