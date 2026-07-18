@@ -954,6 +954,34 @@ const tracker = {
    Model loading (single landmarker, mode-switched)
    ============================================================ */
 let landmarker = null, currentMode = null, modeLock = Promise.resolve();
+/* device-level degradation: some GPUs pass landmarker CREATION but crash mid-inference
+   with WASM "memory access out of bounds" — after which every detect() on the corrupted
+   heap fails (camera dies, photo upload "fails", video "no response": one bug, three faces).
+   On a fatal WASM error we dispose the engine, persist CPU-only for this device, and
+   re-init. CPU is slower but stable — the analysis quality is identical. */
+const FATAL_WASM = /memory access out of bounds|out of bounds|unreachable|null function or function signature|RuntimeError|Aborted/i;
+const engineOnCpu = () => window.__forceCpu || localStorage.getItem("ml_force_cpu") === "1";
+let engineRecovering = false;
+async function recoverEngine(err){
+  const m = String(err?.message || err || "");
+  if(!FATAL_WASM.test(m)) return false;          // not an engine-death — caller handles it
+  if(engineRecovering) return true;
+  engineRecovering = true;
+  console.error("AI engine crashed — recovering", err);
+  try{ stopPostureSource(); }catch(_){}
+  try{ if(typeof mRun !== "undefined" && mRun.on) stopMotion(); }catch(_){}
+  try{ landmarker?.close?.(); }catch(_){}
+  landmarker = null; currentMode = null; modeLock = Promise.resolve();
+  if(!engineOnCpu()){
+    localStorage.setItem("ml_force_cpu", "1");
+    toast("你部機嘅顯示晶片同 AI 引擎唔夾——已自動轉用穩定模式重啟緊，幾秒後再試一次", 5600);
+  }else{
+    toast("AI 引擎出錯，請重新整理頁面再試", 5600);
+  }
+  try{ await initModel(); }catch(_){}
+  engineRecovering = false;
+  return true;
+}
 const MODEL_URLS = {
   lite:  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
   full:  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
@@ -1021,7 +1049,7 @@ async function initModel(){
       runningMode:"VIDEO", numPoses:6,
       minPoseDetectionConfidence:0.35, minPosePresenceConfidence:0.35, minTrackingConfidence:0.35
     });
-    try{ landmarker = await make(window.__forceCpu ? "CPU" : "GPU"); }
+    try{ landmarker = await make(engineOnCpu() ? "CPU" : "GPU"); }
     catch(e){ console.warn("GPU delegate failed, falling back to CPU", e); landmarker = await make("CPU"); }
     currentMode = "VIDEO";
     loadEmbedder(vision);   // identity-memory model loads in the background
@@ -1052,7 +1080,7 @@ async function loadEmbedder(vision){
       baseOptions: buf ? { modelAssetBuffer: buf.slice(), delegate: d } : { modelAssetPath: EMB_URL, delegate: d },
       runningMode: "IMAGE",
     });
-    try{ embedder = await make(window.__forceCpu ? "CPU" : "GPU"); }catch(e){ embedder = await make("CPU"); }
+    try{ embedder = await make(engineOnCpu() ? "CPU" : "GPU"); }catch(e){ embedder = await make("CPU"); }
     console.log("identity embedder ready");
   }catch(e){ console.warn("identity embedder unavailable — colour signatures only", e); }
 }
@@ -1190,7 +1218,9 @@ function postureLiveLoop(){
   const ts = performance.now();
   if(ts <= pState.lastTs) return;
   pState.lastTs = ts;
-  const res = landmarker.detectForVideo(pVideo, ts);
+  let res;
+  try{ res = landmarker.detectForVideo(pVideo, ts); }
+  catch(e){ pState.previewOn = false; cancelAnimationFrame(pState.raf); recoverEngine(e); return; }
   const W = pVideo.videoWidth, H = pVideo.videoHeight;
   if(!W) return;
   if(pCanvas.width !== W || pCanvas.height !== H){ pCanvas.width = W; pCanvas.height = H; }
@@ -1234,6 +1264,8 @@ $("pFile").addEventListener("change", e=>{
   const f = e.target.files[0];
   e.target.value = "";
   if(!f) return;
+  // iPhone 預設影 HEIC——Safari 解到，Chrome/Android 解唔到；要俾一個講得明點解決嘅錯誤
+  const isHeic = /hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
   const img = new Image();
   img.onload = ()=>{
     const MAXW = 1600;
@@ -1245,7 +1277,12 @@ $("pFile").addEventListener("change", e=>{
     stopPostureSource();
     analyzePosture(c);
   };
-  img.onerror = ()=>toast("讀取相片失敗");
+  img.onerror = ()=>{
+    URL.revokeObjectURL(img.src);
+    toast(isHeic
+      ? "呢張係 HEIC 格式，你嘅瀏覽器解讀唔到。iPhone：設定 → 相機 → 格式 → 揀「最高相容性」再影過；或者將相 WhatsApp 傳一次再儲存（會自動轉 JPG）"
+      : "讀取相片失敗——請用 JPG／PNG 格式再試", 7000);
+  };
   img.src = URL.createObjectURL(f);
 });
 
@@ -1291,7 +1328,11 @@ async function analyzePosture(srcCanvas){
     if(currentMode !== "IMAGE"){ toast("AI 未就緒，請再試一次"); return; }
     let res;
     try{ res = landmarker.detect(srcCanvas); }
-    catch(e){ console.error(e); toast("偵測失敗：" + (e?.message||e)); return; }
+    catch(e){
+      console.error(e);
+      if(await recoverEngine(e)){ $("pMsg").classList.add("hidden"); return; }   // engine restarted — user retries
+      toast("偵測失敗：" + (e?.message||e)); return;
+    }
     const people = res.landmarks || [];
     if(!people.length){ toast("偵測唔到人體，請確保全身清晰入鏡、光線充足"); return; }
     const ranked = rankPeople(people);
@@ -1787,7 +1828,7 @@ function detectROI(slot, box, W, H, src){
   if(cnv.width !== dw || cnv.height !== dh){ cnv.width = dw; cnv.height = dh; }
   try{ cnv.getContext("2d").drawImage(src, px, py, pw, ph, 0, 0, dw, dh); }
   catch(e){ return []; }
-  let r; try{ r = landmarker.detect(cnv); }catch(e){ return []; }
+  let r; try{ r = landmarker.detect(cnv); }catch(e){ recoverEngine(e); return []; }
   const out = [];
   const n = (r.landmarks || []).length;
   for(let i = 0; i < n; i++){
@@ -1830,7 +1871,7 @@ function detectPeople(tSec){
   // source of candidates while they're not
   if(boxes.length < 2 || tSec - (mRun.lastFullScan ?? -9) > 0.8){
     mRun.lastFullScan = tSec;
-    let r = null; try{ r = landmarker.detect(detectFrame(snap)); }catch(e){}
+    let r = null; try{ r = landmarker.detect(detectFrame(snap)); }catch(e){ recoverEngine(e); }
     const n = (r?.landmarks || []).length;
     for(let i = 0; i < n; i++) cands.push({ lm: r.landmarks[i], wl: r.worldLandmarks?.[i] });
   }
@@ -2267,7 +2308,7 @@ async function batchAnalyze(){
         lastMedia = mt;
         const s0 = performance.now();
         let res2 = null;
-        try{ res2 = mRun.multi ? detectPeople(mt) : landmarker.detect(detectFrame()); }catch(e){}
+        try{ res2 = mRun.multi ? detectPeople(mt) : landmarker.detect(detectFrame()); }catch(e){ recoverEngine(e); }
         inferEMA = 0.8*inferEMA + 0.2*(performance.now()-s0)/1000;
         mRun.inferEMA = inferEMA;
         try{ mVideo.playbackRate = Math.max(mRun.minRate || 0.15, Math.min(6, 1/(inferEMA*(mRun.density || 15)))); }catch(e){}
@@ -2543,7 +2584,7 @@ function motionLoop(){
   mRun.lastTs = ts;
   let res;
   try{ res = mRun.multi ? detectPeople(ts/1000) : landmarker.detectForVideo(mVideo, ts); }
-  catch(e){ return; }
+  catch(e){ recoverEngine(e); return; }
   // live FPS estimate — drives the low-frame-rate warning and identity cadence
   if(mRun.lastDetTs){ const d = ts - mRun.lastDetTs; mRun.detMs = mRun.detMs ? 0.8*mRun.detMs + 0.2*d : d; }
   mRun.lastDetTs = ts;

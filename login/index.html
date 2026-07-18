@@ -322,6 +322,7 @@ const I18N = {
     recoveryTitle: "設定新密碼",
     newPassLabel: "新密碼（至少6位）", setPassBtn: "確認新密碼",
     passUpdated: "✔ 密碼改好喇！你而家已經登入。",
+    welcomeDone: "✔ 電郵確認咗，註冊完成！帶緊你返主頁…",
     signupOk: "✔ 帳戶建立咗！確認信寄緊去你信箱（有時要等一兩分鐘，記得睇埋垃圾郵件）。",
     resendOk: "✔ 已再寄一次確認信，記得睇埋垃圾郵件。",
     resendWait: "可再寄（{secs} 秒後）",
@@ -399,6 +400,7 @@ const I18N = {
     recoveryTitle: "Set a new password",
     newPassLabel: "New password (min. 6 characters)", setPassBtn: "Confirm new password",
     passUpdated: "✔ Password updated! You are now logged in.",
+    welcomeDone: "✔ Email confirmed — you're all set! Taking you to the home page…",
     signupOk: "✔ Account created! The confirmation email is on its way (it can take a minute or two — check spam too).",
     resendOk: "✔ Confirmation email re-sent. Remember to check spam.",
     resendWait: "Resend available in {secs}s",
@@ -617,6 +619,12 @@ async function render(){
     if(!feat || feat.roles.includes(role)){ location.replace(next); return; }
     msg($("#profMsg"), t("nextNoRole", { next, roles: feat.roles.map(roleName).join(" / "), role: roleName(role) }), "info");
   }
+  // 由確認電郵條 link 返嚟（?welcome=1）：話聲註冊完成，帶返去主頁
+  if(new URLSearchParams(location.search).get("welcome") === "1"){
+    history.replaceState(null, "", location.pathname);
+    msg($("#profMsg"), t("welcomeDone"), "ok");
+    setTimeout(()=>location.replace("/"), 1600);
+  }
   if(role==="admin"){ renderAdmin(); renderEnquiries(); }
   else { $("#adminCard").style.display="none"; $("#enquiryCard").style.display="none"; }
 }
@@ -755,7 +763,7 @@ $("#submitBtn").onclick = async ()=>{
       const name = $("#name").value.trim();
       const { data, error } = await sb.auth.signUp({
         email, password,
-        options: { data: { name }, emailRedirectTo: location.origin + "/login/" }
+        options: { data: { name }, emailRedirectTo: location.origin + "/login/?welcome=1" }
       });
       if(error){ msg(box, friendlyError(error), "err"); return; }
       if(data.session){ return; } // 唔使確認電郵嘅情況：已直接登入
@@ -808,7 +816,7 @@ function startResendCooldown(secs){
 $("#resendBtn").onclick = async ()=>{
   if(resendLeft > 0) return;
   const box = $("#authMsg");
-  const { error } = await sb.auth.resend({ type:"signup", email: lastSignupEmail, options:{ emailRedirectTo: location.origin + "/login/" } });
+  const { error } = await sb.auth.resend({ type:"signup", email: lastSignupEmail, options:{ emailRedirectTo: location.origin + "/login/?welcome=1" } });
   if(error){ msg(box, friendlyError(error), "err"); return; }
   msg(box, t("resendOk"), "ok");
   startResendCooldown(60);
