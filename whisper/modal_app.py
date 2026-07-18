@@ -6,10 +6,12 @@
 #   body:  { "audio_url": "<signed url>", "job_id": "<uuid>" }
 #   202:   { "spawned": true, "job_id": "<uuid>" }
 #
-# 準確模式 trade-off（產品決定：一定要準行先）：
+# 準確模式（產品決定：一定要準行先）：
 #   + faster-whisper large-v3：廣東話準確度明顯高過 SenseVoiceSmall
 #   + 逐段 confidence（avg_logprob → 0-1）：前端 highlight 低信心句俾人校
-#   - 冇講者分離、冇背景音標註（嗰啲係 SenseVoice「快速模式」嘅嘢）
+#   + 講者分離：cam++ 聲紋 embedding 逐句抽 + 自動聚類（Ming 2026-07-18 加）——
+#     唔使任何 gated model／token；聚唔出兩個以上講者就全部唔標（寧缺毋濫）
+#   - 背景音標註係 SenseVoice「快速模式」嘅嘢
 # Modal secret "sensevoice" 提供 SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET（同一套）。
 import math
 
@@ -35,8 +37,15 @@ image = (
         "opencc-python-reimplemented==0.1.7",
         "requests==2.32.3",
         "fastapi[standard]==0.115.6",
+        # 講者分離：cam++ 聲紋 embedding（pins 照抄 sensevoice image 嘅 known-good set）
+        "funasr==1.2.6",
+        "torch==2.4.1",
+        "torchaudio==2.4.1",
+        "modelscope==1.20.1",
+        "scikit-learn==1.5.1",
+        "more-itertools",
     )
-    .env({"HF_HOME": MODEL_DIR})
+    .env({"HF_HOME": MODEL_DIR, "MODELSCOPE_CACHE": MODEL_DIR})
 )
 
 
@@ -56,7 +65,73 @@ class WhisperLarge:
         self.cc = opencc.OpenCC("s2hk")
         # T4 冇 bf16：float16 啱使；模型 ~3GB，落一次入 volume 之後好快
         self.model = WhisperModel("large-v3", device="cuda", compute_type="float16", download_root=MODEL_DIR)
+        # 講者分離用嘅聲紋模型（同 SenseVoice pipeline 同一個 cam++）；起唔到就冇講者標籤，唔阻轉錄
+        try:
+            from funasr import AutoModel
+            self.spk_model = AutoModel(model="cam++", device="cuda:0", disable_update=True)
+        except Exception as e:  # noqa: BLE001
+            print("cam++ load failed — diarization disabled:", e)
+            self.spk_model = None
         model_cache.commit()
+
+    def _diarize(self, wav_path, segments):
+        """逐句抽 cam++ 聲紋 embedding → cosine 聚類。原則：寧缺毋濫——
+        聚唔出兩個以上清晰講者、或者任何一步出事，就全部唔標（spk=None）。"""
+        if not self.spk_model or len(segments) < 4:
+            return [None] * len(segments)
+        try:
+            import numpy as np
+            import torchaudio
+            from sklearn.cluster import AgglomerativeClustering
+
+            wav, sr = torchaudio.load(wav_path)          # 已係 16k mono
+            audio = wav[0].numpy()
+            embs, idx = [], []
+            for i, s in enumerate(segments):
+                a = int(s["start_ms"] * sr / 1000)
+                b = int(s["end_ms"] * sr / 1000)
+                if b - a < int(0.8 * sr):                # 太短嘅句抽唔到穩定聲紋
+                    continue
+                chunk = audio[a:b]
+                try:
+                    r = self.spk_model.generate(input=chunk, fs=sr, disable_pbar=True)
+                    emb = r[0].get("spk_embedding")
+                    if emb is None:
+                        continue
+                    v = np.asarray(getattr(emb, "cpu", lambda: emb)()).astype("float32").reshape(-1)
+                    n = np.linalg.norm(v)
+                    if n == 0:
+                        continue
+                    embs.append(v / n)
+                    idx.append(i)
+                except Exception:  # noqa: BLE001
+                    continue
+            if len(embs) < 4:
+                return [None] * len(segments)
+            X = np.stack(embs)
+            labels = AgglomerativeClustering(
+                n_clusters=None, distance_threshold=0.75, metric="cosine", linkage="average",
+            ).fit_predict(X)
+            uniq = sorted(set(labels))
+            if len(uniq) < 2 or len(uniq) > 6:            # 一個講者唔使標；多過 6 個多數係聚炒咗
+                return [None] * len(segments)
+            # 最少嗰邊都要有返啲句先可信（防一兩粒 outlier 假裝第二個講者）
+            counts = {u: int((labels == u).sum()) for u in uniq}
+            if min(counts.values()) < max(2, len(embs) // 12):
+                return [None] * len(segments)
+            order = {}                                    # 按出場次序重新編號 0,1,2…
+            out = [None] * len(segments)
+            for lab, i in zip(labels, idx):
+                if lab not in order:
+                    order[lab] = len(order)
+                out[i] = order[lab]
+            for i in range(len(out)):                    # 太短冇聲紋嗰啲句跟上一句
+                if out[i] is None and i > 0:
+                    out[i] = out[i - 1]
+            return out
+        except Exception as e:  # noqa: BLE001
+            print("diarization failed — no speaker labels:", e)
+            return [None] * len(segments)
 
     def _probe_ms(self, path):
         import subprocess
@@ -132,6 +207,10 @@ class WhisperLarge:
                         "start_ms": int(s.start * 1000), "end_ms": int(s.end * 1000),
                         "spk": None, "text": text, "conf": conf,
                     })
+                # 講者分離（cam++ 聲紋聚類）；一有唔對路就全部 None，唔阻轉錄
+                spk_ids = self._diarize(wav, segments)
+                for seg, spk in zip(segments, spk_ids):
+                    seg["spk"] = spk
             report({"segments": segments, "duration_ms": duration_ms})
         except Exception as e:  # noqa: BLE001
             report({"error": str(e)[:300]})
