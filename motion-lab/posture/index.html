@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Kuafuor Motion Lab｜AI 體態檢查・搏擊動作分析</title>
-<meta name="description" content="Kuafuor HK Motion Lab — 瀏覽器內 AI 體態評估（肩膊/骨盆/頭頸對齊）與搏擊動作分析（出拳速度、髖肩分離、關節角度）。結合運動科學、物理治療與職業治療視角的教練篩查工具。">
+<title>Kuafuor 體態評估｜AI 姿勢檢查・對齊度量度</title>
+<meta name="description" content="Kuafuor HK 體態評估 — 瀏覽器內 AI 姿勢檢查：肩膊/骨盆/頭頸對齊、角度＋公分差、報告 PDF。結合運動科學、物理治療與職業治療視角的教練篩查工具。">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥊</text></svg>">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="../manifest.json">
 <meta name="theme-color" content="#0d0d0d">
 <style>
 /* ============ Design tokens (dark lab theme) ============ */
@@ -238,26 +238,25 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 
 <header>
   <div class="hd-in">
-    <a class="logo" href="../">Kuafuor <b>HK</b></a>
-    <span class="hd-sub">MOTION LAB · AI 體態與搏擊動作分析</span>
+    <a class="logo" href="/">Kuafuor <b>HK</b></a>
+    <span class="hd-sub">體態評估 · AI 姿勢檢查</span>
     <span class="hd-spacer"></span>
     <button class="btn" id="hdLoginBtn" style="padding:7px 14px;font-size:.82rem">👤 登入／註冊</button>
-    <a class="backlink" href="../">← 返回主頁</a>
+    <a class="backlink" href="../">← Motion Lab</a>
   </div>
 </header>
 
 <nav class="tabs" aria-label="功能">
-  <button class="tab-btn active" data-tab="motion">🥊 動作分析 <small>Motion</small></button>
-  <a class="tab-btn" href="posture/" style="text-decoration:none">🧍 體態評估 ↗ <small>Posture</small></a>
+  <button class="tab-btn active" data-tab="posture">🧍 體態評估 <small>Posture</small></button>
+  <a class="tab-btn" href="../" style="text-decoration:none">🥊 動作分析 ↗ <small>Motion</small></a>
   <button class="tab-btn" data-tab="records">📊 紀錄 <small>Records</small></button>
   <button class="tab-btn" data-tab="guide">📋 使用說明 <small>Guide</small></button>
 </nav>
 
 <main>
 
-<!-- ==================== POSTURE TAB（已搬去 posture/ 獨立頁；DOM 保留係因為
-     成個 module script 會 bind 呢啲元素——移走會令 JS 死。呢度永冇 active。） -->
-<section class="tab-panel" id="tab-posture">
+<!-- ==================== POSTURE TAB（呢頁嘅主角） ==================== -->
+<section class="tab-panel active" id="tab-posture">
   <div class="card">
     <div class="controls">
       <div class="seg" id="viewSeg">
@@ -362,8 +361,9 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
   </div>
 </section>
 
-<!-- ==================== MOTION TAB ==================== -->
-<section class="tab-panel active" id="tab-motion">
+<!-- ==================== MOTION TAB（搬咗去 ../ 主頁；DOM 保留係因為成個
+     module script 會 bind 呢啲元素——移走會令 JS 死。呢度永冇 active。） -->
+<section class="tab-panel" id="tab-motion">
   <!-- ☁️ 雲端精析（主打路徑）：上載片 → 伺服器 yolo11m-pose + ByteTrack 多人追蹤 → 標註影片＋統計 -->
   <div class="card" id="clCard" style="border-color:var(--brand)">
     <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">建議用呢個 · 伺服器級 AI・唔佔你部機</small></h3>
@@ -3967,7 +3967,7 @@ window.__ml = {
 
 /* PWA: install-to-home-screen + offline app shell */
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW register failed", e));
+  navigator.serviceWorker.register("../sw.js").catch(e=>console.warn("SW register failed", e));
 }
 
 /* stop cameras when page hidden (uploaded-video sessions survive — rAF pauses on its own) */

@@ -5,7 +5,7 @@
 `brand` — the homepage, notes, articles and graph are the primary surface: an editorial
 marketing site where the design IS the pitch (a data/automation consultancy that looks like
 a well-set book proves its own claim to rigour). Tool pages (`login/`, `schedule/`,
-`split-calculator/`, `cantonese-subtitle/`, `motion-lab/`) run in the **product** register:
+`split-calculator/`, `cantonese-subtitle/`, `motion-lab/`, `motion-lab/posture/`) run in the **product** register:
 same visual dialect, utility-first. Motion Lab's video stage and canvas overlays keep their
 own high-contrast palette (drawn over video frames), but its page chrome follows the site
 system.
