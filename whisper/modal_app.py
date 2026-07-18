@@ -9,10 +9,14 @@
 # 準確模式（產品決定：一定要準行先）：
 #   + faster-whisper large-v3：廣東話準確度明顯高過 SenseVoiceSmall
 #   + 逐段 confidence（avg_logprob → 0-1）：前端 highlight 低信心句俾人校
-#   + 講者分離：cam++ 聲紋 embedding 逐句抽 + 自動聚類（Ming 2026-07-18 加）——
-#     唔使任何 gated model／token；聚唔出兩個以上講者就全部唔標（寧缺毋濫）
+#   + 講者分離：cam++ 聲紋 embedding 逐句抽 + 自動聚類（寧缺毋濫）
+#   + 雙 ASR + Gemini 融合（Ming 2026-07-19，Option B）：同一段音同時行 Whisper（準）
+#     ＋ SenseVoice（口語地道），再用 Gemini 逐句融合——用 Whisper 嘅字義同時間軸/講者/
+#     信心度，參考 SenseVoice 還原「係囉/㗎/喇/佢哋」口語、修正錯字。粗口照留。
+#     GEMINI_API_KEY 冇 set（或者任何一步失敗）就 graceful fallback 出 Whisper-only。
 #   - 背景音標註係 SenseVoice「快速模式」嘅嘢
-# Modal secret "sensevoice" 提供 SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET（同一套）。
+# Modal secret "sensevoice"：SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET,
+#   GEMINI_API_KEY（optional）, GEMINI_MODEL（optional，預設 gemini-3.1-flash-lite）。
 import math
 
 import modal
@@ -72,7 +76,85 @@ class WhisperLarge:
         except Exception as e:  # noqa: BLE001
             print("cam++ load failed — diarization disabled:", e)
             self.spk_model = None
+        # SenseVoice：口語地道參照（俾 Gemini 融合用）；起唔到就冇融合，Whisper-only
+        try:
+            from funasr import AutoModel
+            self.sv_model = AutoModel(
+                model="iic/SenseVoiceSmall", trust_remote_code=True,
+                vad_model="fsmn-vad", vad_kwargs={"max_single_segment_time": 30000},
+                device="cuda:0", disable_update=True,
+            )
+        except Exception as e:  # noqa: BLE001
+            print("SenseVoice load failed — Gemini fusion disabled:", e)
+            self.sv_model = None
         model_cache.commit()
+
+    def _sensevoice_text(self, wav_path):
+        """SenseVoice 整段口語轉錄（做 Gemini 融合嘅口語參照）。失敗返空字串。"""
+        if not self.sv_model:
+            return ""
+        try:
+            from funasr.utils.postprocess_utils import rich_transcription_postprocess
+            res = self.sv_model.generate(input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300)
+            info = res[0].get("sentence_info")
+            if info:
+                parts = [rich_transcription_postprocess(x.get("text", "")).strip() for x in info]
+                text = " ".join(p for p in parts if p)
+            else:
+                text = rich_transcription_postprocess(res[0].get("text", "")).strip()
+            return self.cc.convert(text)
+        except Exception as e:  # noqa: BLE001
+            print("sensevoice reference pass failed:", e)
+            return ""
+
+    def _gemini_fuse(self, segments, sv_text):
+        """用 Gemini 逐句融合 Whisper（準）＋ SenseVoice（口語）。返回同 segments 等長嘅
+        list of str；GEMINI_API_KEY 未 set、HTTP 錯、句數對唔上、任何 exception → None（Whisper-only）。"""
+        import json
+        import os
+
+        import requests
+        key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not key or not segments or not sv_text:
+            return None
+        model = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.1-flash-lite"
+        a_lines = "\n".join(f"{i}. {s['text']}" for i, s in enumerate(segments))
+        prompt = (
+            "以下係同一段廣東話錄音嘅兩個 AI 轉錄。\n"
+            "【A】逐句轉錄（字義較準，但可能書面語化）：\n" + a_lines + "\n\n"
+            "【B】另一引擎嘅整段口語轉錄（口語地道，但可能有錯字）：\n" + sv_text + "\n\n"
+            "任務：逐句改良 A。每句以 A 嘅字義為準，但要寫成地道廣東話口語"
+            "（係囉／㗎／喇／佢哋／喺度／咁樣／唔係／喇喎），參考 B 還原口語講法，"
+            "順手修正明顯錯別字。粗口、語氣詞一律照留。唔准加內容、唔准刪句、"
+            "唔准書面語化、唔准改變意思。\n"
+            "只輸出一個 JSON array of strings，同 A 一樣句數、一樣次序，逐句對應。"
+        )
+        body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": {"type": "ARRAY", "items": {"type": "STRING"}},
+            },
+        }
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        try:
+            r = requests.post(
+                url, headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                json=body, timeout=180,
+            )
+            if r.status_code >= 300:
+                print("gemini http", r.status_code, r.text[:300])
+                return None
+            txt = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+            arr = json.loads(txt)
+            if isinstance(arr, list) and len(arr) == len(segments):
+                return [str(x) for x in arr]
+            print("gemini length mismatch:", (len(arr) if isinstance(arr, list) else "n/a"), "vs", len(segments))
+            return None
+        except Exception as e:  # noqa: BLE001
+            print("gemini fuse failed:", e)
+            return None
 
     def _diarize(self, wav_path, segments):
         """逐句抽 cam++ 聲紋 embedding → cosine 聚類。原則：寧缺毋濫——
@@ -211,6 +293,20 @@ class WhisperLarge:
                 spk_ids = self._diarize(wav, segments)
                 for seg, spk in zip(segments, spk_ids):
                     seg["spk"] = spk
+
+                # Option B：SenseVoice 口語參照 → Gemini 逐句融合（還原口語 + 修錯字）。
+                # 未 set GEMINI_API_KEY 就連 SenseVoice 都唔行（慳 GPU）；任何一步唔成功
+                # 都 fallback 出 Whisper-only，時間軸/講者/信心度不變。
+                fused = None
+                if os.environ.get("GEMINI_API_KEY", "").strip():
+                    sv_text = self._sensevoice_text(wav)
+                    if sv_text:
+                        fused = self._gemini_fuse(segments, sv_text)
+                if fused:
+                    for seg, t in zip(segments, fused):
+                        t = self.cc.convert((t or "").strip())
+                        if t:
+                            seg["text"] = t
             report({"segments": segments, "duration_ms": duration_ms})
         except Exception as e:  # noqa: BLE001
             report({"error": str(e)[:300]})
