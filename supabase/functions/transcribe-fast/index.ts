@@ -3,11 +3,14 @@
 //   ask the Modal endpoint to transcribe in the BACKGROUND (returns fast) -> return { job_id }.
 // The client polls public.transcribe_jobs until status = done/error. Modal posts the result to
 // transcribe-callback when finished, so a long cold start never times out this request.
+//   body.engine: 'accurate'（預設・Whisper large-v3・有逐段 confidence）|
+//                'fast'（SenseVoice・講者分離＋背景音標註）
+//   —— 產品原則（Ming 2026-07-18）：一定要準行先，預設用最準嗰個。
 //   200: { job_id, tier, quota }
 //   402: { error:'quota', tier, used_min, quota }   403 not_pro / forbidden path
 //   503 endpoint_unconfigured · 502 spawn/endpoint error
-// Config: SENSEVOICE_URL + SENSEVOICE_TOKEN from Vault via transcribe_config() (service-role RPC),
-// env-var fallback. (SUPABASE_* auto-injected.)
+// Config: SENSEVOICE_URL / WHISPER_URL + SENSEVOICE_TOKEN from Vault via transcribe_config()
+// (service-role RPC), env-var fallback. (SUPABASE_* auto-injected.)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const QUOTA_MIN: Record<string, number> = { pro: 300, max: 1200 };
@@ -32,9 +35,10 @@ Deno.serve(async (req) => {
     const { data: { user } } = await asUser.auth.getUser(authz.replace('Bearer ', ''));
     if (!user) return json({ error: 'not signed in' }, 401);
 
-    const { storage_path, duration_ms } = await req.json();
+    const { storage_path, duration_ms, engine } = await req.json();
     if (!storage_path || typeof storage_path !== 'string') return json({ error: 'storage_path required' }, 400);
     if (!storage_path.startsWith(user.id + '/')) return json({ error: 'forbidden path' }, 403);
+    const useAccurate = engine !== 'fast';   // 預設準確模式
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
@@ -53,8 +57,11 @@ Deno.serve(async (req) => {
 
     const { data: cfg } = await admin.rpc('transcribe_config');
     const SENSEVOICE_URL = (cfg?.SENSEVOICE_URL as string) || Deno.env.get('SENSEVOICE_URL') || '';
+    const WHISPER_URL = (cfg?.WHISPER_URL as string) || Deno.env.get('WHISPER_URL') || '';
     const SENSEVOICE_TOKEN = (cfg?.SENSEVOICE_TOKEN as string) || Deno.env.get('SENSEVOICE_TOKEN') || '';
-    if (!SENSEVOICE_URL || !SENSEVOICE_TOKEN) return json({ error: 'endpoint_unconfigured' }, 503);
+    // 準確模式未 register（CI 未行過）就自動用返 SenseVoice——寧可快唔好死
+    const ENDPOINT = useAccurate && WHISPER_URL ? WHISPER_URL : SENSEVOICE_URL;
+    if (!ENDPOINT || !SENSEVOICE_TOKEN) return json({ error: 'endpoint_unconfigured' }, 503);
 
     // Signed URL valid long enough to cover a cold start + long transcription (30 min).
     const { data: signed, error: signErr } =
@@ -70,7 +77,7 @@ Deno.serve(async (req) => {
     // Ask Modal to spawn the background job. This returns fast (just an ack); the heavy work runs
     // on Modal and posts back to transcribe-callback.
     try {
-      const r = await fetch(SENSEVOICE_URL, {
+      const r = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${SENSEVOICE_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio_url: signed.signedUrl, job_id: job.id, language: 'yue', diarize: true }),

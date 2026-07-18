@@ -12,6 +12,7 @@ on:
     paths:
       - 'sensevoice/**'
       - 'motionlab-cloud/**'
+      - 'whisper/**'
       - '.github/workflows/modal-deploy.yml'
 
 permissions:
@@ -80,6 +81,15 @@ jobs:
           echo "POSE_ENDPOINT_URL=$PURL" >> "$GITHUB_ENV"
           echo "Deployed pose endpoint: $PURL"
 
+      - name: Deploy whisper endpoint (準確模式 large-v3)
+        run: |
+          set -euo pipefail
+          modal deploy whisper/modal_app.py 2>&1 | tee whisper-deploy.log
+          WURL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.modal\.run' whisper-deploy.log | tail -1)
+          if [ -z "$WURL" ]; then echo "no whisper endpoint URL in deploy output" >&2; exit 1; fi
+          echo "WHISPER_ENDPOINT_URL=$WURL" >> "$GITHUB_ENV"
+          echo "Deployed whisper endpoint: $WURL"
+
       - name: Register endpoint URL
         run: |
           set -euo pipefail
@@ -88,7 +98,7 @@ jobs:
           RES=$(curl -sS -X POST \
             "https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1/ci-config" \
             -H 'Content-Type: application/json' \
-            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\",\"POSE_URL\":\"$POSE_ENDPOINT_URL\"}}")
+            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\",\"POSE_URL\":\"$POSE_ENDPOINT_URL\",\"WHISPER_URL\":\"$WHISPER_ENDPOINT_URL\"}}")
           echo "register response: $RES"
           [ "$(jq -r '.registered // false' <<<"$RES")" = "true" ]
 

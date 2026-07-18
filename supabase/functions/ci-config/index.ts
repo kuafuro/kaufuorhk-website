@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   if (body.register) {
-    const ALLOWED = ['SENSEVOICE_URL', 'POSE_URL'];   // whitelist: only endpoint URLs, only these names
+    const ALLOWED = ['SENSEVOICE_URL', 'POSE_URL', 'WHISPER_URL'];   // whitelist: only endpoint URLs, only these names
     const entries = Object.entries(body.register).filter(([k]) => ALLOWED.includes(k));
     if (!entries.length) return json({ error: 'nothing to register' }, 400);
     for (const [name, url] of entries) {

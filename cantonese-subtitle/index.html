@@ -131,6 +131,11 @@
     font-family:-apple-system,"PingFang HK","Noto Sans TC",monospace;white-space:pre-wrap;}
   .segview{max-height:400px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
   .seg{display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.9rem}
+  .seg.conf-low{background:#f9e9e6}   /* 信心 <60%：幫手搵返最需要校嗰啲句 */
+  .seg.conf-mid{background:#f3ecd9}   /* 信心 60–80% */
+  .seg .ts{cursor:pointer}
+  .seg .ts:hover{color:var(--ink);text-decoration:underline}
+  .seg .tx[contenteditable]:focus{outline:2px solid #a83228;outline-offset:2px;border-radius:4px}
   .seg:last-child{border-bottom:none}
   .seg .ts{color:var(--muted);font-size:.72rem;white-space:nowrap;padding-top:2px;font-variant-numeric:tabular-nums}
   .seg .tx{flex:1}
@@ -193,7 +198,11 @@
       </button>
     </div>
     <div class="notice info" id="cloudNote" style="display:none">
-      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,分「邊個講」+ 時間軸,自動標註背景音（[音樂][笑聲][掌聲]）。<b>背景處理</b> —— 首次開機約 1–2 分鐘,之後好快,唔使企喺度等。
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">
+        <label style="cursor:pointer"><input type="radio" name="cloudMode" value="accurate" checked> 🎯 <b>準確模式</b>（預設・Whisper large-v3・慢啲但明顯準啲・逐句信心度）</label>
+        <label style="cursor:pointer"><input type="radio" name="cloudMode" value="fast"> ⚡ 快速模式（SenseVoice・分「邊個講」＋背景音標註）</label>
+      </div>
+      <b>背景處理</b> —— 首次開機要等幾分鐘,之後好快,唔使企喺度等。
       音檔會上傳到我哋嘅私密處理伺服器,轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
     </div>
 
@@ -275,7 +284,9 @@
       <textarea id="outText" spellcheck="false"></textarea>
     </div>
     <div id="tab-seg" style="display:none">
+      <audio id="playback" controls style="width:100%;margin-bottom:8px;display:none"></audio>
       <div class="segview" id="segView"></div>
+      <p class="hint" id="segHint" style="display:none;margin-top:6px"></p>
     </div>
     <div class="btnrow">
       <button class="btn" id="copyText">📋 Copy 全文</button>
@@ -413,12 +424,28 @@ drop.addEventListener("drop", e => { const f = e.dataTransfer.files?.[0]; if (f)
 fileInput.addEventListener("change", e => { const f = e.target.files?.[0]; if (f) setFile(f); });
 
 function fmtSize(b){ return b > 1e9 ? (b/1e9).toFixed(1)+" GB" : b > 1e6 ? (b/1e6).toFixed(1)+" MB" : (b/1e3).toFixed(0)+" KB"; }
+let playbackUrl = null;
 function setFile(f){
   audioFile = f;
   const info = $("fileInfo");
   info.style.display = "block";
   info.innerHTML = `已揀：<b>${f.name}</b> <span class="muted">(${fmtSize(f.size)})</span>`;
   $("run").disabled = false;
+  // 分段 view 嘅「撳時間跳去嗰句」試聽用（video 檔一樣播到音軌）
+  try {
+    if (playbackUrl) URL.revokeObjectURL(playbackUrl);
+    playbackUrl = URL.createObjectURL(f);
+    const pb = $("playback");
+    pb.src = playbackUrl;
+    pb.style.display = "";
+  } catch (_) {}
+}
+function seekAudio(t){
+  const pb = $("playback");
+  if (!pb || !pb.src) return;
+  pb.style.display = "";
+  pb.currentTime = Math.max(0, t || 0);
+  pb.play().catch(() => {});
 }
 
 /* ---------- 🎙 直接錄音（MediaRecorder → 錄完當一個檔案入返同一條流程） ---------- */
@@ -648,12 +675,13 @@ async function runCloud(){
     if (up.error) throw new Error((en ? "upload failed: " : "上傳失敗：") + up.error.message);
 
     setBar(45); setText(`<span class="spinner"></span>${en ? "Submitting to cloud…" : "提交到雲端…"}`);
+    const mode = document.querySelector('input[name="cloudMode"]:checked')?.value || "accurate";
     const resp = await fetch(`${BILLING.EDGE_BASE}/transcribe-fast`, {
       method: "POST",
       // 唔好加 apikey header：edge function 嘅 CORS Allow-Headers 冇佢，preflight 會被拒
       // （「Failed to fetch」2026-07-18 嗰單）。verify_jwt 靠 Authorization 就夠。
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      body: JSON.stringify({ storage_path: path, duration_ms: Math.round(dur * 1000) }),
+      body: JSON.stringify({ storage_path: path, duration_ms: Math.round(dur * 1000), engine: mode }),
     });
 
     if (resp.status === 402) { const j = await resp.json().catch(() => ({})); statusBox.style.display = "none"; showQuotaUpsell(j); return; }
@@ -670,6 +698,7 @@ async function runCloud(){
     const segs = (job.segments || []).map(s => ({
       start: (s.start_ms || 0) / 1000, end: (s.end_ms || 0) / 1000,
       spk: (typeof s.spk === "number" ? s.spk : null), text: (s.text || "").trim(),
+      conf: (typeof s.conf === "number" ? s.conf : null),   // 準確模式先有（低過 0.8 會 highlight）
     })).filter(s => s.text);
     if (!segs.length) throw new Error(en ? "empty result" : "轉唔到字（可能係靜音或者格式問題）");
 
@@ -836,14 +865,38 @@ function applyGate(){
 
   const sv = $("segView");
   sv.innerHTML = "";
+  const splitOn = parseInt($("maxLine")?.value || "0", 10) > 0;
+  const editable = pro && !splitOn && !gated;   // 1:1 對應原始段先可以就地編輯（分割/預覽模式唔得）
   shownSegs = applySplit(shownSegs);   // 每行上限：顯示同匯出一致
-  shownSegs.forEach(s => {
+  shownSegs.forEach((s, i) => {
     const row = document.createElement("div");
-    row.className = "seg";
-    row.innerHTML = `<div class="ts">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
-    row.querySelector(".tx").textContent = segText(s);
+    row.className = "seg" + (s.conf != null && s.conf < 0.6 ? " conf-low" : s.conf != null && s.conf < 0.8 ? " conf-mid" : "");
+    row.innerHTML = `<div class="ts" title="撳一下跳去呢句">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
+    const tx = row.querySelector(".tx");
+    tx.textContent = segText(s);
+    row.querySelector(".ts").addEventListener("click", () => seekAudio(s.start));
+    if (editable){
+      try { tx.contentEditable = "plaintext-only"; } catch (_) { tx.contentEditable = "true"; }
+      tx.spellcheck = false;
+      // 就地校字：寫返入 lastResult（SRT/VTT/txt 匯出即刻用新字）
+      tx.addEventListener("input", () => {
+        const clean = (tx.textContent || "").replace(/^講者\d+：/, "").trim();
+        if (lastResult && lastResult.segs[i]) {
+          lastResult.segs[i].text = clean;
+          lastResult.fullText = lastResult.segs.map(x => (lastResult.multiSpk && x.spk != null ? `講者${x.spk + 1}：` : "") + x.text).join("\n");
+          $("outText").value = lastResult.fullText;
+        }
+      });
+    }
     sv.appendChild(row);
   });
+  $("segHint").style.display = "";
+  $("segHint").textContent = editable
+    ? (en ? "Click a timestamp to jump; click any line to edit it — exports use your edits. Tinted lines = lower AI confidence."
+          : "撳時間＝跳去嗰句試聽；撳句字＝直接改，匯出即刻用你改完嘅版本。有底色嗰啲句＝AI 冇咁有信心，優先校佢哋。")
+    : (splitOn ? (en ? "Line-length split is on — switch it to 唔限 to edit text inline."
+                     : "「每行上限」開咗——想就地改字，將佢較返「唔限」。")
+               : "");
 
   const pct = Math.min(100, Math.round((budget / Math.max(1, total)) * 100));
   $("resultMeta").textContent = pro
