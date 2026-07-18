@@ -32,6 +32,7 @@ function reminderHours() {
 
 // 行一次:掃描所有到期提醒窗,發訊並記錄
 export async function runReminders() {
+  if (!supabase) { console.warn('[reminders] Supabase 未配置，跳過'); return []; }
   const hoursList = reminderHours();
   const windowMin = parseInt(process.env.SCAN_WINDOW_MINUTES || '20', 10);
   const results = [];

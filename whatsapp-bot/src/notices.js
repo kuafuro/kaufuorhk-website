@@ -17,6 +17,7 @@ function hkDateTime(session_date, start_time) {
 }
 
 export async function runCancelNotices() {
+  if (!supabase) { console.warn('[notices] Supabase 未配置，跳過'); return []; }
   const template = process.env.WHATSAPP_CANCEL_TEMPLATE_NAME || 'class_cancelled';
   const results = [];
 
