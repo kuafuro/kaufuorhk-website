@@ -5,12 +5,12 @@
 //   200: { job_id, tier, quota }
 //   402: { error:'quota', tier, used_min, quota }   403 forbidden path
 //   503 endpoint_unconfigured · 502 spawn error
-// 雲端開放俾所有登入用戶（2026-07-18）。唔蝕錢改由配額把關：free 10 / pro 60 / max 180
+// 雲端開放俾所有登入用戶（2026-07-18）。唔蝕錢改由配額把關：free 2 / pro 60 / max 180
 // 分鐘/月，先查先開 GPU；3 分鐘/條上限（Modal 內再硬檢查）；影片 12 小時 sweep 剷走。
 // Config: POSE_URL + SENSEVOICE_TOKEN from Vault via pose_config() (service-role RPC).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const QUOTA_MIN: Record<string, number> = { free: 10, pro: 60, max: 180 };
+const QUOTA_MIN: Record<string, number> = { free: 2, pro: 60, max: 180 };
 const MAX_MS = 183_000;
 
 const cors = {
