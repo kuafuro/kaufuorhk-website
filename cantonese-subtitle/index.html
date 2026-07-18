@@ -168,9 +168,14 @@
     <div id="drop" tabindex="0" role="button" aria-label="揀檔案或者拖入嚟">
       <div class="big">📂</div>
       <div class="t">撳一下揀檔案，或者拖入嚟</div>
-      <div class="s">Podcast、訪問、會議錄音都得 · 檔案唔會離開你部機</div>
+      <div class="s">Podcast、訪問、會議錄音都得 · 檔案唔會離開你部機 · 粗口、語氣詞照出唔過濾</div>
     </div>
     <input type="file" id="file" accept="audio/*,video/*" hidden>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+      <button class="btn" id="recBtn">🎙 直接錄音</button>
+      <span id="recTime" class="muted fs-sm" style="display:none;color:#a83228;font-weight:700">● 00:00</span>
+      <span class="muted fs-xs">訪問／會議即錄即轉，錄完自動當一個檔案</span>
+    </div>
     <div id="fileInfo"></div>
   </div>
 
@@ -188,8 +193,19 @@
       </button>
     </div>
     <div class="notice info" id="cloudNote" style="display:none">
-      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,分「邊個講」+ 時間軸。<b>背景處理</b> —— 首次開機約 1–2 分鐘,之後好快,唔使企喺度等。
+      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,分「邊個講」+ 時間軸,自動標註背景音（[音樂][笑聲][掌聲]）。<b>背景處理</b> —— 首次開機約 1–2 分鐘,之後好快,唔使企喺度等。
       音檔會上傳到我哋嘅私密處理伺服器,轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
+    </div>
+
+    <div class="grid2">
+      <label class="f">字幕每行上限 <span class="muted">（自動分割・免費）</span>
+        <select id="maxLine">
+          <option value="0" selected>唔限（原句）</option>
+          <option value="14">14 字 — 豎屏短片</option>
+          <option value="20">20 字 — 一般影片</option>
+          <option value="28">28 字 — 闊屏</option>
+        </select>
+      </label>
     </div>
 
     <div class="grid2" id="localOpts">
@@ -404,6 +420,73 @@ function setFile(f){
   info.innerHTML = `已揀：<b>${f.name}</b> <span class="muted">(${fmtSize(f.size)})</span>`;
   $("run").disabled = false;
 }
+
+/* ---------- 🎙 直接錄音（MediaRecorder → 錄完當一個檔案入返同一條流程） ---------- */
+let recRec = null, recChunks = [], recT0 = 0, recTimer = null, recStream = null;
+const recClock = ms => { const s = Math.floor(ms/1000); return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; };
+$("recBtn").addEventListener("click", async () => {
+  if (recRec) { recRec.stop(); return; }                       // 撳多次＝停止
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
+    toast("你嘅瀏覽器唔支援錄音——請用檔案上載"); return;
+  }
+  try { recStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { toast("開唔到咪高風——請喺瀏覽器俾錄音權限"); return; }
+  const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(m => MediaRecorder.isTypeSupported(m)) || "";
+  recChunks = [];
+  recRec = new MediaRecorder(recStream, mime ? { mimeType: mime } : undefined);
+  recRec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+  recRec.onstop = () => {
+    clearInterval(recTimer);
+    recStream.getTracks().forEach(tr => tr.stop());
+    const type = recRec.mimeType || "audio/webm";
+    const ext = type.includes("mp4") ? "m4a" : "webm";
+    const d = new Date(), p = n => String(n).padStart(2, "0");
+    const f = new File(recChunks, `錄音_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.${ext}`, { type });
+    recRec = null;
+    $("recBtn").textContent = "🎙 直接錄音";
+    $("recTime").style.display = "none";
+    if (f.size < 1000) { toast("錄唔到聲——檢查咪高風之後再試"); return; }
+    setFile(f);
+    toast("錄好喇 ✓ 撳「開始轉字幕」");
+  };
+  recRec.start();
+  recT0 = Date.now();
+  $("recBtn").textContent = "⏹ 停止錄音";
+  $("recTime").style.display = "";
+  $("recTime").textContent = "● 00:00";
+  recTimer = setInterval(() => { $("recTime").textContent = "● " + recClock(Date.now() - recT0); }, 500);
+});
+
+/* ---------- 字幕自動分割（每行上限 N 字，時間按字數比例插值）——CantoSub 收費，我哋免費 ---------- */
+function splitSeg(s, maxN){
+  const txt = (s.text || "");
+  if (!maxN || txt.length <= maxN) return [s];
+  const parts = [];
+  let rest = txt;
+  while (rest.length > maxN){
+    let cut = -1;
+    for (let i = maxN; i >= Math.ceil(maxN/2); i--){          // 優先喺標點／空格後斬
+      if (/[，。！？；、,.!?;\s]/.test(rest[i-1])){ cut = i; break; }
+    }
+    if (cut < 0) cut = maxN;
+    parts.push(rest.slice(0, cut)); rest = rest.slice(cut);
+  }
+  if (rest.trim()) parts.push(rest);
+  const dur = Math.max(0, (s.end ?? 0) - (s.start ?? 0));
+  const total = parts.reduce((a, p) => a + p.length, 0) || 1;
+  let t = s.start ?? 0;
+  return parts.map(p => {
+    const d = dur * (p.length / total);
+    const out = { ...s, start: t, end: t + d, text: p.trim() };
+    t += d;
+    return out;
+  }).filter(o => o.text);
+}
+function applySplit(segs){
+  const n = parseInt($("maxLine")?.value || "0", 10);
+  return n ? segs.flatMap(s => splitSeg(s, n)) : segs;
+}
+$("maxLine").addEventListener("change", () => { if (lastResult) applyGate(); });
 
 /* ---------- 解碼音訊 → 16kHz mono Float32 ---------- */
 async function decodeTo16k(file){
@@ -753,6 +836,7 @@ function applyGate(){
 
   const sv = $("segView");
   sv.innerHTML = "";
+  shownSegs = applySplit(shownSegs);   // 每行上限：顯示同匯出一致
   shownSegs.forEach(s => {
     const row = document.createElement("div");
     row.className = "seg";
@@ -832,8 +916,8 @@ function exportGate(){
   return false;
 }
 $("dlTxt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".txt", lastResult.fullText); });
-$("dlSrt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".srt", buildSRT(lastResult.segs)); });
-$("dlVtt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".vtt", buildVTT(lastResult.segs)); });
+$("dlSrt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".srt", buildSRT(applySplit(lastResult.segs))); });
+$("dlVtt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".vtt", buildVTT(applySplit(lastResult.segs))); });
 
 async function copy(text){
   try { await navigator.clipboard.writeText(text); toast("已複製 ✓"); }

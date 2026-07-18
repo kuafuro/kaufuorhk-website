@@ -10,12 +10,29 @@
 # Modal secret "sensevoice" must provide: SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET.
 # Deploy: see sensevoice/README.md (or the Colab notebook). SenseVoice/FunASR © Alibaba (attribution).
 
+import re
+
 import modal
 
 # fastapi is needed LOCALLY too (Header(...) default is evaluated when `modal deploy` builds the graph).
 from fastapi import Header, HTTPException
 
 app = modal.App("kuafuor-sensevoice")
+
+# SenseVoice AED event tokens 經 funasr rich_transcription_postprocess 會變 emoji——
+# 轉做觀眾睇得明嘅中文標註；情緒 emoji（字幕唔需要）就清走。
+# 講嘢內容一律照出，唔過濾粗口／語氣詞——呢個係產品原則。
+EVENT_TAGS = {"🎼": "[音樂]", "👏": "[掌聲]", "😀": "[笑聲]", "😭": "[喊聲]", "🤧": "[咳嗽]"}
+EMO_STRIP = "😊😔😡😰🤢😮"
+
+
+def tagify(text):
+    for k, v in EVENT_TAGS.items():
+        text = text.replace(k, v)
+    for e in EMO_STRIP:
+        text = text.replace(e, "")
+    text = re.sub(r"(\[[^\]]+\])(?:\1)+", r"\1", text)   # [音樂][音樂] → [音樂]
+    return text.strip()
 
 MODEL_DIR = "/models"
 model_cache = modal.Volume.from_name("kuafuor-sensevoice-cache", create_if_missing=True)
@@ -82,7 +99,7 @@ class SenseVoice:
         segments = []
         if info:
             for seg in info:
-                text = self.cc.convert(rich_transcription_postprocess(seg.get("text", "")).strip())
+                text = tagify(self.cc.convert(rich_transcription_postprocess(seg.get("text", "")).strip()))
                 if not text:
                     continue
                 segments.append({
@@ -90,7 +107,7 @@ class SenseVoice:
                     "spk": int(seg.get("spk", 0)), "text": text,
                 })
         else:
-            text = self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip())
+            text = tagify(self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip()))
             if text:
                 segments.append({"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text})
         return segments
@@ -106,7 +123,7 @@ class SenseVoice:
                 device=self.device, disable_update=True,
             )
         res = self.plain_model.generate(input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300)
-        text = self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip())
+        text = tagify(self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip()))
         return [{"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text}] if text else []
 
     @modal.method()
