@@ -15,7 +15,9 @@ const MAX_MS = 183_000;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // apikey/x-client-info 都准埋：有啲 client（supabase-js functions.invoke、舊 code）會自動帶，
+  // 唔准嘅話 preflight 直接被拒，前端只會見到「Failed to fetch」
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (b: unknown, status = 200) =>

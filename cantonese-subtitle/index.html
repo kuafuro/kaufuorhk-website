@@ -567,7 +567,9 @@ async function runCloud(){
     setBar(45); setText(`<span class="spinner"></span>${en ? "Submitting to cloud…" : "提交到雲端…"}`);
     const resp = await fetch(`${BILLING.EDGE_BASE}/transcribe-fast`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "apikey": BILLING.SB_KEY },
+      // 唔好加 apikey header：edge function 嘅 CORS Allow-Headers 冇佢，preflight 會被拒
+      // （「Failed to fetch」2026-07-18 嗰單）。verify_jwt 靠 Authorization 就夠。
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify({ storage_path: path, duration_ms: Math.round(dur * 1000) }),
     });
 
