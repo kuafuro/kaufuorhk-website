@@ -39,7 +39,7 @@
   .card{border-radius:6px}
   .lang{border-radius:4px}
   .lang button.on{background:var(--accent); color:#fff}
-  .tabs button,button.primary,button.ghost,label.f input,.row2 button,.user-row select{border-radius:4px}
+  .tabs button,button.primary,button.ghost,button.google-btn,label.f input,.row2 button,.user-row select{border-radius:4px}
   .steps li .n,.avatar{border-radius:50%}
   :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   a{text-underline-offset:3px}
@@ -95,6 +95,15 @@
     width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--line-strong);background:none;
     color:var(--ink);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;
   }
+  .or-div{display:flex;align-items:center;gap:10px;margin:16px 0 2px;color:var(--muted);font-size:.74rem}
+  .or-div::before,.or-div::after{content:"";flex:1;height:1px;background:var(--line)}
+  button.google-btn{
+    width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--line-strong);background:#fff;
+    color:#201f1d;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:8px;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  button.google-btn:disabled{opacity:.55}
+  button.google-btn svg{width:18px;height:18px;flex:none}
   .aux{font-size:.82rem;color:var(--muted);text-align:center;margin-top:14px}
   .aux a{color:var(--ink);cursor:pointer;text-decoration:underline;font-weight:600}
   .msg{font-size:.84rem;border-radius:10px;padding:11px 13px;margin-top:12px;display:none;line-height:1.55}
@@ -173,6 +182,11 @@
     <label class="f"><span data-t="emailLabel"></span><input type="email" id="email" autocomplete="email" placeholder="you@example.com"></label>
     <label class="f"><span data-t="passLabel"></span><input type="password" id="password" autocomplete="current-password"></label>
     <button class="primary" id="submitBtn"></button>
+    <div class="or-div"><span data-t="orContinue"></span></div>
+    <button class="google-btn" id="googleBtn">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+      <span data-t="googleBtn"></span>
+    </button>
     <div class="aux"><a id="forgot" data-t="forgotLink"></a></div>
   </div>
 
@@ -301,6 +315,7 @@ const I18N = {
     step3: "返嚟呢頁登入，即可使用",
     nameLabel: "名（俾教練認得你）", emailLabel: "電郵", passLabel: "密碼（至少6位）",
     loginBtn: "登入", signupBtn: "建立帳戶（第1步）",
+    orContinue: "或", googleBtn: "用 Google 繼續",
     forgotLink: "唔記得密碼？撳呢度重設",
     statusLoginTitle: "你而家：未登入。",
     statusLogin: "已有帳戶就直接登入；未有帳戶請撳「註冊」，3 步搞掂。",
@@ -379,6 +394,7 @@ const I18N = {
     step3: "Come back to this page and log in",
     nameLabel: "Name (so coaches recognise you)", emailLabel: "Email", passLabel: "Password (min. 6 characters)",
     loginBtn: "Log in", signupBtn: "Create account (Step 1)",
+    orContinue: "or", googleBtn: "Continue with Google",
     forgotLink: "Forgot your password? Reset it here",
     statusLoginTitle: "You are: not logged in.",
     statusLogin: "Have an account? Log in. New here? Tap “Register” — 3 easy steps.",
@@ -795,6 +811,19 @@ $("#submitBtn").onclick = async ()=>{
   } finally { $("#submitBtn").disabled = false; }
 };
 $("#password").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#submitBtn").click(); });
+
+// Google 登入（Supabase Google provider 已 Enabled）：繞過確認電郵同 email rate limit。
+// 回到本頁後 supabase-js 會自動處理 OAuth callback → onAuthStateChange → render()。
+$("#googleBtn").onclick = async ()=>{
+  const box = $("#authMsg");
+  if(!sb){ msg(box, t("errUnknown"), "err"); return; }
+  $("#googleBtn").disabled = true;
+  const nx = new URLSearchParams(location.search).get("next");
+  const back = location.origin + "/login/" + (nx ? "?next=" + encodeURIComponent(nx) : "");
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: back } });
+  if(error){ $("#googleBtn").disabled = false; msg(box, friendlyError(error), "err"); }
+  // 成功嘅話瀏覽器即刻 redirect 去 Google，唔會返到呢行
+};
 
 // 確認信重寄冷卻：GoTrue 對同一地址有 per-request 冷卻（同埋內置電郵服務有每小時上限），
 // 客戶端封住個掣做倒數，避免用戶連撳撞 429。語言切換時 applyStatic 會蓋走個 label，
