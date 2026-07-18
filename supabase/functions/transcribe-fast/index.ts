@@ -14,7 +14,9 @@ const QUOTA_MIN: Record<string, number> = { pro: 300, max: 1200 };
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // apikey/x-client-info 都准埋：有啲 client 會自動帶，唔准嘅話 preflight 直接被拒，
+  // 前端只會見到「Failed to fetch」（2026-07-18 雲端字幕壞咗嗰單就係咁）
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (b: unknown, status = 200) =>
