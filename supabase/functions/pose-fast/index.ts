@@ -1,15 +1,16 @@
 // pose-fast — START an async Motion Lab cloud analysis (mirrors transcribe-fast).
-//   auth (user JWT) -> has_pro('motionlab') -> tier quota pre-flight -> pending job ->
+//   auth (user JWT) -> tier quota pre-flight -> pending job ->
 //   pre-sign the input download URL + the annotated-output UPLOAD URL -> spawn Modal -> { job_id }.
 // The client polls public.motion_jobs until done/error. Modal posts back to pose-callback.
 //   200: { job_id, tier, quota }
-//   402: { error:'quota', tier, used_min, quota }   403 not_pro / forbidden path
+//   402: { error:'quota', tier, used_min, quota }   403 forbidden path
 //   503 endpoint_unconfigured · 502 spawn error
-// 唔蝕錢：quota 先查先鎖（pro 60 / max 180 分鐘/月）、3 分鐘/條上限（Modal 內再硬檢查）。
+// 雲端開放俾所有登入用戶（2026-07-18）。唔蝕錢改由配額把關：free 10 / pro 60 / max 180
+// 分鐘/月，先查先開 GPU；3 分鐘/條上限（Modal 內再硬檢查）；影片 12 小時 sweep 剷走。
 // Config: POSE_URL + SENSEVOICE_TOKEN from Vault via pose_config() (service-role RPC).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const QUOTA_MIN: Record<string, number> = { pro: 60, max: 180 };
+const QUOTA_MIN: Record<string, number> = { free: 10, pro: 60, max: 180 };
 const MAX_MS = 183_000;
 
 const cors = {
@@ -38,12 +39,9 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    const { data: pro } = await admin.rpc('has_pro', { p_user: user.id, p_product: 'motionlab' });
-    if (!pro) return json({ error: 'not_pro' }, 403);
-
     const { data: tierRaw } = await admin.rpc('entitlement_tier', { p_user: user.id, p_product: 'motionlab' });
-    const tier = (tierRaw as string) || 'pro';
-    const quota = QUOTA_MIN[tier] ?? QUOTA_MIN.pro;
+    const tier = (tierRaw as string) || 'free';
+    const quota = QUOTA_MIN[tier] ?? QUOTA_MIN.free;
     const { data: usedRaw } = await admin.rpc('motionlab_minutes_this_month', { p_user: user.id });
     const usedMin = Number(usedRaw ?? 0);
     const estMin = estMs / 60000;

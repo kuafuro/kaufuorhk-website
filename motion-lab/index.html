@@ -363,7 +363,32 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 
 <!-- ==================== MOTION TAB ==================== -->
 <section class="tab-panel" id="tab-motion">
+  <!-- ☁️ 雲端精析（主打路徑）：上載片 → 伺服器 yolo11m-pose + ByteTrack 多人追蹤 → 標註影片＋統計 -->
+  <div class="card" id="clCard" style="border-color:var(--brand)">
+    <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">建議用呢個 · 伺服器級 AI・唔佔你部機</small></h3>
+    <p class="hint">上載訓練片，雲端伺服器逐格畫骨架、同時追蹤場上<b>每一個人</b>，計手速同揮拳次數，俾返一條<b>標註好嘅影片</b>你下載。運算全部喺雲端做——部機舊、電量低都用得。影片<b>只用作今次分析，最遲 12 小時自動刪除</b>。登入即可用：免費每月 10 分鐘・Pro 60・Max 180（每條片上限 3 分鐘）。</p>
+    <div class="controls">
+      <button class="btn primary" id="clUploadBtn">🎬 揀片・開始精析</button>
+      <input type="file" id="clFile" accept="video/*" hidden>
+      <span class="hint" id="clQuota" style="align-self:center;margin:0"></span>
+    </div>
+    <div id="clProgWrap" style="display:none;margin-top:12px">
+      <div style="height:6px;border-radius:99px;background:var(--surface);overflow:hidden">
+        <div id="clProgFill" style="height:100%;width:10%;background:var(--brand);transition:width .3s"></div>
+      </div>
+      <div class="hint" id="clStatusMsg" style="margin-top:6px"></div>
+    </div>
+    <div id="clResult" style="display:none;margin-top:12px">
+      <div style="background:#000;border-radius:10px;overflow:hidden">
+        <video id="clVideo" controls playsinline style="width:100%;display:block"></video>
+      </div>
+      <div id="clStats" style="margin-top:10px"></div>
+      <a class="btn" id="clDownload" download="motion-lab.mp4" style="margin-top:10px;display:none">⬇︎ 下載標註影片</a>
+    </div>
+  </div>
+
   <div class="card">
+    <p class="hint" style="margin:0 0 10px"><b>即時分析（本地）</b>——開鏡頭或者上載片，喺你部機即場睇骨架、對戰統計、技術分析。想睇即時畫面／A-B 對打數據就用呢個。</p>
     <div class="controls">
       <button class="btn primary" id="mCamBtn">📷 開啟鏡頭</button>
       <button class="btn" id="mFlipBtn" style="display:none">🔄 切換鏡頭</button>
@@ -383,30 +408,6 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <button class="btn" id="mStopBtn" style="display:none">⏹ 停止</button>
     </div>
     <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。畫面有多人時，<b>撳一下人物＝鎖定做拳手A</b>；<b>長撳（按住半秒）＝指定做拳手B</b>；撳橙色B＝A/B對調。</p>
-  </div>
-
-  <!-- ☁️ 雲端精析（Pro）：上載片 → 伺服器 yolo11m-pose + ByteTrack 多人追蹤 → 標註影片＋統計 -->
-  <div class="card" id="clCard" style="border-color:var(--brand)">
-    <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">Pro · 伺服器級 AI（yolo11m-pose ＋ ByteTrack 多人追蹤）</small></h3>
-    <p class="hint">同上面即時分析唔同：呢個會上載成條片去雲端，伺服器逐格畫骨架、同時追蹤場上<b>每一個人</b>，計出手速同揮拳次數，再俾返一條<b>已標註好嘅影片</b>俾你下載。啱多人、遠鏡、想留底對比嘅片段。運算喺雲端做（<b>唔佔你部機</b>），影片 12 小時後自動刪除。每條片上限 3 分鐘。</p>
-    <div class="controls">
-      <button class="btn primary" id="clUploadBtn">🎬 揀片・開始精析</button>
-      <input type="file" id="clFile" accept="video/*" hidden>
-      <span class="hint" id="clQuota" style="align-self:center;margin:0"></span>
-    </div>
-    <div id="clProgWrap" style="display:none;margin-top:12px">
-      <div style="height:6px;border-radius:99px;background:var(--surface);overflow:hidden">
-        <div id="clProgFill" style="height:100%;width:10%;background:var(--brand);transition:width .3s"></div>
-      </div>
-      <div class="hint" id="clStatusMsg" style="margin-top:6px"></div>
-    </div>
-    <div id="clResult" style="display:none;margin-top:12px">
-      <div style="background:#000;border-radius:10px;overflow:hidden">
-        <video id="clVideo" controls playsinline style="width:100%;display:block"></video>
-      </div>
-      <div id="clStats" style="margin-top:10px"></div>
-      <a class="btn" id="clDownload" download="motion-lab.mp4" style="margin-top:10px;display:none">⬇︎ 下載標註影片</a>
-    </div>
   </div>
 
   <div class="grid-2">
@@ -602,7 +603,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
     </div>
     <div class="card">
       <h3>🔬 技術與私隱</h3>
-      <p style="font-size:.86rem">本工具使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點。影像唔會上傳到任何伺服器。首次使用需要下載約 9MB 模型（之後會快取）。</p>
+      <p style="font-size:.86rem">即時分析使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點，影像唔會上傳（首次使用需下載約 9MB 模型，之後會快取）。<b>☁️ 雲端精析</b>會將你揀嘅影片上載到伺服器分析：影片<b>只用作今次分析</b>，分析完成後最遲 <b>12 小時內自動刪除</b>，唔會攞嚟做其他用途。</p>
       <p style="font-size:.86rem;margin-top:8px">公分數值由身高比例換算，屬<b>估算</b>；適合追蹤變化趨勢及作教練篩查，唔可以取代 X 光、臨床姿勢評估或醫療診斷。</p>
     </div>
     <div class="card">
@@ -625,7 +626,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 </div>
 
 <footer>
-  © 2026 Kuafuorhk.com · Kuafuor Motion Lab · Powered by MediaPipe Pose（裝置本地運算）
+  © 2026 Kuafuorhk.com · Kuafuor Motion Lab · 本地 MediaPipe ＋ ☁️ 雲端 YOLO Pose（雲端影片最遲 12 小時自動刪除）
 </footer>
 
 <div class="toast" id="toast"></div>
@@ -3982,10 +3983,11 @@ document.addEventListener("visibilitychange", ()=>{
 window.__ml = { handleDetections, tracker, coreVisOf,
   get mRun(){ return mRun; }, get mState(){ return mState; } };
 
-/* ==================== ☁️ 雲端精析（Pro）：async cloud pose pipeline ====================
-   本地即時分析永遠免費；呢個係 Pro 功能——上載片去 Supabase private bucket（RLS：Pro 先
-   寫得、只寫自己 uid 路徑）→ POST pose-fast（先查月配額先開 GPU）→ poll motion_jobs →
-   done 就用 signed URL 播返標註影片＋統計。唔佔用戶部機、影片 12 小時後 sweep 剷走。 */
+/* ==================== ☁️ 雲端精析：async cloud pose pipeline ====================
+   所有登入用戶都用得（2026-07-18 開放）——唔蝕錢改由配額把關：free 10 / pro 60 /
+   max 180 分鐘/月，pose-fast 先查先開 GPU。上載片去 private bucket（RLS：只寫自己
+   uid 路徑）→ POST pose-fast → poll motion_jobs → done 就用 signed URL 播返標註影片
+   ＋統計。唔佔用戶部機、影片 12 小時後 sweep 剷走。 */
 const POSE_FN = SB_URL + "/functions/v1/pose-fast";
 const CL_MAX_MS = 183_000, CL_MAX_BYTES = 200 * 1024 * 1024;
 let clBusy = false, clQuotaCeil = null, clPollTimer = null;
@@ -3999,7 +4001,7 @@ function clHideProg(){ $("clProgWrap").style.display = "none"; }
 
 async function clRefreshQuota(){
   const el = $("clQuota"); if(!el) return;
-  if(!sbUser || !mlPro()){ el.textContent = ""; return; }
+  if(!sbUser){ el.textContent = ""; return; }
   try{
     const { data } = await sb.rpc("motionlab_minutes_this_month", { p_user: sbUser.id });
     const used = Number(data ?? 0);
@@ -4023,12 +4025,11 @@ function clProbe(file){        // → { url, durationMs }；讀唔到就 reject
 $("clUploadBtn").addEventListener("click", () => {
   if(clBusy) return;
   if(!sbUser){
-    toast(mlEN() ? "Please log in on the 📊 Records tab first" : "請先去「📊 紀錄」分頁登入／註冊");
+    toast(mlEN() ? "Please log in on the 📊 Records tab first (free)" : "請先去「📊 紀錄」分頁登入／註冊（免費）");
     document.querySelector('.tab-btn[data-tab="records"]')?.click();
     return;
   }
-  if(!mlGate(mlEN() ? "cloud analysis" : "雲端精析")) return;
-  $("clFile").click();
+  $("clFile").click();   // 免費會員都用得——配額由 pose-fast 把關
 });
 
 $("clFile").addEventListener("change", async (e) => {
