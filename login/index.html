@@ -779,7 +779,7 @@ $("#submitBtn").onclick = async ()=>{
         options: { data: { name }, emailRedirectTo: location.origin + "/login/?welcome=1" }
       });
       if(error){ msg(box, friendlyError(error), "err"); return; }
-      if(data.session){ return; } // 唔使確認電郵嘅情況：已直接登入
+      if(data.session){ goHomeAfterLogin(); return; } // 唔使確認電郵嘅情況：已直接登入
       // Supabase 對已註冊電郵回傳「假成功」（identities 空）做私隱保護 — 唔會寄信
       if(data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0){
         setMode("login");
@@ -804,6 +804,7 @@ $("#submitBtn").onclick = async ()=>{
         }
         msg(box, friendlyError(error), "err"); return;
       }
+      goHomeAfterLogin();   // 撳「登入」成功嗰一下先跳——撳個名入嚟嘅人唔會被彈走
     }
   } finally { $("#submitBtn").disabled = false; }
 };
@@ -903,25 +904,26 @@ $("#logout").onclick = async ()=>{ await sb.auth.signOut(); showView("auth"); se
 
 /* ================= boot ================= */
 applyStatic();
+// 「啱啱登入完」先彈返主頁——唔可以齋靠 SIGNED_IN event：supabase-js 開頁
+// recover session／token refresh 都可能發 SIGNED_IN，會令撳個名入嚟睇 setting
+// 嘅人被彈走。所以：密碼登入喺 submit handler 直接跳；OAuth（Google）／確認
+// 電郵返嚟嗰下 URL 一定帶 token/code——喺 supabase-js 未剝走佢之前記低。
+const cameFromAuthLink = /access_token=|type=signup|type=invite|type=magiclink/.test(location.hash)
+  || /[?&]code=/.test(location.search);
+const cameFromRecovery = /type=recovery/.test(location.hash);
+function goHomeAfterLogin(){
+  const nx = new URLSearchParams(location.search).get("next");
+  if(nx && nx.startsWith("/") && !nx.startsWith("//") && !nx.startsWith("/\\")) return;  // render() 帶去目標頁（有角色檢查）
+  location.replace("/");
+}
 try{
   const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
   sb = createClient(SB_URL, SB_KEY);
-  let goHomeT = null;
   sb.auth.onAuthStateChange((event, session)=>{
     user = session?.user || null;
-    if(event === "PASSWORD_RECOVERY"){ clearTimeout(goHomeT); showView("recovery"); render(); return; }
+    if(event === "PASSWORD_RECOVERY"){ showView("recovery"); render(); return; }
     if(event === "SIGNED_OUT"){ showView("auth"); setMode("login"); }
-    if(event === "SIGNED_IN"){
-      // 登入完直接返主頁（?next= 有效就由 render() 帶去嗰頁）。等 400ms 係俾
-      // PASSWORD_RECOVERY 先行嘅機會——重設密碼條 link 一樣會發 SIGNED_IN。
-      clearTimeout(goHomeT);
-      goHomeT = setTimeout(()=>{
-        if(view === "recovery") return;
-        const nx = new URLSearchParams(location.search).get("next");
-        if(nx && nx.startsWith("/") && !nx.startsWith("//") && !nx.startsWith("/\\")) return;
-        location.replace("/");
-      }, 400);
-    }
+    if(event === "SIGNED_IN" && cameFromAuthLink && !cameFromRecovery){ goHomeAfterLogin(); }
     render();
   });
   user = (await sb.auth.getSession()).data.session?.user || null;
