@@ -3,13 +3,13 @@ export const BILLING = {
   SB_URL: 'https://ikzoxrvnpsseyjviawti.supabase.co',
   SB_KEY: 'sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O',
   EDGE_BASE: 'https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1',
-  STRIPE_PK: 'pk_test_51TtIDUCC4yRJntm5eKGSpWN6nE7xE8xziAYoqZZ2K3MGdI4eqU6VDQtSIeniyR2uC12xqzdzlCNGRfxPvHRAV1Rr008yL4X4CD',
-  // Stripe test-mode price IDs (created 2026-07-15).
+  STRIPE_PK: 'pk_live_51TtID5FxYGpzZTARORP8jSKuVV0vrzsXfyZcZ7YN8Q7diFZ7k6v5zYUIz8f9VKwllBqtv608CN8EpBZnR9JXKrHc00GncUnWuh',
+  // Stripe LIVE price IDs (provisioned by setup-billing 2026-07-18). all:max 價由 Vault PRICE_ALL_MAX 供（server-side）。
   PRODUCTS: {
-    all:       { price: 'price_1TtJZOCC4yRJntm59wlSzwqu', label: 'Kuafuor Pro',    monthly: 70,
-                 maxLabel: 'Kuafuor Max', maxMonthly: 120 },   // all:max 價由 setup-billing provision（Vault PRICE_ALL_MAX）
-    subtitle:  { price: 'price_1TtJZoCC4yRJntm5VErg8RCD', label: 'Subtitle Pro',   monthly: 30 },
-    motionlab: { price: 'price_1TtJaECC4yRJntm58lU2KhUb', label: 'Motion Lab Pro', monthly: 50 },
+    all:       { price: 'price_1TuSIgFxYGpzZTARbHaAFzgQ', label: 'Kuafuor Pro',    monthly: 70,
+                 maxLabel: 'Kuafuor Max', maxMonthly: 120 },
+    subtitle:  { price: 'price_1TuSIhFxYGpzZTARzgYTkLSs', label: 'Subtitle Pro',   monthly: 30 },
+    motionlab: { price: 'price_1TuSIiFxYGpzZTARxoiVp7zs', label: 'Motion Lab Pro', monthly: 50 },
   },
   SUBTITLE_FREE_PREVIEW_RATIO: 0.1,
 };
