@@ -17,6 +17,7 @@
 #   - 背景音標註係 SenseVoice「快速模式」嘅嘢
 # Modal secret "sensevoice"：SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET,
 #   GEMINI_API_KEY（optional）, GEMINI_MODEL（optional，預設 gemini-3.1-flash-lite）。
+#   GEMINI_API_KEY 已入 Vault（2026-07-19）——融合正式生效。
 import math
 
 import modal
