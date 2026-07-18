@@ -357,7 +357,7 @@ const I18N = {
     fillEmail: "請先入你嘅電郵。",
     passTooShort: "新密碼至少要6位。",
     passLeaked: "呢個密碼喺公開外洩資料庫出現過，唔安全 — 請改用另一個。（檢查只送出密碼指紋頭5個字元，密碼唔會離開你部機）",
-    nextNoRole: "你想去嘅頁面（{next}）需要 {roles} 身份，你而家係「{role}」。想開通請聯絡 Ming。",
+    nextNoRole: "你嘅帳戶用唔到嗰一頁（{next}）。有需要請聯絡 Ming。",
     roleNames: { member:"普通會員", student:"學生", coach:"菁英（教練）", admin:"Holder（主理人）" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"新星", challenger:"挑戰者", ascetic:"苦行僧" },
@@ -436,7 +436,7 @@ const I18N = {
     fillEmail: "Enter your email first.",
     passTooShort: "New password needs at least 6 characters.",
     passLeaked: "This password appears in public breach databases — please choose a different one. (Only the first 5 characters of its fingerprint are checked; the password never leaves your device.)",
-    nextNoRole: "The page you wanted ({next}) requires {roles}. You are currently “{role}”. Contact Ming to upgrade.",
+    nextNoRole: "That page ({next}) isn't available on your account. Contact Ming if you need it.",
     roleNames: { member:"Member", student:"Student", coach:"Elite (Coach)", admin:"Holder (Owner)" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"Rising Star", challenger:"Challenger", ascetic:"Ascetic" },
@@ -482,7 +482,7 @@ const roleName = r => (I18N[lang] || I18N.zh).roleNames[r] || r;
 const FEATURES = [
   // Motion Lab 個頁本身公開（主頁 showcase）；雲端拳手檔案／訓練紀錄喺 app 入面先要登入
   { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["member","student","coach","admin"] },
-  { zh:"排堂報名", en:"Class booking", url:"/schedule/", roles:["member","student","coach","admin"] },
+  { zh:"排堂報名", en:"Class booking", url:"/schedule/", roles:["student","coach","admin"] },
   { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","admin"] },
 ];
 const $ = s => document.querySelector(s);
@@ -622,18 +622,15 @@ async function render(){
     }catch(e){}
   })();
   renderPackages();
-  $("#featList").innerHTML = FEATURES.map(f=>{
-    const ok = f.roles.includes(role);
-    return `<div class="feat ${ok?"":"locked"}">
-      <span>${esc(lang==="zh"?f.zh:f.en)}<div class="need">${esc(t("needs"))}${f.roles.map(roleName).join(" / ")}</div></span>
-      ${ok ? `<a href="${f.url}">${esc(t("open"))}</a>` : "<span>🔒</span>"}
-    </div>`;
-  }).join("");
+  // 只顯示呢個身份用到嘅功能——用唔到嘅完全唔出現，亦唔講需要咩權限
+  $("#featList").innerHTML = FEATURES.filter(f=>f.roles.includes(role)).map(f=>
+    `<div class="feat"><span>${esc(lang==="zh"?f.zh:f.en)}</span><a href="${f.url}">${esc(t("open"))}</a></div>`
+  ).join("");
   const next = new URLSearchParams(location.search).get("next");
   if(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")){
     const feat = FEATURES.find(f=>next.startsWith(f.url));
     if(!feat || feat.roles.includes(role)){ location.replace(next); return; }
-    msg($("#profMsg"), t("nextNoRole", { next, roles: feat.roles.map(roleName).join(" / "), role: roleName(role) }), "info");
+    msg($("#profMsg"), t("nextNoRole", { next }), "info");
   }
   // 由確認電郵條 link 返嚟（?welcome=1）：話聲註冊完成，帶返去主頁
   if(new URLSearchParams(location.search).get("welcome") === "1"){
@@ -909,10 +906,22 @@ applyStatic();
 try{
   const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
   sb = createClient(SB_URL, SB_KEY);
+  let goHomeT = null;
   sb.auth.onAuthStateChange((event, session)=>{
     user = session?.user || null;
-    if(event === "PASSWORD_RECOVERY"){ showView("recovery"); render(); return; }
+    if(event === "PASSWORD_RECOVERY"){ clearTimeout(goHomeT); showView("recovery"); render(); return; }
     if(event === "SIGNED_OUT"){ showView("auth"); setMode("login"); }
+    if(event === "SIGNED_IN"){
+      // 登入完直接返主頁（?next= 有效就由 render() 帶去嗰頁）。等 400ms 係俾
+      // PASSWORD_RECOVERY 先行嘅機會——重設密碼條 link 一樣會發 SIGNED_IN。
+      clearTimeout(goHomeT);
+      goHomeT = setTimeout(()=>{
+        if(view === "recovery") return;
+        const nx = new URLSearchParams(location.search).get("next");
+        if(nx && nx.startsWith("/") && !nx.startsWith("//") && !nx.startsWith("/\\")) return;
+        location.replace("/");
+      }, 400);
+    }
     render();
   });
   user = (await sb.auth.getSession()).data.session?.user || null;

@@ -346,7 +346,7 @@
     <a href="notes/" data-t="navGraph"></a>
     <a href="#motionlab" data-t="navMl"></a>
     <a href="motion-lab/posture/" data-t="navPosture"></a>
-    <a href="schedule/" data-t="navBook"></a>
+    <a id="navBookM" href="schedule/" data-t="navBook"></a>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
     <a id="navCalcM" href="split-calculator/" style="display:none" data-t="navCalc"></a>
     <a class="m-only" href="#business" data-t="navBiz"></a>
@@ -917,6 +917,10 @@ function renderAccount(){
   const canCalc = userRole === "coach" || userRole === "admin";
   const mc = $("#navCalcM");
   if(mc) mc.style.display = canCalc ? "flex" : "none";
+  // 排堂報名：未登入照顯示（新學生要搵到入口）；登入咗但唔係學生／教練／Holder 就唔顯示
+  const canBook = !userEmail || userRole === "student" || userRole === "coach" || userRole === "admin";
+  const mb = $("#navBookM");
+  if(mb) mb.style.display = canBook ? "" : "none";
 }
 async function refreshRole(session){
   userEmail = session?.user?.email || null;
