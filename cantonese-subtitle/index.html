@@ -162,7 +162,7 @@
 
   <header class="top">
     <h1>🎙️ 廣東話轉字幕
-      <small>Cantonese → Subtitles · 本地免費私密,或雲端快速（Pro）</small>
+      <small>Cantonese → Subtitles · 本地免費私密,或雲端 Pro（最準）</small>
     </h1>
     <a class="back" href="/">← 返 Kuafuor HK</a>
   </header>
@@ -188,22 +188,17 @@
   <div class="card">
     <h2>② 設定 <span class="hint">預設已經係「廣東話口語」最佳組合</span></h2>
 
-    <!-- 引擎：本地（免費／私密）vs 雲端快速（Pro · SenseVoice） -->
+    <!-- 引擎：本地（免費／私密）vs 雲端（Pro）——雲端一律用最準嗰個 model，唔俾人揀 -->
     <div class="engine" role="tablist" aria-label="轉字幕引擎">
       <button id="engLocal" class="eng on" role="tab" aria-selected="true">
         💻 本地 <span class="s">免費 · 私密 · 慢</span>
       </button>
       <button id="engCloud" class="eng" role="tab" aria-selected="false">
-        ☁️ 雲端快速 <span class="s">Pro · 快 15× · 有講者</span>
+        ☁️ 雲端 <span class="s">Pro · 最準 · 分講者</span>
       </button>
     </div>
     <div class="notice info" id="cloudNote" style="display:none">
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">
-        <label style="cursor:pointer"><input type="radio" name="cloudMode" value="accurate" checked> 🎯 <b>準確模式</b>（預設・Whisper large-v3・慢啲但明顯準啲・講者分離＋逐句信心度）</label>
-        <label style="cursor:pointer"><input type="radio" name="cloudMode" value="fast"> ⚡ 快速模式（SenseVoice・快 15×・背景音標註）</label>
-      </div>
-      <b>背景處理</b> —— 首次開機要等幾分鐘,之後好快,唔使企喺度等。
-      音檔會上傳到我哋嘅私密處理伺服器,轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
+      首次開機要等幾分鐘,之後就快,唔使企喺度等。音檔轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
     </div>
 
     <div class="grid2">
@@ -304,11 +299,7 @@
   </div>
 
   <div class="card fs-xs muted">
-    <b>私隱：</b><b>本地引擎（預設）</b>—— 你嘅錄音同字幕全部喺你部瀏覽器本地處理，<u>唔會上傳去任何伺服器</u>。
-    第一次用會由 Hugging Face 下載模型檔（turbo 約 1.6GB，之後會 cache 喺瀏覽器，第二次即刻用）。
-    建議用 <b>Chrome / Edge</b>（有 WebGPU 最快）；冇 WebGPU 會自動轉用相容模式（細啲嘅模型、慢啲）。<br>
-    <b>雲端快速（Pro）</b>—— 為咗快，音檔會上傳到我哋嘅私密處理伺服器，轉完 6 個鐘內自動刪除，只保留字幕文字。
-    廣東話雲端轉錄由 <b>SenseVoice</b>（FunASR · Alibaba）提供。
+    <b>私隱：</b>本地模式喺你部機處理，錄音<u>唔會上傳</u>。雲端模式（Pro）會上傳音檔轉字幕，轉完 <b>6 個鐘內自動刪除</b>，只留返字幕文字。
   </div>
 
 </div>
@@ -393,7 +384,7 @@ function refreshModelNote(){
 }
 refreshModelNote();
 
-/* ---------- 引擎切換：本地（免費）vs 雲端快速（Pro · SenseVoice）---------- */
+/* ---------- 引擎切換：本地（免費）vs 雲端（Pro · 最準）---------- */
 let engine = "local";
 const engLocalBtn = $("engLocal"), engCloudBtn = $("engCloud");
 function setEngine(e){
@@ -405,11 +396,11 @@ function setEngine(e){
   $("modelNote").style.display = cloud ? "none" : "";
   const adv = document.querySelector("details.adv"); if (adv) adv.style.display = cloud ? "none" : "";
   $("cloudNote").style.display = cloud ? "block" : "none";
-  $("run").textContent = cloud ? "☁️ 開始轉字幕（雲端快速）" : "▶️ 開始轉字幕 Transcribe";
+  $("run").textContent = cloud ? "☁️ 開始轉字幕（雲端）" : "▶️ 開始轉字幕 Transcribe";
 }
 engLocalBtn.addEventListener("click", () => setEngine("local"));
 engCloudBtn.addEventListener("click", () => {
-  if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud transcription" : "雲端快速轉錄"); else toast("請稍等…"); return; }
+  if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud transcription" : "雲端轉字幕"); else toast("請稍等…"); return; }
   setEngine("cloud");
 });
 
@@ -639,7 +630,7 @@ async function runLocal(){
   }
 }
 
-/* ---------- 雲端快速（SenseVoice · Pro）---------- */
+/* ---------- 雲端（Pro · 最準）---------- */
 // 快速攞音訊長度（只讀 metadata，唔使整條解碼）—— 用嚟做配額 pre-flight
 function getDurationMeta(file){
   return new Promise(resolve => {
@@ -656,7 +647,7 @@ function getDurationMeta(file){
 async function runCloud(){
   if (!audioFile) return;
   const en = cloudEN();
-  if (!isPro()) { if (ent) ent.requirePro("subtitle", en ? "cloud transcription" : "雲端快速轉錄"); return; }
+  if (!isPro()) { if (ent) ent.requirePro("subtitle", en ? "cloud transcription" : "雲端轉字幕"); return; }
   const db = ent && await ent.db();
   const token = db && (await db.auth.getSession()).data.session?.access_token;
   if (!db || !ent.userId || !token) { toast(en ? "Please sign in" : "請先登入"); return; }
@@ -675,7 +666,7 @@ async function runCloud(){
     if (up.error) throw new Error((en ? "upload failed: " : "上傳失敗：") + up.error.message);
 
     setBar(45); setText(`<span class="spinner"></span>${en ? "Submitting to cloud…" : "提交到雲端…"}`);
-    const mode = document.querySelector('input[name="cloudMode"]:checked')?.value || "accurate";
+    const mode = "accurate";   // Pro 一律用最準嗰個——唔俾人揀 model
     const resp = await fetch(`${BILLING.EDGE_BASE}/transcribe-fast`, {
       method: "POST",
       // 唔好加 apikey header：edge function 嘅 CORS Allow-Headers 冇佢，preflight 會被拒
@@ -741,8 +732,8 @@ async function pollJob(db, jobId, en, t0){
     if (row.status === "error") throw new Error(row.error || (en ? "transcription failed" : "轉錄失敗"));
     const s = Math.round((Date.now() - t0) / 1000);
     setText(`<span class="spinner"></span>${en
-      ? `Transcribing on SenseVoice cloud… (${s}s)`
-      : `雲端 SenseVoice 轉字幕中…（已 ${s} 秒;首次開機約 1–2 分鐘,可以唔使企喺度等）`}`);
+      ? `Transcribing in the cloud… (${s}s)`
+      : `雲端轉字幕中…（已 ${s} 秒;首次開機約 1–2 分鐘,可以唔使企喺度等）`}`);
   }
   throw new Error(en ? "cloud timed out — try again (engine now warm)" : "等太耐 —— 引擎啱啱開好,再撳多次通常即刻得");
 }
@@ -782,7 +773,7 @@ function fmtTime(sec, comma=true){
   return `${pad(h)}:${pad(m)}:${pad(s)}${comma?",":"."}${pad(ms,3)}`;
 }
 
-// 有多過一個講者時，喺每句前面加「講者N：」（雲端 SenseVoice 先有 spk；本地 Whisper 冇）
+// 有多過一個講者時，喺每句前面加「講者N：」（雲端先有 spk；本地引擎冇）
 function segText(s){ return (lastResult?.multiSpk && s?.spk != null ? `講者${s.spk + 1}：` : "") + (s?.text || ""); }
 
 // 逐字模式：合併成大約一句句子（避免 SRT 一字一格）
