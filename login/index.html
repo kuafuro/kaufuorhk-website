@@ -696,19 +696,21 @@ async function renderAdmin(){
       <select data-uid="${p.id}" ${p.id===user.id?`disabled title="${esc(t("cantChangeSelf"))}"`:""}>
         ${["member","student","coach","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
       </select>
-      <select data-pkg="${p.id}">
+      ${p.role==="student" ? `<select data-pkg="${p.id}">
         <option value="">${esc(t("pkgPick"))}</option>
         <option value="rising">${esc(t("pkgRising"))}</option>
         <option value="challenger">${esc(t("pkgChallenger"))}</option>
         <option value="ascetic">${esc(t("pkgAscetic"))}</option>
-      </select>
+      </select>` : ""}
     </div>`).join("");
   $("#userList").querySelectorAll("select[data-uid]").forEach(sel=>{
     sel.addEventListener("change", async ()=>{
       const { error } = await sb.rpc("set_user_role", { target_id: sel.dataset.uid, new_role: sel.value });
       if(error){ alert(t("changeFail")+error.message); renderAdmin(); return; }
-      sel.style.outline = "2px solid var(--line-strong)";
-      setTimeout(()=>sel.style.outline="", 1200);
+      // 角色變咗成行重新 render——轉做學生嗰下「＋堂數」即刻現身（其他身份冇）
+      await renderAdmin();
+      const again = $("#userList").querySelector(`select[data-uid="${sel.dataset.uid}"]`);
+      if(again){ again.style.outline = "2px solid var(--line-strong)"; setTimeout(()=>again.style.outline="", 1200); }
     });
   });
   // 記堂數（新星/挑戰者標準價自動帶入；苦行僧問堂數＋議價）
