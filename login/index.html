@@ -122,6 +122,7 @@
   .badge.student{color:var(--ink);background:var(--soft)}
   .badge.coach{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
   .badge.admin{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+  .badge.developer{color:#1655b8;border-color:#1655b8}
   /* 訂閱 plan（課金）+ 修行 level（練返嚟）badges */
   .badge.holder{color:var(--muted);border-color:var(--muted);border-style:dashed}
   .badge.pro,.badge.max{background:#a83228;color:#fff;border-color:#a83228}
@@ -358,7 +359,7 @@ const I18N = {
     passTooShort: "新密碼至少要6位。",
     passLeaked: "呢個密碼喺公開外洩資料庫出現過，唔安全 — 請改用另一個。（檢查只送出密碼指紋頭5個字元，密碼唔會離開你部機）",
     nextNoRole: "你嘅帳戶用唔到嗰一頁（{next}）。有需要請聯絡 Ming。",
-    roleNames: { member:"普通會員", student:"學生", coach:"菁英（教練）", admin:"Holder（主理人）" },
+    roleNames: { member:"普通會員", student:"學生", coach:"菁英（教練）", developer:"技術人員（開發）", admin:"Holder（主理人）" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"新星", challenger:"挑戰者", ascetic:"苦行僧" },
     planTitle:"💳 訂閱方案",
@@ -437,7 +438,7 @@ const I18N = {
     passTooShort: "New password needs at least 6 characters.",
     passLeaked: "This password appears in public breach databases — please choose a different one. (Only the first 5 characters of its fingerprint are checked; the password never leaves your device.)",
     nextNoRole: "That page ({next}) isn't available on your account. Contact Ming if you need it.",
-    roleNames: { member:"Member", student:"Student", coach:"Elite (Coach)", admin:"Holder (Owner)" },
+    roleNames: { member:"Member", student:"Student", coach:"Elite (Coach)", developer:"Tech staff (Dev)", admin:"Holder (Owner)" },
     planNames: { holder:"Holder", pro:"Pro", max:"Max" },
     levelNames: { rising:"Rising Star", challenger:"Challenger", ascetic:"Ascetic" },
     planTitle:"💳 Subscription",
@@ -481,9 +482,9 @@ const roleName = r => (I18N[lang] || I18N.zh).roleNames[r] || r;
 /* ================= state ================= */
 const FEATURES = [
   // Motion Lab 個頁本身公開（主頁 showcase）；雲端拳手檔案／訓練紀錄喺 app 入面先要登入
-  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["member","student","coach","admin"] },
-  { zh:"排堂報名", en:"Class booking", url:"/schedule/", roles:["student","coach","admin"] },
-  { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","admin"] },
+  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["member","student","coach","developer","admin"] },
+  { zh:"排堂報名", en:"Class booking", url:"/schedule/", roles:["student","coach","developer","admin"] },
+  { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","developer","admin"] },
 ];
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -694,7 +695,7 @@ async function renderAdmin(){
     <div class="user-row">
       <span class="em">${esc(p.name||"")} <span style="color:var(--muted)">${esc(p.email||"")}</span></span>
       <select data-uid="${p.id}" ${p.id===user.id?`disabled title="${esc(t("cantChangeSelf"))}"`:""}>
-        ${["member","student","coach","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
+        ${["member","student","coach","developer","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
       </select>
       ${p.role==="student" ? `<select data-pkg="${p.id}">
         <option value="">${esc(t("pkgPick"))}</option>
