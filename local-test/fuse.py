@@ -177,7 +177,7 @@ def _fmt(sec, comma=True):
     return f"{h:02d}:{m:02d}:{s:02d}{',' if comma else '.'}{ms:03d}"
 
 
-def write_srt(chunks, path):
+def build_srt_text(chunks):
     try:                                           # 用 srt library（Ming plan：少一個格式出錯位）
         import datetime
         import srt
@@ -185,12 +185,40 @@ def write_srt(chunks, path):
                               start=datetime.timedelta(seconds=c["start"]),
                               end=datetime.timedelta(seconds=c["end"]),
                               content=c["final"]) for i, c in enumerate(chunks)]
-        text = srt.compose(subs)
+        return srt.compose(subs)
     except Exception:                              # 冇裝 srt 就用 stdlib 砌（一樣格式）
-        text = "\n".join(f"{i+1}\n{_fmt(c['start'])} --> {_fmt(c['end'])}\n{c['final']}\n"
+        return "\n".join(f"{i+1}\n{_fmt(c['start'])} --> {_fmt(c['end'])}\n{c['final']}\n"
                          for i, c in enumerate(chunks))
+
+
+def write_srt(chunks, path):
     with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
+        f.write(build_srt_text(chunks))
+
+
+# ─────────────────────── 可重用 pipeline（CLI ＋ --serve 共用）───────────────────────
+def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
+    log("• ffmpeg → 16kHz mono WAV…")
+    wav_path = to_wav16k(audio_path)
+    log("• Silero VAD 切片…")
+    audio, chunks = vad_chunks(wav_path)
+    if not chunks:
+        return []
+    log(f"  {len(chunks)} 段；雙軌 STT…")
+    for c in chunks:
+        clip = audio[c["a"]:c["b"]]
+        c["whisper"] = whisper(clip)
+        c["sensevoice"] = sv(clip) if (do_fuse and sv) else ""
+        log(f"  [{c['id']+1}/{len(chunks)}] {c['whisper'][:40]}")
+    if do_fuse and sv:
+        log("• Gemini 逐句融合…")
+        fused = fuse_all(chunks, batch)
+        for c in chunks:
+            c["final"] = fused[c["id"]]
+    else:
+        for c in chunks:
+            c["final"] = clean_tags(c["whisper"])
+    return chunks
 
 
 # ─────────────────────── DEMO（唔使模型，淨試融合＋SRT）───────────────────────
@@ -210,14 +238,158 @@ def show(chunks):
         print(f"{_fmt(c['start'])[:8]}  {c['whisper'][:26]:<26}  →  {c['final']}")
 
 
+PAGE = """<!doctype html><html lang=zh-Hant-HK><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>本地字幕（完整 PLAN）</title>
+<style>
+:root{--bg:#f3f2f2;--card:#f8f4f4;--ink:#201f1d;--muted:#605d5d;--line:#d7d3d3;--accent:#a83228}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,"PingFang HK",serif;background:var(--bg);color:var(--ink);line-height:1.6;padding:24px 16px 80px}
+.wrap{max-width:760px;margin:0 auto}h1{font-size:1.4rem;margin-bottom:4px}.sub{color:var(--muted);font-size:.85rem;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+#drop{border:2px dashed var(--line);border-radius:12px;padding:34px 16px;text-align:center;cursor:pointer;transition:.2s}
+#drop.drag,#drop:hover{border-color:var(--accent);background:#fdeeec}#drop .big{font-size:2rem}
+label.chk{display:flex;gap:8px;align-items:center;font-size:.9rem;margin-top:14px;color:var(--muted)}
+button{font-family:inherit;font-weight:600;cursor:pointer}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:13px 20px;font-size:.95rem;width:100%;margin-top:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed}.btn2{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 14px;font-size:.85rem;margin-right:8px}
+#status{margin-top:14px;font-size:.85rem;color:var(--muted);white-space:pre-line}
+.seg{display:flex;gap:12px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:.92rem}
+.seg .ts{color:var(--muted);font-size:.72rem;white-space:nowrap;padding-top:3px;font-variant-numeric:tabular-nums}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}#result{display:none}
+</style></head><body><div class=wrap>
+<h1>🎙️ 本地字幕（完整 PLAN）</h1>
+<div class=sub>喺你部機行 · VAD → Whisper large-v3-turbo ＋ SenseVoice → Gemini 逐句融合 · 音檔唔離開部機 · 粗口照留</div>
+<div class=card>
+  <div id=drop><div class=big>📂</div><div>撳一下揀檔案，或者拖入嚟</div><div class=sub style="margin-top:6px">mp3 / m4a / wav / 影片都得</div></div>
+  <input type=file id=file accept="audio/*,video/*" hidden>
+  <div id=fileinfo class=sub style="margin-top:10px"></div>
+  <label class=chk><input type=checkbox id=fuse checked> Gemini 口語收正（要 GEMINI_API_KEY）</label>
+  <button class=btn id=go disabled>▶️ 開始轉字幕</button>
+  <div id=status></div>
+</div>
+<div class=card id=result>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <b id=meta></b><span><button class=btn2 id=dlsrt>⬇️ SRT</button><button class=btn2 id=dltxt>⬇️ TXT</button></span>
+  </div>
+  <div id=segs></div>
+</div></div>
+<script>
+let f=null,srt="",txt="",name="";
+const $=i=>document.getElementById(i),drop=$("drop"),file=$("file");
+drop.onclick=()=>file.click();
+["dragenter","dragover"].forEach(e=>drop.addEventListener(e,x=>{x.preventDefault();drop.classList.add("drag")}));
+["dragleave","drop"].forEach(e=>drop.addEventListener(e,x=>{x.preventDefault();drop.classList.remove("drag")}));
+drop.addEventListener("drop",e=>{const g=e.dataTransfer.files[0];if(g)set(g)});
+file.onchange=e=>{const g=e.target.files[0];if(g)set(g)};
+function set(g){f=g;name=g.name;$("fileinfo").textContent="已揀："+g.name;$("go").disabled=false}
+$("go").onclick=async()=>{
+  if(!f)return;$("go").disabled=true;$("result").style.display="none";
+  $("status").innerHTML='<span class=spin></span>處理緊…（第一次載模型要幾分鐘，之後快。VAD→雙軌STT→Gemini融合）';
+  try{
+    const r=await fetch("/api/transcribe",{method:"POST",headers:{"X-Filename":encodeURIComponent(name),"X-Fuse":$("fuse").checked?"1":"0"},body:f});
+    const j=await r.json();
+    if(j.error){$("status").textContent="出咗問題："+j.error;$("go").disabled=false;return}
+    srt=j.srt;txt=j.txt;$("status").textContent="";
+    $("meta").textContent=j.segments.length+" 段"+(j.fused?" · 已 Gemini 收正":" · Whisper-only");
+    $("segs").innerHTML="";
+    j.segments.forEach(s=>{const d=document.createElement("div");d.className="seg";
+      d.innerHTML='<div class=ts>'+fmt(s.start)+'</div><div>'+esc(s.text)+'</div>';$("segs").appendChild(d)});
+    $("result").style.display="block";
+  }catch(e){$("status").textContent="出咗問題："+e}
+  $("go").disabled=false;
+};
+function fmt(x){const h=x/3600|0,m=x%3600/60|0,s=x%60|0;return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")}
+function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function dl(n,t){const b=new Blob([t],{type:"text/plain"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),900)}
+$("dlsrt").onclick=()=>dl((name.replace(/\\.[^.]+$/,"")||"字幕")+".srt",srt);
+$("dltxt").onclick=()=>dl((name.replace(/\\.[^.]+$/,"")||"字幕")+".txt",txt);
+</script></body></html>"""
+
+
+def serve(port=8765, do_fuse_default=True):
+    import http.server
+    import json as J
+    import socketserver
+    import tempfile
+    import urllib.parse
+    import webbrowser
+
+    print("載入模型中（第一次要幾分鐘，之後快）…")
+    whisper = load_whisper()
+    sv = load_sensevoice()
+    print("模型 OK。")
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def _send(self, code, ctype, body):
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path == "/":
+                self._send(200, "text/html; charset=utf-8", PAGE.encode())
+            else:
+                self._send(404, "text/plain", b"not found")
+
+        def do_POST(self):
+            if self.path != "/api/transcribe":
+                self._send(404, "text/plain", b"no")
+                return
+            n = int(self.headers.get("Content-Length", 0))
+            data = self.rfile.read(n)
+            name = urllib.parse.unquote(self.headers.get("X-Filename", "audio"))
+            do_fuse = self.headers.get("X-Fuse", "1") != "0"
+            ext = os.path.splitext(name)[1] or ".bin"
+            tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False).name
+            with open(tmp, "wb") as fh:
+                fh.write(data)
+            try:
+                chunks = run_pipeline(tmp, whisper, sv, do_fuse=do_fuse)
+                segs = [{"start": c["start"], "end": c["end"], "text": c["final"]} for c in chunks]
+                payload = {"segments": segs, "srt": build_srt_text(chunks),
+                           "txt": "\n".join(c["final"] for c in chunks),
+                           "fused": bool(do_fuse)}
+                self._send(200, "application/json; charset=utf-8", J.dumps(payload, ensure_ascii=False).encode())
+            except Exception as e:  # noqa: BLE001
+                self._send(500, "application/json; charset=utf-8", J.dumps({"error": str(e)}).encode())
+            finally:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+
+        def log_message(self, *a):
+            pass
+
+    with socketserver.TCPServer(("127.0.0.1", port), H) as httpd:
+        url = f"http://127.0.0.1:{port}/"
+        print(f"\n本地字幕網頁開咗：{url}\n（喺瀏覽器拖檔案入去就得 · Ctrl+C 收工）")
+        try:
+            webbrowser.open(url)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\n收工。")
+
+
 def main():
     ap = argparse.ArgumentParser(description="本地 VAD→雙軌STT→Gemini融合→SRT")
     ap.add_argument("audio", nargs="?")
     ap.add_argument("--demo", action="store_true", help="唔使模型，淨試融合＋SRT")
+    ap.add_argument("--serve", action="store_true", help="開個本地網頁（拖檔案就轉字幕）")
+    ap.add_argument("--port", type=int, default=8765, help="--serve 用嘅 port（預設 8765）")
     ap.add_argument("--no-fuse", action="store_true", help="唔融合，淨雙軌 STT")
     ap.add_argument("--batch", type=int, default=15, help="每 batch 幾多句（預設 15）")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
+
+    if args.serve:
+        serve(args.port)
+        return
 
     if args.demo:
         print("＝＝ DEMO：淨試 Gemini 融合＋SRT（唔行模型）＝＝")
@@ -231,33 +403,14 @@ def main():
         return
 
     if not args.audio or not os.path.exists(args.audio):
-        ap.error("要俾個存在嘅錄音檔，或者用 --demo")
+        ap.error("要俾個存在嘅錄音檔，或者用 --demo／--serve")
 
-    print("• Step 0：ffmpeg → 16kHz mono WAV…")
-    wav_path = to_wav16k(args.audio)
-    print("• Step 1：Silero VAD 切片…")
-    audio, chunks = vad_chunks(wav_path)
+    print("• 載模型中（第一次要幾分鐘）…")
+    whisper = load_whisper()
+    sv = None if args.no_fuse else load_sensevoice()
+    chunks = run_pipeline(args.audio, whisper, sv, do_fuse=not args.no_fuse, batch=args.batch)
     if not chunks:
         print("❌ VAD 搵唔到人聲。"); sys.exit(1)
-    print(f"  切咗 {len(chunks)} 段")
-
-    print("• Step 2：雙軌 STT（Whisper turbo + SenseVoice）… 第一次會載模型")
-    whisper = load_whisper()
-    sv = load_sensevoice()
-    for c in chunks:
-        clip = audio[c["a"]:c["b"]]
-        c["whisper"] = whisper(clip)
-        c["sensevoice"] = sv(clip) if not args.no_fuse else ""
-        print(f"  [{c['id']+1}/{len(chunks)}] {c['whisper'][:40]}")
-
-    if args.no_fuse:
-        for c in chunks:
-            c["final"] = clean_tags(c["whisper"])
-    else:
-        print("• Step 3：Gemini 逐句融合…")
-        fused = fuse_all(chunks, args.batch)
-        for c in chunks:
-            c["final"] = fused[c["id"]]
 
     show(chunks)
     base = os.path.splitext(args.out or args.audio)[0]

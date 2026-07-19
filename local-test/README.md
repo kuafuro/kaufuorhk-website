@@ -12,6 +12,21 @@ SenseVoice-Small（口語地道，CPU 飛快）             準 + 原汁原味 +
 
 ---
 
+## 本地網頁（＝你部機當個網站，最似「website 咁用」）
+
+裝好之後（見下面 Step 0），一句就開個本地網頁，拖檔案入去就轉，背後行**完整 PLAN**：
+
+```bash
+export GEMINI_API_KEY=AQ...
+python3 fuse.py --serve            # 自動開瀏覽器 http://127.0.0.1:8765/
+```
+
+拖錄音入去 → 睇逐句字幕 → 下載 SRT／TXT。全程喺你部機（音檔唔離開部機），
+用你部機資源跑 mlx Whisper ＋ SenseVoice ＋ Gemini 融合。Ctrl+C 收工。
+（`--port 9000` 可以改 port。）
+
+---
+
 ## 快速試（唔使裝模型）
 
 淨想證明「融合＋SRT」嗰步 work 唔 work：
