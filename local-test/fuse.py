@@ -77,15 +77,43 @@ def vad_chunks(wav_path):
 
 # ─────────────────────── Step 2：雙軌 STT ───────────────────────
 def load_whisper():
-    import mlx_whisper
-    def run(audio_np, lang="yue"):
+    # Apple Silicon → mlx-whisper（Apple GPU，快）；Intel Mac／其他 → faster-whisper（CPU）
+    try:
+        import mlx_whisper
+        print("  Whisper：mlx-whisper large-v3-turbo（Apple GPU）")
+        def run(audio_np, lang="yue"):
+            for lg in (lang, "zh"):
+                try:
+                    r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
+                                               language=lg, initial_prompt=CANTO_PROMPT)
+                    return (r.get("text") or "").strip()
+                except Exception:
+                    continue
+            return ""
+        return run
+    except ImportError:
+        pass
+    # faster-whisper：跨平台（Intel Mac / Linux 都行）。turbo 快好多；Intel CPU 用 int8 唔會太慢。
+    from faster_whisper import WhisperModel
+    model = None
+    for repo in ("large-v3-turbo", "large-v3"):
         try:
-            r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
-                                       language=lang, initial_prompt=CANTO_PROMPT)
+            model = WhisperModel(repo, device="cpu", compute_type="int8")
+            print(f"  Whisper：faster-whisper {repo}（CPU int8）")
+            break
         except Exception:
-            r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
-                                       language="zh", initial_prompt=CANTO_PROMPT)
-        return (r.get("text") or "").strip()
+            continue
+    if model is None:
+        raise RuntimeError("faster-whisper 載入唔到 large-v3（試下 pip install -U faster-whisper）")
+    def run(audio_np, lang="yue"):
+        for lg in (lang, "zh"):
+            try:
+                segs, _ = model.transcribe(audio_np, language=lg, beam_size=5,
+                                           initial_prompt=CANTO_PROMPT, condition_on_previous_text=False)
+                return " ".join((s.text or "").strip() for s in segs).strip()
+            except Exception:
+                continue
+        return ""
     return run
 
 
