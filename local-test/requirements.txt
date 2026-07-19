@@ -1,10 +1,10 @@
-# 本地 Whisper+SenseVoice→Gemini 融合測試用。Gemini 融合本身淨用內置 urllib，唔使裝額外嘢。
-# （--demo 模式連下面都唔使裝，淨試融合。）
-faster-whisper>=1.0.3          # Whisper large-v3（準＋時間軸＋信心）
-funasr==1.2.6                  # SenseVoice（口語）＋ cam++（講者分離）
-torch==2.4.1                   # Mac 用 MPS、有 NVIDIA 用 CUDA、其餘 CPU
+# 本地字幕 pipeline（Apple Silicon Mac）。Gemini 融合用 stdlib urllib，唔使裝 SDK。
+# 另外要系統裝 ffmpeg：  brew install ffmpeg
+mlx-whisper                   # Whisper large-v3-turbo（Apple GPU，快好幾倍）
+funasr==1.2.6                 # SenseVoice-Small（口語，CPU 飛快）
+silero-vad                    # VAD 切片
+srt                           # SRT 組裝（冇裝都會自動用 stdlib 砌）
+torch==2.4.1                  # funasr / silero 用
 torchaudio==2.4.1
-modelscope==1.20.1             # funasr 落模型用
-scikit-learn==1.5.1            # 講者分離聚類（--diarize 先用到）
+modelscope==1.20.1            # funasr 落模型
 numpy
-opencc==1.1.9                  # 簡→港繁（冇裝都行，會自動跳過）

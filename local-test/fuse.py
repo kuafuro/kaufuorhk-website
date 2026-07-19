@@ -1,276 +1,270 @@
 #!/usr/bin/env python3
 """
-本地測試：Whisper large-v3（準＋時間軸＋信心）＋ SenseVoice（口語地道）→ Gemini 逐句融合。
-完全喺你部機行，唔使 Modal、唔使畀錢。淨係融合嗰步用 Gemini API（你已經有 key）。
+本地字幕：VAD 切片 → 雙軌 STT（mlx-whisper + SenseVoice）→ Gemini 逐句融合 → SRT。
+完全喺你部 Mac（Apple Silicon）行，唔使 Modal、唔使畀錢。淨係融合嗰步用 Gemini API。
 
-  Whisper（準字＋時間軸＋講者＋信心度）
-        +                                → Gemini 逐句溝 → 最終字幕
-  SenseVoice（口語地道）                    準 + 原汁原味 + 執錯字，粗口照留
+  Whisper large-v3-turbo（準＋快，mlx GPU）
+        +                                    → Gemini 逐句溝（id 對齊）→ 最終字幕
+  SenseVoice-Small（口語地道，CPU 飛快）          準 + 原汁原味 + 執錯字 + 事件標註，粗口照留
+
+流程（同 Ming 個 plan）：
+  0. ffmpeg → 16kHz 單聲道 WAV
+  1. Silero VAD 切片（max 8s／頭尾 pad 150ms／跳過 <0.5s）
+  2. 每 chunk 跑 Whisper（turbo）＋ SenseVoice（yue）
+  3. Gemini 融合：每 batch 15 句、帶 id、JSON schema；id 對唔上就縮半重試；帶上一 batch 尾 2 句做上文
+  4. srt library 出 .srt；<|Laughter|> 類 tag 轉 [笑聲]
 
 用法：
-  export GEMINI_API_KEY=AQ...            # 你個 Gemini key（Modal 用緊嗰個）
-  python fuse.py 錄音.m4a                 # 完整 pipeline，出 .srt + .txt
-  python fuse.py 錄音.m4a --diarize       # 加講者分離（cam++，慢啲）
-  python fuse.py --demo                   # 唔使裝 torch，淨係試 Gemini 融合（證明 work 唔 work）
-  python fuse.py 錄音.m4a --no-fuse       # 淨要 Whisper 結果，唔做融合（對比用）
+  export GEMINI_API_KEY=AQ...
+  python3 fuse.py 錄音.m4a               # 完整 pipeline → .srt + .txt
+  python3 fuse.py 錄音.m4a --no-fuse     # 淨雙軌 STT，唔融合（對比用）
+  python3 fuse.py --demo                 # 唔使裝模型，淨試「融合＋SRT」（證明 work 唔 work）
 
-第一次行會自動載模型（Whisper large-v3 ~3GB、SenseVoice ~1GB），之後有 cache 就快。
-邏輯同 whisper/modal_app.py（Modal 上面跑嗰個）一致，只係 device 改成本機（mps/cuda/cpu）。
+注意：Gemini 用 stdlib urllib 直接打 REST（gemini-2.5-flash + JSON schema），
+唔用 google-genai SDK——少一個 native 依賴、少一個出錯位（同你原則一致）。
 """
 import argparse
 import json
 import math
 import os
+import re
+import subprocess
 import sys
+import tempfile
 import urllib.request
 
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
+WHISPER_REPO = "mlx-community/whisper-large-v3-turbo"
+# 塞句繁體引導 Whisper 出繁體（唔係佢好易嘔簡體）
+CANTO_PROMPT = "以下是一段廣東話口語對話，請以繁體中文輸出。"
 
-# ─────────────────────────── Gemini 融合（同 modal_app._gemini_fuse 一致）───────────────────────────
-def gemini_fuse(segments, sv_text):
-    """逐句融合 Whisper（準）＋ SenseVoice（口語）。返回同 segments 等長 list[str]；
-    冇 key／HTTP 錯／句數對唔上／任何 exception → None（即係退返 Whisper-only）。"""
-    key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not key or not segments or not sv_text:
-        if not key:
-            print("⚠️  冇 GEMINI_API_KEY，跳過融合（淨出 Whisper）。", file=sys.stderr)
-        return None
-    model = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.1-flash-lite"
-    a_lines = "\n".join(f"{i}. {s['text']}" for i, s in enumerate(segments))
-    prompt = (
-        "以下係同一段廣東話錄音嘅兩個 AI 轉錄。\n"
-        "【A】逐句轉錄（字義較準，但可能書面語化）：\n" + a_lines + "\n\n"
-        "【B】另一引擎嘅整段口語轉錄（口語地道，但可能有錯字）：\n" + sv_text + "\n\n"
-        "任務：逐句改良 A。每句以 A 嘅字義為準，但要寫成地道廣東話口語"
-        "（係囉／㗎／喇／佢哋／喺度／咁樣／唔係／喇喎），參考 B 還原口語講法，"
-        "順手修正明顯錯別字。粗口、語氣詞一律照留。唔准加內容、唔准刪句、"
-        "唔准書面語化、唔准改變意思。\n"
-        "只輸出一個 JSON array of strings，同 A 一樣句數、一樣次序，逐句對應。"
-    )
-    body = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.2,
-            "responseMimeType": "application/json",
-            "responseSchema": {"type": "ARRAY", "items": {"type": "STRING"}},
-        },
-    }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    req = urllib.request.Request(
-        url, data=json.dumps(body).encode(),
-        headers={"x-goog-api-key": key, "Content-Type": "application/json"}, method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            data = json.loads(resp.read())
-        txt = data["candidates"][0]["content"]["parts"][0]["text"]
-        arr = json.loads(txt)
-        if isinstance(arr, list) and len(arr) == len(segments):
-            return [str(x) for x in arr]
-        print(f"⚠️  Gemini 句數對唔上（{len(arr) if isinstance(arr, list) else 'n/a'} vs {len(segments)}），退返 Whisper。", file=sys.stderr)
-        return None
-    except Exception as e:  # noqa: BLE001
-        print("⚠️  Gemini 融合失敗，退返 Whisper：", repr(e), file=sys.stderr)
-        return None
+# SenseVoice 事件 tag → 中文標註（其餘 <|…|> 一律刪走）
+EVENT_TAGS = {"Laughter": "[笑聲]", "Applause": "[掌聲]", "BGM": "[音樂]",
+              "Music": "[音樂]", "Cry": "[喊]", "Cough": "[咳]"}
 
 
-# ─────────────────────────── OpenCC：簡→港繁（有裝先用）───────────────────────────
-def _make_cc():
-    try:
-        from opencc import OpenCC
-        return OpenCC("s2hk")
-    except Exception:  # noqa: BLE001
-        return None
+def clean_tags(text, keep_events=True):
+    def repl(m):
+        return EVENT_TAGS.get(m.group(1), "") if keep_events else ""
+    return re.sub(r"\s+", " ", re.sub(r"<\|(\w+)\|>", repl, text or "")).strip()
 
 
-def _conv(cc, s):
-    return cc.convert(s) if cc else s
-
-
-# ─────────────────────────── Whisper large-v3（準＋時間軸＋信心）───────────────────────────
-def run_whisper(audio, lang):
-    from faster_whisper import WhisperModel
-    try:
-        import torch
-        cuda = torch.cuda.is_available()
-    except Exception:  # noqa: BLE001
-        cuda = False
-    # 最勁最準（慢唔緊要）：唔用 int8 量化——CUDA float16、CPU（Mac 都係）float32，唔蝕準確度。
-    device, compute = ("cuda", "float16") if cuda else ("cpu", "float32")
-    print(f"• Whisper large-v3 載入中（device={device}, compute={compute}, 最勁最準）…")
-    model = WhisperModel("large-v3", device=device, compute_type=compute)
-    print(f"• 轉錄中（language={lang}）…")
-    try:
-        # beam_size 8 + 唔用 temperature fallback：追準唔追快
-        gen, _ = model.transcribe(audio, language=lang, vad_filter=True, beam_size=8)
-        segs = list(gen)
-    except Exception as e:  # noqa: BLE001
-        if lang == "yue":
-            print("  yue 出事，自動退 zh 再試…", repr(e))
-            gen, _ = model.transcribe(audio, language="zh", vad_filter=True, beam_size=8)
-            segs = list(gen)
-        else:
-            raise
-    out = []
-    for s in segs:
-        t = (s.text or "").strip()
-        if not t:
-            continue
-        conf = round(min(1.0, max(0.0, math.exp(s.avg_logprob))), 2)  # avg_logprob → 0..1 信心
-        out.append({"start": s.start or 0.0, "end": s.end or 0.0, "text": t, "conf": conf, "spk": None})
+# ─────────────────────── Step 0：ffmpeg → 16k mono WAV ───────────────────────
+def to_wav16k(src):
+    out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+    cmd = ["ffmpeg", "-y", "-i", src, "-ac", "1", "-ar", "16000", "-vn", out]
+    r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    if r.returncode != 0:
+        raise RuntimeError("ffmpeg 轉檔失敗：" + r.stderr.decode()[-300:])
     return out
 
 
-# ─────────────────────────── SenseVoice（口語地道，做融合嘅 B 參照）───────────────────────────
-def run_sensevoice(audio, cc):
-    try:
-        import torch
-        dev = "mps" if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available() \
-            else ("cuda" if torch.cuda.is_available() else "cpu")
-    except Exception:  # noqa: BLE001
-        dev = "cpu"
+# ─────────────────────── Step 1：Silero VAD 切片 ───────────────────────
+def vad_chunks(wav_path):
+    from silero_vad import get_speech_timestamps, load_silero_vad, read_audio
+    vad = load_silero_vad()
+    wav = read_audio(wav_path, sampling_rate=16000)          # torch 1D float32 @16k
+    spans = get_speech_timestamps(
+        wav, vad, sampling_rate=16000,
+        max_speech_duration_s=8,        # 長氣位強制切開，字幕唔會超長
+        speech_pad_ms=150,              # 頭尾留 padding，唔切斷字頭字尾
+        min_speech_duration_ms=500,     # 跳過短過 0.5 秒（避免對垃圾片段作嘢）
+    )
+    audio = wav.numpy()
+    return audio, [{"id": i, "start": s["start"] / 16000, "end": s["end"] / 16000,
+                    "a": s["start"], "b": s["end"]} for i, s in enumerate(spans)]
+
+
+# ─────────────────────── Step 2：雙軌 STT ───────────────────────
+def load_whisper():
+    import mlx_whisper
+    def run(audio_np, lang="yue"):
+        try:
+            r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
+                                       language=lang, initial_prompt=CANTO_PROMPT)
+        except Exception:
+            r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
+                                       language="zh", initial_prompt=CANTO_PROMPT)
+        return (r.get("text") or "").strip()
+    return run
+
+
+def load_sensevoice():
     from funasr import AutoModel
-    from funasr.utils.postprocess_utils import rich_transcription_postprocess
-    # SenseVoiceSmall 係公開版最勁嘅 SenseVoice（冇 Large）；funasr 預設 fp32 full precision，唔量化。
-    print(f"• SenseVoice 載入中（device={dev}, full precision, 最勁）…")
-    sv = AutoModel(model="iic/SenseVoiceSmall", trust_remote_code=False, device=dev, disable_update=True)
-    res = sv.generate(input=audio, cache={}, language="yue", use_itn=True, batch_size_s=300)
-    info = res[0].get("sentence_info")
-    if info:
-        parts = [rich_transcription_postprocess(x.get("text", "")).strip() for x in info]
-        text = " ".join(p for p in parts if p)
-    else:
-        text = rich_transcription_postprocess(res[0].get("text", "")).strip()
-    return _conv(cc, text)
+    # SenseVoice-Small 細，CPU 已飛快，唔使爭 GPU（留 GPU 俾 mlx Whisper）
+    sv = AutoModel(model="iic/SenseVoiceSmall", trust_remote_code=False,
+                   device="cpu", disable_update=True)
+
+    def run(audio_np):
+        res = sv.generate(input=audio_np, cache={}, language="yue", use_itn=True)
+        return clean_tags(res[0].get("text", ""))
+    return run
 
 
-# ─────────────────────────── 講者分離（cam++，可選；寧缺毋濫）───────────────────────────
-def diarize(audio, segments):
-    if len(segments) < 4:
-        return
+# ─────────────────────── Step 3：Gemini 融合（加固版）───────────────────────
+def _gemini_array(prompt, item_schema):
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        return None
+    body = {"contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json",
+                                 "responseSchema": {"type": "ARRAY", "items": item_schema}}}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+                                 headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                                 method="POST")
     try:
-        import numpy as np
-        import torchaudio
-        from funasr import AutoModel
-        from sklearn.cluster import AgglomerativeClustering
-        spk = AutoModel(model="iic/speech_campplus_sv_zh-cn_16k-common", disable_update=True)
-        wav, sr = torchaudio.load(audio)
-        if wav.shape[0] > 1:
-            wav = wav.mean(0, keepdim=True)
-        embs = []
-        for s in segments:
-            a, b = int((s["start"]) * sr), int((s["end"]) * sr)
-            clip = wav[:, max(0, a):max(a + 1, b)]
-            r = spk.generate(input=clip.squeeze(0).numpy(), disable_pbar=True)
-            embs.append(np.asarray(r[0]["spk_embedding"]).ravel())
-        if len(embs) < 4:
-            return
-        X = np.vstack(embs)
-        cl = AgglomerativeClustering(n_clusters=None, distance_threshold=0.75,
-                                     metric="cosine", linkage="average").fit(X)
-        labels = cl.labels_
-        n = len(set(labels))
-        if n < 2 or n > 6:  # 聚唔出 2–6 個清晰講者就唔標
-            return
-        for s, lab in zip(segments, labels):
-            s["spk"] = int(lab)
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read())
+        return json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
     except Exception as e:  # noqa: BLE001
-        print("  講者分離跳過：", repr(e))
+        print("  ⚠️  Gemini 呼叫失敗：", repr(e)[:160], file=sys.stderr)
+        return None
 
 
-# ─────────────────────────── SRT / 顯示 ───────────────────────────
-def fmt_ts(sec):
-    h = int(sec // 3600); m = int((sec % 3600) // 60); s = int(sec % 60); ms = int((sec - int(sec)) * 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+_ITEM = {"type": "OBJECT", "properties": {"id": {"type": "INTEGER"}, "text": {"type": "STRING"}},
+         "required": ["id", "text"]}
 
 
-def build_srt(segments):
-    multi = len({s["spk"] for s in segments if s["spk"] is not None}) > 1
-    lines = []
-    for i, s in enumerate(segments, 1):
-        pre = f"講者{s['spk']+1}：" if (multi and s["spk"] is not None) else ""
-        lines.append(f"{i}\n{fmt_ts(s['start'])} --> {fmt_ts(s['end'])}\n{pre}{s['text']}\n")
-    return "\n".join(lines)
+def _fuse_batch(batch, context):
+    lines = "\n".join(f"[id {c['id']}] A：{c['whisper']}｜B：{c['sensevoice']}" for c in batch)
+    ctx = ("（上文最尾兩句，只作語氣參考，唔好輸出）：" + " / ".join(context) + "\n\n") if context else ""
+    prompt = (
+        "以下係同一段廣東話錄音、逐句嘅兩個 AI 轉錄，每句有 id。\n"
+        "【A】Whisper（字義較準，偏書面）｜【B】SenseVoice（口語地道，可能有錯字、含 [笑聲] 類事件標註）\n\n"
+        + ctx + lines + "\n\n"
+        "任務：逐句輸出改良版。以 A 嘅字義為準，寫成地道廣東話口語"
+        "（係囉／㗎／喇／佢哋／喺度／咁樣／唔係），參考 B 還原口語講法同保留 [笑聲][音樂] 類事件標註，"
+        "順手修正明顯錯別字。粗口、語氣詞一律照留，唔准過濾。唔准加內容、唔准刪句或合併句、唔准改變意思。\n"
+        "輸出 JSON array，每項 {id, text}，同輸入 id 一一對應，唔准漏 id、唔准改 id。"
+    )
+    arr = _gemini_array(prompt, _ITEM)
+    if not isinstance(arr, list):
+        return None
+    got = {int(x["id"]): str(x["text"]) for x in arr if isinstance(x, dict) and "id" in x and "text" in x}
+    want = {c["id"] for c in batch}
+    return got if set(got) == want else None    # id 對唔上 → None（畀 caller 縮半重試）
 
 
-DEMO_SEGMENTS = [
-    {"start": 0.0, "end": 2.0, "spk": 0, "conf": 0.88, "text": "他們昨天去了哪裡"},
-    {"start": 2.0, "end": 5.0, "spk": 1, "conf": 0.61, "text": "我不知道啊 可能去了那边食饭"},
-    {"start": 5.0, "end": 8.0, "spk": 0, "conf": 0.83, "text": "是的没错 就是那间很贵的餐厅"},
-    {"start": 8.0, "end": 12.0, "spk": 1, "conf": 0.55, "text": "妈的 那间真的很贵 我上次去付了一千多"},
-    {"start": 12.0, "end": 15.0, "spk": 0, "conf": 0.79, "text": "你这样说 我下次都不敢去了"},
+def _fuse_with_retry(batch, context):
+    res = _fuse_batch(batch, context)
+    if res is not None:
+        return res
+    if len(batch) <= 1:                          # 縮到單句都對唔上 → 放棄，退返 Whisper
+        return {c["id"]: c["whisper"] for c in batch}
+    mid = len(batch) // 2
+    print(f"  ↩︎ id 對唔上，縮半重試（{len(batch)}→{mid}+{len(batch)-mid}）", file=sys.stderr)
+    left = _fuse_with_retry(batch[:mid], context)
+    right = _fuse_with_retry(batch[mid:], context)
+    return {**left, **right}
+
+
+def fuse_all(chunks, batch_size=15):
+    out = {}
+    context = []
+    for k in range(0, len(chunks), batch_size):
+        batch = chunks[k:k + batch_size]
+        res = _fuse_with_retry(batch, context)
+        for c in batch:
+            out[c["id"]] = clean_tags(res.get(c["id"], c["whisper"]))
+        context = [out[c["id"]] for c in batch][-2:]   # 帶尾 2 句做下一 batch 上文
+    return out
+
+
+# ─────────────────────── Step 4：SRT 輸出 ───────────────────────
+def _fmt(sec, comma=True):
+    h = int(sec // 3600); m = int(sec % 3600 // 60); s = int(sec % 60); ms = int(round((sec - int(sec)) * 1000))
+    return f"{h:02d}:{m:02d}:{s:02d}{',' if comma else '.'}{ms:03d}"
+
+
+def write_srt(chunks, path):
+    try:                                           # 用 srt library（Ming plan：少一個格式出錯位）
+        import datetime
+        import srt
+        subs = [srt.Subtitle(index=i + 1,
+                              start=datetime.timedelta(seconds=c["start"]),
+                              end=datetime.timedelta(seconds=c["end"]),
+                              content=c["final"]) for i, c in enumerate(chunks)]
+        text = srt.compose(subs)
+    except Exception:                              # 冇裝 srt 就用 stdlib 砌（一樣格式）
+        text = "\n".join(f"{i+1}\n{_fmt(c['start'])} --> {_fmt(c['end'])}\n{c['final']}\n"
+                         for i, c in enumerate(chunks))
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+# ─────────────────────── DEMO（唔使模型，淨試融合＋SRT）───────────────────────
+DEMO = [
+    {"id": 0, "start": 0.0, "end": 2.0, "whisper": "他們昨天去了哪裡", "sensevoice": "佢哋琴日去咗邊度呀"},
+    {"id": 1, "start": 2.0, "end": 5.0, "whisper": "我不知道啊 可能去了那边食饭", "sensevoice": "我唔知喎 可能去咗嗰邊食飯"},
+    {"id": 2, "start": 5.0, "end": 7.5, "whisper": "是的没错 就是那间很贵的餐厅", "sensevoice": "係囉冇錯 就係嗰間好貴嘅餐廳 [笑聲]"},
+    {"id": 3, "start": 7.5, "end": 11.0, "whisper": "妈的 那间真的很贵 我上次去付了一千多", "sensevoice": "屌 嗰間真係好貴 我上次去俾咗一千幾"},
+    {"id": 4, "start": 11.0, "end": 14.0, "whisper": "你这样说 我下次都不敢去了", "sensevoice": "你咁講我下次都唔敢去喇"},
 ]
-DEMO_SV = ("佢哋琴日去咗邊度呀 我唔知喎 可能去咗嗰邊食飯 係囉冇錯 就係嗰間好貴嘅餐廳 "
-           "屌 嗰間真係好貴 我上次去俾咗一千幾 你咁講我下次都唔敢去喇")
 
 
-def show(segments, fused):
-    print("\n時間        講者  信心   Whisper（準）                    →  最終（融合後）")
-    print("-" * 100)
-    for i, s in enumerate(segments):
-        spk = f"講者{s['spk']+1}" if s["spk"] is not None else "  —  "
-        final = fused[i] if fused else s["text"]
-        print(f"{fmt_ts(s['start'])[:8]}  {spk}  {s['conf']:.2f}   {s['text'][:26]:<26}  →  {final}")
+def show(chunks):
+    print("\n時間        Whisper（準）                    →  最終（融合後）")
+    print("-" * 92)
+    for c in chunks:
+        print(f"{_fmt(c['start'])[:8]}  {c['whisper'][:26]:<26}  →  {c['final']}")
 
 
 def main():
-    ap = argparse.ArgumentParser(description="本地 Whisper+SenseVoice→Gemini 融合測試")
-    ap.add_argument("audio", nargs="?", help="錄音／片段檔（mp3/m4a/wav/mp4…）")
-    ap.add_argument("--demo", action="store_true", help="唔使裝 torch，淨試 Gemini 融合")
-    ap.add_argument("--no-fuse", action="store_true", help="唔做融合，淨出 Whisper")
-    ap.add_argument("--diarize", action="store_true", help="加講者分離（cam++）")
-    ap.add_argument("--lang", default="yue", help="Whisper 語言（預設 yue）")
-    ap.add_argument("--out", default=None, help="輸出檔名（唔寫就用輸入檔名）")
+    ap = argparse.ArgumentParser(description="本地 VAD→雙軌STT→Gemini融合→SRT")
+    ap.add_argument("audio", nargs="?")
+    ap.add_argument("--demo", action="store_true", help="唔使模型，淨試融合＋SRT")
+    ap.add_argument("--no-fuse", action="store_true", help="唔融合，淨雙軌 STT")
+    ap.add_argument("--batch", type=int, default=15, help="每 batch 幾多句（預設 15）")
+    ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    cc = _make_cc()
-
     if args.demo:
-        print("＝＝ DEMO：唔行模型，淨試 Gemini 融合（證明融合階段 work 唔 work）＝＝")
-        fused = gemini_fuse(DEMO_SEGMENTS, DEMO_SV)
-        show(DEMO_SEGMENTS, fused)
-        print("\n" + ("✅ 融合成功——粗口照留、書面→地道、句數對齊。" if fused else "❌ 融合冇行到（睇上面警告）。"))
+        print("＝＝ DEMO：淨試 Gemini 融合＋SRT（唔行模型）＝＝")
+        fused = fuse_all(DEMO, args.batch)
+        for c in DEMO:
+            c["final"] = fused[c["id"]]
+        show(DEMO)
+        out = args.out or "demo.srt"
+        write_srt(DEMO, out)
+        print(f"\n✅ 融合＋SRT OK → {out}（粗口照留、[笑聲] 保留、id 逐句對齊）")
         return
 
-    if not args.audio:
-        ap.error("要俾個錄音檔，或者用 --demo 淨試融合")
-    if not os.path.exists(args.audio):
-        ap.error(f"搵唔到檔案：{args.audio}")
+    if not args.audio or not os.path.exists(args.audio):
+        ap.error("要俾個存在嘅錄音檔，或者用 --demo")
 
-    segments = run_whisper(args.audio, args.lang)
-    if not segments:
-        print("❌ Whisper 轉唔到嘢（可能靜音或格式問題）。"); sys.exit(1)
-    for s in segments:
-        s["text"] = _conv(cc, s["text"])
+    print("• Step 0：ffmpeg → 16kHz mono WAV…")
+    wav_path = to_wav16k(args.audio)
+    print("• Step 1：Silero VAD 切片…")
+    audio, chunks = vad_chunks(wav_path)
+    if not chunks:
+        print("❌ VAD 搵唔到人聲。"); sys.exit(1)
+    print(f"  切咗 {len(chunks)} 段")
 
-    if args.diarize:
-        print("• 講者分離中…")
-        diarize(args.audio, segments)
+    print("• Step 2：雙軌 STT（Whisper turbo + SenseVoice）… 第一次會載模型")
+    whisper = load_whisper()
+    sv = load_sensevoice()
+    for c in chunks:
+        clip = audio[c["a"]:c["b"]]
+        c["whisper"] = whisper(clip)
+        c["sensevoice"] = sv(clip) if not args.no_fuse else ""
+        print(f"  [{c['id']+1}/{len(chunks)}] {c['whisper'][:40]}")
 
-    fused = None
-    if not args.no_fuse:
-        print("• 行 SenseVoice 攞口語參照…")
-        try:
-            sv_text = run_sensevoice(args.audio, cc)
-        except Exception as e:  # noqa: BLE001
-            print("  SenseVoice 出事，跳過融合：", repr(e)); sv_text = ""
-        if sv_text:
-            print("• Gemini 逐句融合…")
-            fused = gemini_fuse(segments, sv_text)
+    if args.no_fuse:
+        for c in chunks:
+            c["final"] = clean_tags(c["whisper"])
+    else:
+        print("• Step 3：Gemini 逐句融合…")
+        fused = fuse_all(chunks, args.batch)
+        for c in chunks:
+            c["final"] = fused[c["id"]]
 
-    if fused:
-        for i, s in enumerate(segments):
-            s["text"] = fused[i]  # 融合只換文字，時間軸／講者／信心不變
-
-    show(segments, None)
-
+    show(chunks)
     base = os.path.splitext(args.out or args.audio)[0]
-    srt = build_srt(segments)
-    with open(base + ".srt", "w", encoding="utf-8") as f:
-        f.write(srt)
+    write_srt(chunks, base + ".srt")
     with open(base + ".txt", "w", encoding="utf-8") as f:
-        f.write("\n".join(s["text"] for s in segments))
-    print(f"\n✅ 完成：{base}.srt ／ {base}.txt"
-          f"（融合：{'有' if fused else '冇（Whisper-only）'}）")
+        f.write("\n".join(c["final"] for c in chunks))
+    print(f"\n✅ 完成：{base}.srt ／ {base}.txt（融合：{'冇' if args.no_fuse else '有'}）")
 
 
 if __name__ == "__main__":
