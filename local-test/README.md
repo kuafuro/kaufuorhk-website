@@ -43,12 +43,28 @@ python3 fuse.py --demo               # 用示範對話行真 Gemini → 出 demo
 ## 完整跑（真錄音）
 
 ### 0. 環境（做一次）
+
+**Apple Silicon（M1/M2/M3）：**
 ```bash
 brew install ffmpeg
 cd local-test
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+**Intel Mac（`uname -m` 出 x86_64）或者 Python 舊過 3.10：**
+```bash
+# 1. 裝 Homebrew（如果 brew: command not found）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# 2. 裝新 Python + ffmpeg
+brew install python@3.11 ffmpeg
+# 3. 喺 local-test 用 python3.11 開 venv
+cd local-test
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt      # Intel 會自動裝 faster-whisper（唔係 mlx）
+```
+Intel 冇 GPU，Whisper 行 CPU（faster-whisper large-v3-turbo int8），會慢啲但行到；SenseVoice＋Gemini 照補口語。
 
 ### 1. 行
 ```bash
@@ -64,7 +80,7 @@ python3 fuse.py 你嘅錄音.m4a --batch 10  # 調 Gemini 每 batch 句數（預
 
 ## 要知嘅嘢
 
-- **要 Apple Silicon Mac**：`mlx-whisper` 行 Apple GPU。（Intel／其他機用唔到 mlx——嗰啲用返雲端或者 CLI 舊版。）
+- **跨平台**：Apple Silicon 自動用 `mlx-whisper`（Apple GPU，快）；Intel Mac／Linux 自動用 `faster-whisper`（CPU，慢啲但一樣行到）。唔使自己揀。
 - **第一次**自動載模型：Whisper turbo ~1.6GB、SenseVoice ~1GB，之後 cache 就快。
 - **點解用 turbo 唔用 large-v3 full**：turbo 快好幾倍、廣東話準確度接近，反正有 SenseVoice ＋ Gemini 補刀執成地道口語。要極致準可以改 `WHISPER_REPO` 做 `mlx-community/whisper-large-v3`。
 - **Gemini**：用 `gemini-2.5-flash` + JSON schema，stdlib `urllib` 直接打 REST（唔使 `google-genai` SDK——少一個 native 依賴、少一個出錯位）。
