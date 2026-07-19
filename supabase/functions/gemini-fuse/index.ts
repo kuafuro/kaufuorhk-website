@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
     const { data: cfg } = await admin.rpc('gemini_config');
     const KEY = ((cfg?.GEMINI_API_KEY as string) || '').trim();
-    const MODEL = ((cfg?.GEMINI_MODEL as string) || '').trim() || 'gemini-3.1-flash-lite';
+    const MODEL = ((cfg?.GEMINI_MODEL as string) || '').trim() || 'gemini-2.5-flash';
     if (!KEY) return json({ error: 'unconfigured' }, 503);
 
     // 冇 SenseVoice 參照嘅收正版（瀏覽器行唔到 SenseVoice）；粗口／語氣詞照留係產品原則。
