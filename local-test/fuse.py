@@ -94,18 +94,19 @@ def run_whisper(audio, lang):
         cuda = torch.cuda.is_available()
     except Exception:  # noqa: BLE001
         cuda = False
-    # faster-whisper（CTranslate2）：CUDA 用 float16，其餘（Mac 都係）行 CPU int8——Mac 短片夠快。
-    device, compute = ("cuda", "float16") if cuda else ("cpu", "int8")
-    print(f"• Whisper large-v3 載入中（device={device}）…")
+    # 最勁最準（慢唔緊要）：唔用 int8 量化——CUDA float16、CPU（Mac 都係）float32，唔蝕準確度。
+    device, compute = ("cuda", "float16") if cuda else ("cpu", "float32")
+    print(f"• Whisper large-v3 載入中（device={device}, compute={compute}, 最勁最準）…")
     model = WhisperModel("large-v3", device=device, compute_type=compute)
     print(f"• 轉錄中（language={lang}）…")
     try:
-        gen, _ = model.transcribe(audio, language=lang, vad_filter=True, beam_size=5)
+        # beam_size 8 + 唔用 temperature fallback：追準唔追快
+        gen, _ = model.transcribe(audio, language=lang, vad_filter=True, beam_size=8)
         segs = list(gen)
     except Exception as e:  # noqa: BLE001
         if lang == "yue":
             print("  yue 出事，自動退 zh 再試…", repr(e))
-            gen, _ = model.transcribe(audio, language="zh", vad_filter=True, beam_size=5)
+            gen, _ = model.transcribe(audio, language="zh", vad_filter=True, beam_size=8)
             segs = list(gen)
         else:
             raise
@@ -129,7 +130,8 @@ def run_sensevoice(audio, cc):
         dev = "cpu"
     from funasr import AutoModel
     from funasr.utils.postprocess_utils import rich_transcription_postprocess
-    print(f"• SenseVoice 載入中（device={dev}）…")
+    # SenseVoiceSmall 係公開版最勁嘅 SenseVoice（冇 Large）；funasr 預設 fp32 full precision，唔量化。
+    print(f"• SenseVoice 載入中（device={dev}, full precision, 最勁）…")
     sv = AutoModel(model="iic/SenseVoiceSmall", trust_remote_code=False, device=dev, disable_update=True)
     res = sv.generate(input=audio, cache={}, language="yue", use_itn=True, batch_size_s=300)
     info = res[0].get("sentence_info")
