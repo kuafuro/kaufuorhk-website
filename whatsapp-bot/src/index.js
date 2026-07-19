@@ -1,10 +1,18 @@
-// 入口:Express server(webhook 驗證 + 手動觸發) + 每 15 分鐘自動掃描發提醒
+// 入口:Express server(webhook 驗證 + 傳入訊息 + 手動觸發) + 每 15 分鐘自動掃描（提醒 + 取消通知）
 import express from 'express';
 import cron from 'node-cron';
 import { runReminders } from './reminders.js';
+import { runCancelNotices } from './notices.js';
 import { handleInbound } from './booking.js';
 import { realDeps } from './deps.js';
 import { markRead } from './whatsapp.js';
+
+// 每次掃描:先發到期提醒,再發取消通知
+async function runAll() {
+  const reminders = await runReminders();
+  const cancels = await runCancelNotices();
+  return { reminders, cancels };
+}
 
 const app = express();
 app.use(express.json());
@@ -47,7 +55,7 @@ app.post('/webhook', (req, res) => {
 app.get('/run-reminders', async (req, res) => {
   if (req.query.key !== VERIFY_TOKEN) return res.sendStatus(403);
   try {
-    const r = await runReminders();
+    const r = await runAll();
     res.json(r);
   } catch (e) {
     console.error(e);
@@ -58,12 +66,12 @@ app.get('/run-reminders', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`[server] listening on ${PORT}`));
 
-// 每 15 分鐘自動掃描一次
+// 每 15 分鐘自動掃描一次（提醒 + 取消通知）
 cron.schedule(
   '*/15 * * * *',
   () => {
-    console.log('[cron] running reminders…');
-    runReminders().catch((e) => console.error('[cron] failed', e));
+    console.log('[cron] running reminders + cancel notices…');
+    runAll().catch((e) => console.error('[cron] failed', e));
   },
   { timezone: TZ }
 );

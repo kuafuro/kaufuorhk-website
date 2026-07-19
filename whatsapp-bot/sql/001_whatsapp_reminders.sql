@@ -60,5 +60,8 @@ as $$
     );
 $$;
 
--- 呢個 function 淨係俾後端(service_role)用,唔對外公開
-revoke all on function public.due_reminders(int, int) from anon, authenticated;
+-- 呢個 function 淨係俾後端(service_role)用,唔對外公開。
+-- 注意:一定要 revoke 埋 public — Postgres 默認 grant EXECUTE 俾 PUBLIC,
+-- 淨 revoke anon/authenticated 佢哋仍然經 PUBLIC 承繼到(會漏晒學生姓名電話)。
+revoke all on function public.due_reminders(int, int) from public, anon, authenticated;
+grant execute on function public.due_reminders(int, int) to service_role;

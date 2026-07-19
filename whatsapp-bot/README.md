@@ -4,6 +4,7 @@
 
 1. **對話式報堂（1 對 1）** — 學生直接 send 個 bot,bot 用佢電話認返帳戶,彈可撳嘅時段清單,一撳就報名 / 取消 / 睇「我嘅堂」。夠人（預設 2 位）自動開班。
 2. **上堂提醒** — 堂前 **24 個鐘同 2 個鐘**自動用 WhatsApp template 提有報名嘅學生。
+3. **取消通知** — 堂被取消時,自動通知受影響學生（`src/notices.js`,同提醒一齊每 15 分鐘掃描）。
 
 接 Supabase 嘅排堂資料（`class_slots` / `slot_bookings` / `profiles.phone`），用 WhatsApp Cloud API,部署喺 Railway。
 

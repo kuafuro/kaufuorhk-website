@@ -20,17 +20,15 @@
   try { lang = localStorage.getItem("kf-lang") || "zh"; } catch (e) {}
   var T = {
     zh: {
-      roles: { member: "普通會員", student: "學生", coach: "教練", admin: "管理員" },
       noPerm: "呢個功能你未有權限用",
-      noPermDetail: function (role, need) { return "你而家嘅身份係「" + role + "」，呢頁需要：" + need + "。想開通請聯絡 Ming。"; },
+      noPermDetail: function () { return "你嘅帳戶用唔到呢一頁。有需要請聯絡 Ming。"; },
       verifyFail: "驗證唔到你嘅身份",
       verifyFailDetail: "網絡或者雲端服務暫時有問題，請重新整理再試。",
       goLogin: "去登入頁 →",
     },
     en: {
-      roles: { member: "Member", student: "Student", coach: "Coach", admin: "Admin" },
       noPerm: "You don't have access to this feature",
-      noPermDetail: function (role, need) { return "Your current role is “" + role + "”; this page requires: " + need + ". Contact Ming to upgrade."; },
+      noPermDetail: function () { return "This page isn't available on your account. Contact Ming if you need it."; },
       verifyFail: "We couldn't verify your identity",
       verifyFailDetail: "Network or cloud service issue — please refresh and try again.",
       goLogin: "Go to login page →",
@@ -85,8 +83,7 @@
         hide.remove();
         return;
       }
-      blocked(L.noPerm, L.noPermDetail(L.roles[role] || role,
-        roles.map(function (r) { return L.roles[r] || r; }).join(" / ")));
+      blocked(L.noPerm, L.noPermDetail());
     } catch (e) {
       blocked(L.verifyFail, L.verifyFailDetail);
     }

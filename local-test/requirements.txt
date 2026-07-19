@@ -1,0 +1,14 @@
+# 本地字幕 pipeline。跨平台：Apple Silicon 用 mlx-whisper；Intel Mac / 其他用 faster-whisper。
+# 另外系統要裝 ffmpeg（brew install ffmpeg）。建議 Python 3.10–3.11。
+faster-whisper>=1.0.3                          # Whisper（Intel Mac / Linux · CPU）
+mlx-whisper; platform_machine == "arm64"       # Whisper（Apple Silicon · GPU，快）
+funasr==1.2.6                                  # SenseVoice-Small（口語）
+silero-vad                                     # VAD 切片
+srt                                            # SRT 組裝（冇裝會自動用 stdlib）
+numpy
+# torch：Intel macOS 最後有 x86 wheel 係 2.2.2；Apple Silicon / Linux 用 2.4.1
+torch==2.2.2; platform_system == "Darwin" and platform_machine == "x86_64"
+torchaudio==2.2.2; platform_system == "Darwin" and platform_machine == "x86_64"
+torch==2.4.1; not (platform_system == "Darwin" and platform_machine == "x86_64")
+torchaudio==2.4.1; not (platform_system == "Darwin" and platform_machine == "x86_64")
+modelscope==1.20.1                             # funasr 落模型

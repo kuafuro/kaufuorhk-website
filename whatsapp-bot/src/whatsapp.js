@@ -1,5 +1,5 @@
-// WhatsApp Cloud API — send template message
-// 商業主動發訊（提醒）一定要用「已批核 template」,唔可以隨便發自由文字。
+// WhatsApp Cloud API — 發 template / 純文字 / 互動訊息
+// 商業主動發訊（提醒、取消通知）一定要用「已批核 template」;學生 send 你先嗰 24 鐘窗內先發到自由文字/互動。
 const API_VERSION = 'v21.0';
 
 // 將香港電話整成 WhatsApp 要嘅格式:例如 "9876 5432" -> "85298765432"（冇 +、冇空格）
@@ -11,18 +11,14 @@ export function normalizeHkPhone(raw) {
   return d.length >= 10 ? d : null;           // 太短當無效
 }
 
-// 發一個 template 訊息。params 係 body 入面 {{1}} {{2}} ... 嘅值（順序）
-export async function sendTemplate(toPhone, params) {
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const token = process.env.WHATSAPP_TOKEN;
-  const templateName = process.env.WHATSAPP_TEMPLATE_NAME || 'class_reminder';
+// 發一個 template 訊息。params 係 body 入面 {{1}} {{2}} ... 嘅值（順序）。
+// templateName 可覆寫（例如取消通知用另一個 template），唔傳就用預設提醒 template。
+export async function sendTemplate(toPhone, params, templateName) {
+  templateName = templateName || process.env.WHATSAPP_TEMPLATE_NAME || 'class_reminder';
   const lang = process.env.WHATSAPP_TEMPLATE_LANG || 'zh_HK';
-
   const to = normalizeHkPhone(toPhone);
   if (!to) throw new Error('電話格式無效: ' + toPhone);
-  if (!phoneId || !token) throw new Error('未設定 WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_TOKEN');
-
-  const payload = {
+  return postMessage({
     messaging_product: 'whatsapp',
     to,
     type: 'template',
@@ -30,15 +26,10 @@ export async function sendTemplate(toPhone, params) {
       name: templateName,
       language: { code: lang },
       components: [
-        {
-          type: 'body',
-          parameters: params.map((t) => ({ type: 'text', text: String(t) })),
-        },
+        { type: 'body', parameters: params.map((t) => ({ type: 'text', text: String(t) })) },
       ],
     },
-  };
-
-  return postMessage(payload);
+  });
 }
 
 // ── 共用:POST 一個訊息 payload 上 Cloud API ──

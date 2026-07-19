@@ -10,12 +10,29 @@
 # Modal secret "sensevoice" must provide: SENSEVOICE_TOKEN, CALLBACK_URL, CALLBACK_SECRET.
 # Deploy: see sensevoice/README.md (or the Colab notebook). SenseVoice/FunASR © Alibaba (attribution).
 
+import re
+
 import modal
 
 # fastapi is needed LOCALLY too (Header(...) default is evaluated when `modal deploy` builds the graph).
 from fastapi import Header, HTTPException
 
 app = modal.App("kuafuor-sensevoice")
+
+# SenseVoice AED event tokens 經 funasr rich_transcription_postprocess 會變 emoji——
+# 轉做觀眾睇得明嘅中文標註；情緒 emoji（字幕唔需要）就清走。
+# 講嘢內容一律照出，唔過濾粗口／語氣詞——呢個係產品原則。
+EVENT_TAGS = {"🎼": "[音樂]", "👏": "[掌聲]", "😀": "[笑聲]", "😭": "[喊聲]", "🤧": "[咳嗽]"}
+EMO_STRIP = "😊😔😡😰🤢😮"
+
+
+def tagify(text):
+    for k, v in EVENT_TAGS.items():
+        text = text.replace(k, v)
+    for e in EMO_STRIP:
+        text = text.replace(e, "")
+    text = re.sub(r"(\[[^\]]+\])(?:\1)+", r"\1", text)   # [音樂][音樂] → [音樂]
+    return text.strip()
 
 MODEL_DIR = "/models"
 model_cache = modal.Volume.from_name("kuafuor-sensevoice-cache", create_if_missing=True)
@@ -82,7 +99,7 @@ class SenseVoice:
         segments = []
         if info:
             for seg in info:
-                text = self.cc.convert(rich_transcription_postprocess(seg.get("text", "")).strip())
+                text = tagify(self.cc.convert(rich_transcription_postprocess(seg.get("text", "")).strip()))
                 if not text:
                     continue
                 segments.append({
@@ -90,24 +107,68 @@ class SenseVoice:
                     "spk": int(seg.get("spk", 0)), "text": text,
                 })
         else:
-            text = self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip())
+            text = tagify(self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip()))
             if text:
                 segments.append({"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text})
         return segments
 
     def _transcribe_plain(self, wav_path, duration_ms):
-        """Fallback when the diarization pipeline errors: plain SenseVoice, one whole-file segment."""
+        """Fallback when the diarization pipeline errors: VAD 自己分段、逐段plain轉——
+        講者標籤冇咗都好，時間軸一定要有（成個檔一嚿係冇得做字幕）。
+        VAD 都死埋先至退到 whole-file 一段。"""
+        import os
+        import subprocess
+        import tempfile
+
         from funasr import AutoModel
         from funasr.utils.postprocess_utils import rich_transcription_postprocess
+
         if not hasattr(self, "plain_model"):
             self.plain_model = AutoModel(
                 model="iic/SenseVoiceSmall", trust_remote_code=True,
-                vad_model="fsmn-vad", vad_kwargs={"max_single_segment_time": 30000},
                 device=self.device, disable_update=True,
             )
-        res = self.plain_model.generate(input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300)
-        text = self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip())
-        return [{"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text}] if text else []
+
+        def whole_file():
+            res = self.plain_model.generate(input=wav_path, cache={}, language="yue", use_itn=True, batch_size_s=300)
+            text = tagify(self.cc.convert(rich_transcription_postprocess(res[0].get("text", "")).strip()))
+            return [{"start_ms": 0, "end_ms": duration_ms, "spk": 0, "text": text}] if text else []
+
+        try:
+            if not hasattr(self, "vad_model"):
+                self.vad_model = AutoModel(model="fsmn-vad", device=self.device, disable_update=True)
+            spans = (self.vad_model.generate(input=wav_path)[0].get("value")) or []   # [[start_ms,end_ms],…]
+            if not spans:
+                return whole_file()
+            # 合併：一段最長 ~28s；靜位 >0.8s 先斷（太碎會慢，太長冇字幕用）
+            merged = []
+            for s, e in spans:
+                if merged and (e - merged[-1][0] <= 28000) and (s - merged[-1][1] <= 800):
+                    merged[-1][1] = e
+                else:
+                    merged.append([int(s), int(e)])
+            segments = []
+            with tempfile.TemporaryDirectory() as td:
+                for i, (s, e) in enumerate(merged):
+                    piece = os.path.join(td, f"p{i}.wav")
+                    subprocess.run(
+                        ["ffmpeg", "-y", "-loglevel", "error", "-i", wav_path,
+                         "-ss", f"{s/1000:.3f}", "-to", f"{e/1000:.3f}", "-c", "copy", piece],
+                        capture_output=True,
+                    )
+                    if not os.path.exists(piece):
+                        continue
+                    try:
+                        r = self.plain_model.generate(input=piece, cache={}, language="yue", use_itn=True)
+                        text = tagify(self.cc.convert(rich_transcription_postprocess(r[0].get("text", "")).strip()))
+                    except Exception:  # noqa: BLE001
+                        text = ""
+                    if text:
+                        segments.append({"start_ms": s, "end_ms": e, "spk": 0, "text": text})
+            return segments if segments else whole_file()
+        except Exception as e:  # noqa: BLE001
+            print("vad-chunked fallback failed, going whole-file:", e)
+            return whole_file()
 
     @modal.method()
     def run(self, audio_url: str, job_id: str):

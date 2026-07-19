@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>筆記圖譜 Notes Graph｜Kuafuor HK</title>
+<meta name="description" content="Kuafuor HK 筆記圖譜 — Obsidian 式知識圖譜，連結網站所有數據筆記、深度文章、服務同工具。Interactive knowledge graph linking every note, article and tool on the site.">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
+<style>
+  /* ═══ Classical 書卷編輯風 — 沿用主站 token（紅／黑／白） ═══ */
+  :root{
+    color-scheme: light;
+    --color-bg:#f3f2f2; --color-surface:#eae9e9; --color-text:#201f1d;
+    --color-divider:color-mix(in srgb, #201f1d 16%, transparent);
+    --color-accent:#a83228; --color-accent-600:#8c2a21;
+    --color-muted:color-mix(in srgb, #201f1d 55%, transparent);
+    --color-faint:color-mix(in srgb, #201f1d 42%, transparent);
+    --font-heading:'Cormorant Garamond','Noto Serif TC',serif;
+    --font-body:'Noto Serif TC',serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--color-bg); color:var(--color-text);
+    font-family:var(--font-body); font-size:15px; line-height:1.8;
+    display:flex; flex-direction:column; overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+
+  header.site{border-bottom:1px solid var(--color-divider); flex:none; background:var(--color-bg); z-index:10}
+  .bar{max-width:1400px; margin:0 auto; padding:0 20px; display:flex; align-items:center; gap:18px; min-height:58px}
+  .logo{font-family:var(--font-heading); font-weight:600; font-size:20px; letter-spacing:0.04em; text-decoration:none; margin-right:auto}
+  .pagename{font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--color-accent); font-feature-settings:'tnum'}
+  .back{font-size:13px; text-decoration:none; color:var(--color-muted); border-bottom:1px solid var(--color-divider); padding-bottom:2px; white-space:nowrap}
+  .back:hover{color:var(--color-accent); border-bottom-color:var(--color-accent)}
+  .lang{display:flex; border:1px solid var(--color-divider); border-radius:2px; overflow:hidden}
+  .lang button{
+    font:inherit; font-size:12.5px; padding:4px 10px; border:none; background:transparent;
+    color:var(--color-muted); cursor:pointer;
+  }
+  .lang button.on{background:var(--color-accent); color:#f6f3f2}
+
+  /* ── 圖譜畫布 ── */
+  #stage{position:relative; flex:1; min-height:0}
+  canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none}
+  canvas.dragging{cursor:grabbing}
+
+  /* ── 搜尋 ── */
+  .search{
+    position:absolute; top:14px; left:14px; z-index:5; display:flex; align-items:center; gap:8px;
+    background:color-mix(in srgb, var(--color-bg) 88%, transparent); backdrop-filter:blur(2px);
+    border:1px solid var(--color-divider); border-radius:2px; padding:7px 12px; width:min(280px, calc(100vw - 28px));
+  }
+  .search svg{color:var(--color-faint); flex:none}
+  .search input{
+    font:inherit; font-size:13.5px; border:none; outline:none; background:transparent;
+    color:var(--color-text); width:100%; caret-color:var(--color-accent);
+  }
+  .search input::placeholder{color:var(--color-faint)}
+
+  /* ── 圖例 & 控制 ── */
+  .legend{
+    position:absolute; left:14px; bottom:14px; z-index:5; font-size:11.5px; color:var(--color-muted);
+    background:color-mix(in srgb, var(--color-bg) 88%, transparent); border:1px solid var(--color-divider);
+    border-radius:2px; padding:10px 14px; display:flex; flex-direction:column; gap:5px;
+  }
+  .legend .li{display:flex; align-items:center; gap:9px}
+  .legend .dot{width:10px; height:10px; border-radius:50%; flex:none}
+  .dot.note{background:var(--color-accent)}
+  .dot.chapter{background:transparent; border:1.5px solid var(--color-accent)}
+  .dot.service{background:var(--color-text)}
+  .dot.tool{background:color-mix(in srgb, var(--color-text) 38%, transparent)}
+  .ctrl{position:absolute; right:14px; bottom:14px; z-index:5; display:flex; flex-direction:column; gap:8px}
+  .ctrl button{
+    font:inherit; font-size:15px; width:34px; height:34px; border:1px solid var(--color-divider); border-radius:2px;
+    background:color-mix(in srgb, var(--color-bg) 88%, transparent); color:var(--color-muted); cursor:pointer; line-height:1;
+  }
+  .ctrl button:hover{color:var(--color-accent); border-color:var(--color-accent)}
+
+  /* ── 筆記面板（Obsidian 式側欄） ── */
+  .panel{
+    position:absolute; top:14px; right:14px; bottom:14px; z-index:6; width:min(320px, calc(100vw - 28px));
+    background:var(--color-bg); border:1px solid var(--color-divider); border-radius:2px;
+    padding:22px 22px 18px; overflow-y:auto; display:none; box-shadow:0 2px 14px color-mix(in srgb, #201f1d 8%, transparent);
+  }
+  .panel.open{display:block}
+  .panel .close{
+    position:absolute; top:10px; right:10px; width:28px; height:28px; border:none; background:none;
+    color:var(--color-faint); font-size:17px; cursor:pointer; line-height:1;
+  }
+  .panel .close:hover{color:var(--color-accent)}
+  .panel .kicker{font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--color-accent); font-feature-settings:'tnum'}
+  .panel h3{font-family:var(--font-body); font-weight:700; font-size:19px; line-height:1.5; margin:6px 0 10px; text-wrap:balance}
+  .panel .sum{font-size:13.5px; line-height:1.9; color:var(--color-muted); margin:0 0 16px; text-align:justify}
+  .panel .grp{border-top:1px solid var(--color-divider); padding:12px 0 4px}
+  .panel .grp-label{font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--color-faint); margin-bottom:6px; display:flex; align-items:baseline; gap:6px}
+  .panel .grp-label .n{font-family:var(--font-heading); font-size:14px; color:var(--color-accent)}
+  .panel .lk{display:block; font-size:13.5px; padding:5px 0; text-decoration:none; color:var(--color-text); border:none; background:none; font-family:inherit; width:100%; text-align:left; cursor:pointer; line-height:1.6}
+  .panel .lk:hover{color:var(--color-accent)}
+  .panel .lk .dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:9px; vertical-align:1px}
+  .panel .open-btn{
+    display:inline-block; margin-top:16px; text-decoration:none; font-weight:600; font-size:13.5px;
+    padding:9px 20px; border:1px solid var(--color-accent); color:var(--color-accent); border-radius:2px;
+  }
+  .panel .open-btn:hover{color:var(--color-accent-600); border-color:var(--color-accent-600)}
+
+  .hint{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:4;
+    font-size:11.5px; color:var(--color-faint); letter-spacing:0.06em; pointer-events:none; white-space:nowrap;
+  }
+
+  @media (max-width:720px){
+    .hint{display:none}
+    .legend{display:none}
+    .pagename{display:none}
+    .panel{
+      top:auto; left:0; right:0; bottom:0; width:100%; max-height:56%;
+      border-left:none; border-right:none; border-bottom:none; border-radius:0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="bar">
+    <a class="logo" href="../">Kuafuor HK</a>
+    <span class="pagename" data-t="pageName"></span>
+    <a class="back" href="../" data-t="back"></a>
+    <div class="lang" role="group" aria-label="Language">
+      <button id="langZh">廣</button>
+      <button id="langEn">EN</button>
+    </div>
+  </div>
+</header>
+
+<div id="stage">
+  <canvas id="graph" aria-label="Notes graph"></canvas>
+  <div class="search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="q" type="search" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="hint" data-t="hint"></div>
+  <div class="legend" aria-hidden="true">
+    <div class="li"><span class="dot note"></span><span data-t="lgNote"></span></div>
+    <div class="li"><span class="dot chapter"></span><span data-t="lgChapter"></span></div>
+    <div class="li"><span class="dot service"></span><span data-t="lgService"></span></div>
+    <div class="li"><span class="dot tool"></span><span data-t="lgTool"></span></div>
+  </div>
+  <div class="ctrl">
+    <button id="zin" aria-label="Zoom in">+</button>
+    <button id="zout" aria-label="Zoom out">−</button>
+    <button id="fit" aria-label="Fit view">⊙</button>
+    <button id="shuffle" aria-label="Re-layout">↺</button>
+  </div>
+  <aside class="panel" id="panel" aria-live="polite">
+    <button class="close" id="pclose" aria-label="Close">✕</button>
+    <div class="kicker" id="ptype"></div>
+    <h3 id="ptitle"></h3>
+    <p class="sum" id="psum"></p>
+    <div class="grp" id="plinks-grp">
+      <div class="grp-label"><span data-t="links"></span><span class="n" id="plinks-n"></span></div>
+      <div id="plinks"></div>
+    </div>
+    <div class="grp" id="pback-grp">
+      <div class="grp-label"><span data-t="backlinks"></span><span class="n" id="pback-n"></span></div>
+      <div id="pback"></div>
+    </div>
+    <a class="open-btn" id="popen" href="#"><span data-t="openNote"></span> →</a>
+  </aside>
+</div>
+
+<script>
+"use strict";
+/* ════════════ i18n（沿用主站機制：kf-lang + data-t） ════════════ */
+const I18N = {
+  zh: {
+    pageName:"筆記圖譜", back:"← 返回主頁",
+    hint:"拖節點 · 滾輪縮放 · 撳節點睇內容 · 雙擊開啟",
+    searchPh:"搜尋筆記…",
+    lgNote:"統計筆記", lgChapter:"文章章節", lgService:"服務", lgTool:"工具／實例",
+    links:"連結", backlinks:"反向連結", openNote:"開啟筆記", none:"（無）",
+    tNote:"統計筆記", tChapter:"文章章節", tService:"服務", tTool:"工具／實例",
+  },
+  en: {
+    pageName:"Notes Graph", back:"← Back to home",
+    hint:"Drag nodes · scroll to zoom · click a node to preview · double-click to open",
+    searchPh:"Search notes…",
+    lgNote:"Stats notes", lgChapter:"Article chapters", lgService:"Services", lgTool:"Tools / examples",
+    links:"Links", backlinks:"Backlinks", openNote:"Open note", none:"(none)",
+    tNote:"Stats note", tChapter:"Article chapter", tService:"Service", tTool:"Tool / example",
+  },
+};
+let lang = "zh";
+try {
+  lang = localStorage.getItem("kf-lang")
+      || ((navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en");
+} catch (e) {}
+if (!I18N[lang]) lang = "zh";
+const t = k => (I18N[lang] || I18N.zh)[k] ?? I18N.zh[k] ?? k;
+const $ = s => document.querySelector(s);
+
+/* ════════════ 圖譜數據：節點＝站內筆記／頁面，邊＝內容關聯 ════════════ */
+const NODES = [
+  // 服務
+  {id:"svc-auto", type:"service", url:"../#business", zh:"流程自動化", en:"Process Automation",
+   sumZh:"幫企業將日日重複嘅工序交俾系統：客服、報表、審批一條龍。",
+   sumEn:"Hand your team's repetitive daily work to systems: service, reporting, approvals."},
+  {id:"svc-data", type:"service", url:"../#data",     zh:"數據分析", en:"Data Analysis",
+   sumZh:"由亂糟糟嘅數據入面揾出規律，將『感覺』變成『證據』。",
+   sumEn:"Find the patterns in messy data — turn gut feel into evidence."},
+  {id:"auto-cs",   type:"service", url:"../#business", zh:"客服自動化", en:"Customer Service Automation",
+   sumZh:"24／7 智能對答、常見問題自動回覆、複雜個案無縫轉真人。",
+   sumEn:"24/7 AI chat, auto-answers, seamless human hand-off."},
+  {id:"auto-rpt",  type:"service", url:"../#business", zh:"自動報表", en:"Automated Reporting",
+   sumZh:"數據自動彙整、定時生成報表、即時儀表板同提醒。",
+   sumEn:"Auto-aggregation, scheduled reports, live dashboards and alerts."},
+  {id:"auto-appr", type:"service", url:"../#business", zh:"自動審批流程", en:"Approval Workflows",
+   sumZh:"審批自動流轉、例外個案自動升級、全程通知同稽核紀錄。",
+   sumEn:"Auto-routing, exception escalation, notifications and audit trail."},
+  // 統計筆記（stats/）
+  {id:"st1", type:"note", url:"../stats/#t1", zh:"相關 ≠ 因果", en:"Correlation ≠ Causation",
+   sumZh:"兩樣嘢一齊郁，唔代表一樣推動另一樣 — 好多時背後有第三個變數。",
+   sumEn:"Two things moving together doesn't mean one drives the other — often a third variable lurks."},
+  {id:"st2", type:"note", url:"../stats/#t2", zh:"辛普森悖論（Berkeley）", en:"Simpson's Paradox (Berkeley)",
+   sumZh:"1973 Berkeley 取錄率：整體睇似歧視，分系一睇結論反轉。",
+   sumEn:"1973 Berkeley admissions: bias at the aggregate, reversed once split by department."},
+  {id:"st3", type:"note", url:"../stats/#t3", zh:"大 ≠ 準：抽樣偏差", en:"Bigger ≠ Better: Sampling Bias",
+   sumZh:"Literary Digest 二百幾萬份問卷都估錯 1936 大選 — 樣本歪咗，幾大都冇用。",
+   sumEn:"Literary Digest's 2M+ ballots still called 1936 wrong — a skewed sample stays skewed at any size."},
+  {id:"st4", type:"note", url:"../stats/#t4", zh:"p 值唔係咁讀", en:"Reading p-values Right",
+   sumZh:"p < 0.05 唔等於「真」，更加唔等於「重要」— ASA 官方都出過警告。",
+   sumEn:"p < 0.05 means neither 'true' nor 'important' — the ASA itself warned as much."},
+  // 文章章節（data-insights/）
+  {id:"di1", type:"chapter", url:"../data-insights/#s1", zh:"虛假關係", en:"Spurious Relationship",
+   sumZh:"混淆變數令兩個無因果嘅變數睇落高度相關；靠 DiD、RDD、IV 等準實驗設計剝離真實增量。",
+   sumEn:"Confounders make unrelated variables co-move; DiD, RDD and IV isolate true incrementality."},
+  {id:"di2", type:"chapter", url:"../data-insights/#s2", zh:"辛普森悖論", en:"Simpson's Paradox",
+   sumZh:"分組全贏、匯總反輸 — A/B 測試流量結構唔平衡時嘅致命盲點。",
+   sumEn:"Wins in every segment, loses in aggregate — the fatal blind spot of imbalanced A/B traffic."},
+  {id:"di3", type:"chapter", url:"../data-insights/#s3", zh:"選擇性偏差", en:"Selection Bias",
+   sumZh:"樣本唔係隨機揀嘅：J 型評論分佈、eKYC 自我過濾 — Heckman 兩步法還原沉默大多數。",
+   sumEn:"Non-random samples: J-shaped reviews, eKYC self-filtering — Heckman correction recovers the silent majority."},
+  {id:"di4", type:"chapter", url:"../data-insights/#s4", zh:"P 值的迷思", en:"The Myth of P-values",
+   sumZh:"統計顯著 ≠ 商業顯著；MDE、CUPED、貝氏／序列檢定先至係現代實驗工程。",
+   sumEn:"Statistical ≠ practical significance; MDE, CUPED and Bayesian/sequential testing are the modern kit."},
+  {id:"di5", type:"chapter", url:"../data-insights/#s5", zh:"倖存者偏差", en:"Survivorship Bias",
+   sumZh:"只睇倖存基金／獨角獸會嚴重高估回報低估風險 — 死咗嗰啲先係沉默證據。",
+   sumEn:"Studying only surviving funds/unicorns inflates returns and hides risk — the dead are the silent evidence."},
+  {id:"di6", type:"chapter", url:"../data-insights/#s6", zh:"均值回歸", en:"Regression to the Mean",
+   sumZh:"極端表現之後自然回落，唔係「懶咗」都唔係「培訓有效」— 唔好被隨機波動綁架 KPI。",
+   sumEn:"Extremes drift back naturally — neither slacking nor training magic. Don't let noise set your KPIs."},
+  // 工具／實例
+  {id:"ml",   type:"tool", url:"../motion-lab/",        zh:"Motion Lab", en:"Motion Lab",
+   sumZh:"AI 運動姿態分析 — 睇片、評分、出報告全自動，自動化能力嘅自家實例。",
+   sumEn:"AI motion analysis — watch, score, report, fully automated. Our own automation example."},
+  {id:"sub",  type:"tool", url:"../cantonese-subtitle/", zh:"廣東話轉字幕", en:"Cantonese Subtitles",
+   sumZh:"廣東話語音自動轉字幕，喺瀏覽器本地運算 — 又一個自動化實例。",
+   sumEn:"Cantonese speech auto-subtitled, computed locally in the browser — another automation example."},
+  {id:"calc", type:"tool", url:"../split-calculator/",   zh:"分成計算器", en:"Split Calculator",
+   sumZh:"踢拳小班嘅教練分成計數機 — 每人套票價、試堂費、分成一目了然。",
+   sumEn:"Coach revenue-split calculator for the kickboxing classes."},
+  {id:"book", type:"tool", url:"../schedule/",           zh:"排堂報名", en:"Class Booking",
+   sumZh:"踢拳小班排堂報名 — 揀時段、報名、WhatsApp 通知一條龍。",
+   sumEn:"Kickboxing class scheduling and sign-up, with WhatsApp notifications."},
+];
+// 有向邊：[from, to] — 面板據此分「連結」同「反向連結」（唔收頁面 hub，純內容關聯）
+const EDGES = [
+  ["svc-auto","auto-cs"],["svc-auto","auto-rpt"],["svc-auto","auto-appr"],
+  ["svc-auto","ml"],["svc-auto","sub"],
+  ["auto-rpt","svc-data"],   // 自動報表背後就係數據彙整＋儀表板 — 兩大服務喺度交匯
+  ["svc-data","st1"],["svc-data","st2"],["svc-data","st3"],["svc-data","st4"],
+  ["st1","di1"],["st2","di2"],["st3","di3"],["st3","di5"],["st4","di4"],
+  ["di1","di2"],["di3","di5"],["di5","di6"],
+  ["ml","book"],["book","calc"],
+];
+
+/* ════════════ 樣式映射 ════════════ */
+const STYLE = {
+  note:    {r:9,  fill:"#a83228", stroke:null},
+  chapter: {r:8,  fill:"#f3f2f2", stroke:"#a83228"},
+  service: {r:11, fill:"#201f1d", stroke:null},
+  tool:    {r:7,  fill:"rgba(32,31,29,0.38)", stroke:null},
+};
+const TYPE_LABEL = {note:"tNote", chapter:"tChapter", service:"tService", tool:"tTool"};
+
+/* ════════════ 力導向模擬（零依賴） ════════════ */
+const nodes = NODES.map((n,i)=>({...n, x:0, y:0, vx:0, vy:0, deg:0, idx:i}));
+const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+const edges = EDGES.map(([a,b])=>({a:byId[a], b:byId[b]}));
+edges.forEach(e=>{ e.a.deg++; e.b.deg++; });
+
+function seedPositions(){
+  // 決定性初始佈局（黃金角螺旋）— 免 Math.random，重載結果一致
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  nodes.forEach((n,i)=>{
+    const r = 60 + 34 * Math.sqrt(i);
+    n.x = Math.cos(GA*i) * r; n.y = Math.sin(GA*i) * r;
+    n.vx = n.vy = 0;
+  });
+}
+let alpha = 1;
+function tick(){
+  const REP = 5200, SPRING = 0.028, GRAV = 0.012, DAMP = 0.82;
+  for (let i=0;i<nodes.length;i++){
+    const a = nodes[i];
+    for (let j=i+1;j<nodes.length;j++){
+      const b = nodes[j];
+      let dx = a.x-b.x, dy = a.y-b.y;
+      let d2 = dx*dx+dy*dy; if (d2 < 1) { d2 = 1; dx = 1; }
+      const d = Math.sqrt(d2);
+      const f = REP / d2;
+      const fx = dx/d*f, fy = dy/d*f;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    }
+  }
+  edges.forEach(({a,b})=>{
+    const rest = 92 + 8*Math.min(a.deg,b.deg);
+    const dx = b.x-a.x, dy = b.y-a.y;
+    const d = Math.max(Math.hypot(dx,dy), 1);
+    const f = (d - rest) * SPRING;
+    const fx = dx/d*f, fy = dy/d*f;
+    a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+  });
+  let maxV = 0;
+  nodes.forEach(n=>{
+    n.vx -= n.x * GRAV; n.vy -= n.y * GRAV;
+    n.vx *= DAMP; n.vy *= DAMP;
+    if (n !== dragNode){
+      n.x += n.vx * alpha; n.y += n.vy * alpha;
+    }
+    maxV = Math.max(maxV, Math.abs(n.vx), Math.abs(n.vy));
+  });
+  alpha = Math.max(alpha * 0.996, 0);
+  return maxV * alpha;
+}
+function settle(n=420){ for(let i=0;i<n;i++) tick(); }
+
+/* ════════════ 畫布渲染 ════════════ */
+const canvas = $("#graph"), ctx = canvas.getContext("2d");
+let W=0, H=0, DPR=1;
+let scale = 1, ox = 0, oy = 0;              // view transform（世界→螢幕：s*p + o）
+let hoverNode = null, selNode = null, dragNode = null;
+let query = "";
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function resize(){
+  DPR = window.devicePixelRatio || 1;
+  const r = canvas.getBoundingClientRect();
+  W = r.width; H = r.height;
+  canvas.width = W*DPR; canvas.height = H*DPR;
+  draw();
+}
+new ResizeObserver(resize).observe(canvas);
+
+function fitView(){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  nodes.forEach(n=>{ x0=Math.min(x0,n.x); y0=Math.min(y0,n.y); x1=Math.max(x1,n.x); y1=Math.max(y1,n.y); });
+  const pad = 70;
+  scale = Math.min((W-2*pad)/Math.max(x1-x0,1), (H-2*pad)/Math.max(y1-y0,1), 1.6);
+  ox = W/2 - scale*(x0+x1)/2; oy = H/2 - scale*(y0+y1)/2;
+}
+const toScreen = n => [n.x*scale+ox, n.y*scale+oy];
+
+function neighborSet(node){
+  const s = new Set([node.id]);
+  edges.forEach(({a,b})=>{ if(a===node) s.add(b.id); if(b===node) s.add(a.id); });
+  return s;
+}
+function matchesQuery(n){
+  if (!query) return true;
+  return (n.zh + " " + n.en).toLowerCase().includes(query);
+}
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  const focus = hoverNode || selNode;
+  const hood = focus ? neighborSet(focus) : null;
+  const dimEdge = "rgba(32,31,29,0.06)", inkEdge = "rgba(32,31,29,0.17)", hotEdge = "rgba(168,50,40,0.55)";
+
+  edges.forEach(({a,b})=>{
+    const hot = focus && (a===focus || b===focus);
+    const dim = (hood && !hot) || (query && !(matchesQuery(a)&&matchesQuery(b)));
+    ctx.strokeStyle = hot ? hotEdge : dim ? dimEdge : inkEdge;
+    ctx.lineWidth = hot ? 1.4 : 1;
+    const [ax,ay] = toScreen(a), [bx,by] = toScreen(b);
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  });
+
+  nodes.forEach(n=>{
+    const st = STYLE[n.type];
+    const [x,y] = toScreen(n);
+    const inHood = !hood || hood.has(n.id);
+    const inQuery = matchesQuery(n);
+    const faded = !inHood || !inQuery;
+    ctx.globalAlpha = faded ? 0.18 : 1;
+    const r = st.r * (n===focus ? 1.25 : 1);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7);
+    ctx.fillStyle = st.fill; ctx.fill();
+    if (st.stroke){ ctx.lineWidth = 1.5; ctx.strokeStyle = st.stroke; ctx.stroke(); }
+    if (n===selNode){
+      ctx.beginPath(); ctx.arc(x, y, r+4, 0, 7);
+      ctx.lineWidth = 1; ctx.strokeStyle = "rgba(168,50,40,0.7)"; ctx.stroke();
+    }
+    // 標籤
+    const label = lang==="zh" ? n.zh : n.en;
+    ctx.font = (n===focus ? "600 " : "") + "11.5px 'Noto Serif TC', serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillStyle = n===focus ? "#a83228" : "rgba(32,31,29,0.72)";
+    ctx.fillText(label, x, y + r + 5);
+    ctx.globalAlpha = 1;
+  });
+}
+
+/* ════════════ 模擬循環 ════════════ */
+let raf = null;
+function loop(){
+  const energy = tick();
+  draw();
+  raf = (energy > 0.02 || dragNode) ? requestAnimationFrame(loop) : null;
+}
+function reheat(a=0.5){
+  alpha = Math.max(alpha, a);
+  if (reduced){ settle(200); draw(); return; }
+  if (!raf) raf = requestAnimationFrame(loop);
+}
+
+/* ════════════ 互動：拖／揀／縮放／平移 ════════════ */
+function pick(mx, my){
+  for (let i=nodes.length-1;i>=0;i--){
+    const n = nodes[i];
+    const [x,y] = toScreen(n);
+    const r = STYLE[n.type].r + 6;
+    if ((mx-x)**2 + (my-y)**2 <= r*r) return n;
+  }
+  return null;
+}
+let panning = false, px=0, py=0, moved=false;
+const pointers = new Map();
+let pinchD = 0;
+
+canvas.addEventListener("pointerdown", e=>{
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+  if (pointers.size === 2){ // pinch 開始
+    const ps = [...pointers.values()];
+    pinchD = Math.hypot(ps[0][0]-ps[1][0], ps[0][1]-ps[1][1]);
+    dragNode = null; panning = false;
+    return;
+  }
+  moved = false;
+  const n = pick(e.offsetX, e.offsetY);
+  if (n){ dragNode = n; reheat(0.35); }
+  else { panning = true; px = e.offsetX; py = e.offsetY; }
+  canvas.classList.add("dragging");
+});
+canvas.addEventListener("pointermove", e=>{
+  if (!pointers.has(e.pointerId)){
+    // 冇撳掣：hover
+    const h = pick(e.offsetX, e.offsetY);
+    if (h !== hoverNode){ hoverNode = h; canvas.style.cursor = h ? "pointer" : "grab"; draw(); }
+    return;
+  }
+  pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+  if (pointers.size === 2){
+    const ps = [...pointers.values()];
+    const d = Math.hypot(ps[0][0]-ps[1][0], ps[0][1]-ps[1][1]);
+    const cx = (ps[0][0]+ps[1][0])/2, cy = (ps[0][1]+ps[1][1])/2;
+    if (pinchD > 0){ zoomAt(cx, cy, d/pinchD); }
+    pinchD = d;
+    return;
+  }
+  moved = true;
+  if (dragNode){
+    dragNode.x = (e.offsetX - ox)/scale; dragNode.y = (e.offsetY - oy)/scale;
+    dragNode.vx = dragNode.vy = 0;
+    reheat(0.3);
+    if (reduced) draw();
+  } else if (panning){
+    ox += e.offsetX - px; oy += e.offsetY - py;
+    px = e.offsetX; py = e.offsetY;
+    draw();
+  }
+});
+function endPointer(e){
+  pointers.delete(e.pointerId);
+  canvas.classList.remove("dragging");
+  if (pointers.size < 2) pinchD = 0;
+  if (!moved && dragNode){ select(dragNode); }
+  else if (!moved && panning){ select(null); }
+  dragNode = null; panning = false;
+}
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+canvas.addEventListener("dblclick", e=>{
+  const n = pick(e.offsetX, e.offsetY);
+  if (n) location.href = n.url;
+});
+function zoomAt(cx, cy, f){
+  const ns = Math.min(Math.max(scale*f, 0.35), 3);
+  ox = cx - (cx-ox) * ns/scale; oy = cy - (cy-oy) * ns/scale;
+  scale = ns; draw();
+}
+canvas.addEventListener("wheel", e=>{
+  e.preventDefault();
+  zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY*0.0012));
+}, {passive:false});
+$("#zin").onclick = ()=>zoomAt(W/2, H/2, 1.25);
+$("#zout").onclick = ()=>zoomAt(W/2, H/2, 0.8);
+$("#fit").onclick = ()=>{ fitView(); draw(); };
+$("#shuffle").onclick = ()=>{ seedPositions(); alpha = 1; if (reduced){ settle(); fitView(); draw(); } else reheat(1); };
+
+/* ════════════ 筆記面板 ════════════ */
+function linkRow(n){
+  const b = document.createElement("button");
+  b.className = "lk"; b.type = "button";
+  b.innerHTML = `<span class="dot" style="background:${STYLE[n.type].stroke||STYLE[n.type].fill};${STYLE[n.type].stroke?'background:transparent;border:1.5px solid '+STYLE[n.type].stroke:''}"></span>`;
+  b.appendChild(document.createTextNode(lang==="zh" ? n.zh : n.en));
+  b.onclick = ()=>select(n, true);
+  return b;
+}
+function select(n, center){
+  selNode = n;
+  const panel = $("#panel");
+  if (!n){ panel.classList.remove("open"); draw(); return; }
+  $("#ptype").textContent = t(TYPE_LABEL[n.type]);
+  $("#ptitle").textContent = lang==="zh" ? n.zh : n.en;
+  $("#psum").textContent = lang==="zh" ? n.sumZh : n.sumEn;
+  const out = edges.filter(e=>e.a===n).map(e=>e.b);
+  const back = edges.filter(e=>e.b===n).map(e=>e.a);
+  const fill = (elLinks, elN, list)=>{
+    elLinks.textContent = "";
+    if (!list.length){ const s=document.createElement("span"); s.className="lk"; s.style.color="var(--color-faint)"; s.textContent=t("none"); elLinks.appendChild(s); }
+    else list.forEach(m=>elLinks.appendChild(linkRow(m)));
+    elN.textContent = list.length;
+  };
+  fill($("#plinks"), $("#plinks-n"), out);
+  fill($("#pback"), $("#pback-n"), back);
+  $("#popen").href = n.url;
+  panel.classList.add("open");
+  if (center){
+    ox += W/2 - (n.x*scale+ox); oy += H/2 - (n.y*scale+oy);
+  }
+  draw();
+}
+$("#pclose").onclick = ()=>select(null);
+
+/* ════════════ 搜尋 ════════════ */
+$("#q").addEventListener("input", e=>{ query = e.target.value.trim().toLowerCase(); draw(); });
+$("#q").addEventListener("keydown", e=>{
+  if (e.key === "Enter"){
+    const hit = nodes.find(matchesQuery.bind(null)) && nodes.filter(matchesQuery)[0];
+    if (query && hit) select(hit, true);
+  }
+});
+
+/* ════════════ 語言 ════════════ */
+function applyLang(){
+  document.querySelectorAll("[data-t]").forEach(el=>{ el.textContent = t(el.getAttribute("data-t")); });
+  $("#q").placeholder = t("searchPh");
+  $("#langZh").classList.toggle("on", lang==="zh");
+  $("#langEn").classList.toggle("on", lang==="en");
+  document.documentElement.lang = lang==="zh" ? "zh-Hant-HK" : "en";
+  if (selNode) select(selNode);
+  draw();
+}
+function setLang(l){ lang = l; try{ localStorage.setItem("kf-lang", l); }catch(e){} applyLang(); }
+$("#langZh").onclick = ()=>setLang("zh");
+$("#langEn").onclick = ()=>setLang("en");
+
+/* ════════════ 啟動 ════════════ */
+seedPositions();
+settle(reduced ? 600 : 260);
+resize();
+fitView();
+applyLang();
+if (!reduced) reheat(0.12);
+</script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 // 手動行一次提醒掃描(唔開 server)。本機測試用:  npm run run-once
 import { runReminders } from './reminders.js';
+import { runCancelNotices } from './notices.js';
 
-runReminders()
+Promise.all([runReminders(), runCancelNotices()]).then(([reminders, cancels])=>({reminders, cancels}))
   .then((r) => {
     console.log(JSON.stringify(r, null, 2));
     process.exit(0);
