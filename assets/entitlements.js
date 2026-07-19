@@ -24,20 +24,28 @@ async function sb() {                 // load Supabase ONLY when needed (keeps t
 }
 
 class Ent {
-  constructor() { this._ent = {}; this._session = null; this._cbs = []; }
+  constructor() { this._ent = {}; this._session = null; this._cbs = []; this._role = null; }
   get isLoggedIn() { return !!this._session; }
+  get role() { return this._role; }
+  // 內部技術人員 = holder（admin）∪ 開發（developer）；同 DB 嘅 is_tech_staff() 一致。
+  get isTechStaff() { return this._role === 'admin' || this._role === 'developer'; }
   on(_e, cb) { this._cbs.push(cb); }
   _emit() { this._cbs.forEach((c) => { try { c(this); } catch (e) { console.warn(e); } }); }
 
   async _load() {
     // Cheap offline check: no persisted session → not logged in, so never load the Supabase SDK.
-    if (!hasStoredSession()) { this._session = null; this._ent = {}; return; }
+    if (!hasStoredSession()) { this._session = null; this._ent = {}; this._role = null; return; }
     try {
       const client = await sb();
       this._session = (await client.auth.getSession()).data.session;
-      if (!this._session) { this._ent = {}; return; }
+      if (!this._session) { this._ent = {}; this._role = null; return; }
       const { data } = await client.from('entitlements')
         .select('product,status,current_period_end').eq('user_id', this._session.user.id);
+      // role 係 best-effort（俾雲端字幕嘅內部閘用）——就算 profiles 讀唔到都唔可以拖冧 entitlements（課金路）
+      try {
+        const { data: prof } = await client.from('profiles').select('role').eq('id', this._session.user.id).maybeSingle();
+        this._role = prof?.role || null;
+      } catch (_) { this._role = null; }
       const now = Date.now();
       this._ent = {};
       for (const r of data || []) {

@@ -162,7 +162,7 @@
 
   <header class="top">
     <h1>🎙️ 廣東話轉字幕
-      <small>Cantonese → Subtitles · 本地免費私密,或雲端 Pro（最準）</small>
+      <small>Cantonese → Subtitles · 本地免費私密（雲端最準·內部測試中）</small>
     </h1>
     <a class="back" href="/">← 返 Kuafuor HK</a>
   </header>
@@ -283,7 +283,11 @@ const $ = id => document.getElementById(id);
 
 // ── Freemium 閘（非阻塞：免費層唔會等 billing 初始化）──
 let ent = null;
-const isPro = () => !!(ent && ent.hasAccess("subtitle"));
+// 內部測試：雲端轉字幕（Whisper+SenseVoice→Gemini）暫時只限 holder（admin）＋技術人員（developer）。
+// 佢哋當 Pro 睇（解鎖全文＋匯出）；付費 Pro 用戶一樣解鎖本地全文，但雲端路要等公開先開。
+const isTechStaff = () => !!(ent && ent.isTechStaff);
+const cloudAllowed = () => isTechStaff();
+const isPro = () => !!(ent && (ent.hasAccess("subtitle") || ent.isTechStaff));
 Entitlements.init().then(e => {
   ent = e;
   e.on("change", () => { applyGate(); loadHistory(); autoEngine(); });   // 升級後即時解鎖 + 換雲端
@@ -362,20 +366,24 @@ function setEngine(e){
   $("modelNote").style.display = cloud ? "none" : "";
   $("cloudNote").style.display = cloud ? "block" : "none";
 }
-// 引擎自動揀：Pro → 雲端最準；未登入／免費 → 本地。用戶唔使揀。
+// 引擎自動揀：內部技術人員 → 雲端最準；其他人 → 本地。用戶唔使揀。
+// 雲端測試期間只限內部，所以唔再對公眾賣「升級 Pro 用雲端」（避免變假承諾）。
 function autoEngine(){
-  setEngine(isPro() ? "cloud" : "local");
+  const cloud = cloudAllowed();
+  setEngine(cloud ? "cloud" : "local");
   const eh = $("engHint"); if (!eh) return;
-  if (isPro()) eh.textContent = "☁️ 雲端最準模式（廣東話最準，首次開機要等幾分鐘）";
-  else {
-    eh.innerHTML = '免費本地模式 · <a href="#" id="goProLink" style="color:var(--accent);font-weight:600">升級 Pro 用雲端最準</a>';
-    const gp = $("goProLink"); if (gp) gp.onclick = (ev) => { ev.preventDefault(); if (ent) ent.requirePro("subtitle", "雲端轉字幕"); };
-  }
+  const en = cloudEN();
+  if (cloud) eh.textContent = en
+    ? "☁️ Cloud most-accurate mode (internal testing · Holder / tech staff · first run takes a few min)"
+    : "☁️ 雲端最準模式（內部測試 · Holder／技術人員 · 首次開機要等幾分鐘）";
+  else eh.textContent = en
+    ? "Local mode (free · private). Cloud most-accurate is in internal testing — opening later."
+    : "本地模式（免費・私密）· 雲端最準功能內部測試中，稍後開放";
 }
 engLocalBtn.addEventListener("click", () => setEngine("local"));
 try { autoEngine(); } catch(_) {}   // 即時render引擎提示（ent 未load都有預設）
 engCloudBtn.addEventListener("click", () => {
-  if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud transcription" : "雲端轉字幕"); else toast("請稍等…"); return; }
+  if (!cloudAllowed()) { toast(cloudEN() ? "Cloud transcription is in internal testing" : "雲端轉字幕內部測試中，暫未開放"); return; }
   setEngine("cloud");
 });
 
@@ -622,7 +630,7 @@ function getDurationMeta(file){
 async function runCloud(){
   if (!audioFile) return;
   const en = cloudEN();
-  if (!isPro()) { if (ent) ent.requirePro("subtitle", en ? "cloud transcription" : "雲端轉字幕"); return; }
+  if (!cloudAllowed()) { toast(en ? "Cloud transcription is internal-only right now" : "雲端轉字幕內部測試中，暫未開放"); setEngine("local"); return; }
   const db = ent && await ent.db();
   const token = db && (await db.auth.getSession()).data.session?.access_token;
   if (!db || !ent.userId || !token) { toast(en ? "Please sign in" : "請先登入"); return; }

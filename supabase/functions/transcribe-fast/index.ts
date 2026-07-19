@@ -1,5 +1,5 @@
 // transcribe-fast — START an async cloud transcription (spec §6, async redesign).
-//   auth (user JWT) -> has_pro('subtitle') -> tier quota pre-flight -> create a pending job ->
+//   auth (user JWT) -> is_tech_staff (內部測試：holder＋技術人員) -> tier quota pre-flight -> create a pending job ->
 //   ask the Modal endpoint to transcribe in the BACKGROUND (returns fast) -> return { job_id }.
 // The client polls public.transcribe_jobs until status = done/error. Modal posts the result to
 // transcribe-callback when finished, so a long cold start never times out this request.
@@ -42,9 +42,18 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    const { data: pro } = await admin.rpc('has_pro', { p_user: user.id, p_product: 'subtitle' });
-    if (!pro) return json({ error: 'not_pro' }, 403);
+    // 內部測試期間：雲端轉字幕只限 holder（admin）＋ 技術人員（developer）。
+    // 其他登入用戶（就算 Pro）一律擋——避免 Modal/Gemini 未穩定就燒錢（Ming 2026-07-19）。
+    // 呢個係權威閘（server-side）；前端只係唔顯示雲端路，唔可以靠佢做保護。
+    const { data: techStaff } = await admin.rpc('is_tech_staff', { p_user: user.id });
+    if (!techStaff) {
+      return json({
+        error: 'internal_only',
+        detail: '雲端轉字幕測試中，暫時只限內部（Holder／技術人員）。可以用返免費本地引擎。',
+      }, 403);
+    }
 
+    // 內部人員唔使 Pro entitlement；tier 攞唔到就當 pro（配額做安全上限，防走數）。
     const { data: tierRaw } = await admin.rpc('entitlement_tier', { p_user: user.id, p_product: 'subtitle' });
     const tier = (tierRaw as string) || 'pro';
     const quota = QUOTA_MIN[tier] ?? QUOTA_MIN.pro;
