@@ -8,7 +8,7 @@ Whisper large-v3-turbo（準＋快，mlx GPU）
 SenseVoice-Small（口語地道，CPU 飛快）             準 + 原汁原味 + 執錯字 + [笑聲] 標註，粗口照留
 ```
 
-**流程**：ffmpeg 轉 16k WAV → Silero VAD 切片（max 8s／pad 150ms／跳 <0.5s）→ 每 chunk 跑 Whisper turbo ＋ SenseVoice → Gemini 逐句融合（每 batch 15 句、帶 id、id 對唔上就縮半重試、帶上文 2 句）→ `srt` 出字幕。
+**流程**：PyAV 解碼 16k → **Whisper 成檔一次過轉**（內置 VAD 分句，直接出時間軸＋信心；唔逐 chunk 跑，快幾十倍）→ SenseVoice 逐句補刀（細 model，快）→ Gemini 逐句融合（每 batch 15 句、帶 id、id 對唔上就縮半重試、帶上文 2 句）→ `srt` 出字幕。
 
 ---
 
