@@ -3,6 +3,31 @@
 Visual system extracted from the shipped pages (index, stats, data-insights zh/en, notes,
 login, schedule, split-calculator, cantonese-subtitle, guard.js). Two dialects, one system.
 
+## Brand naming
+
+`Kuafuor HK` is the master brand; the kickboxing class operation (`踢拳小班`) is a sub-brand
+under it. One house, one visual system — every outward-facing page carries the `Kuafuor HK`
+mark, and sub-brand pages keep their own name alongside it.
+
+- **Content pages** (`index`, `stats`, `data-insights` zh/en, `notes`, `motion-lab`) — top
+  wordmark `Kuafuor HK`; `<title>` ends `…｜Kuafuor HK`; footer `© 2026 kuafuorhk.com`.
+- **Kuafuor tool pages** (`login`, `cantonese-subtitle`) — same house; a muted
+  `← 返 Kuafuor HK` back-link in `header.top` links back to the site.
+- **Sub-brand pages** (`踢拳小班`: `schedule`, `split-calculator`, plus the WhatsApp booking
+  bot `whatsapp-bot/`) — keep their own name and append the house: `<title>…｜踢拳小班 ·
+  Kuafuor HK`, with the same `← 返 Kuafuor HK` back-link.
+- **Internal / client demos** (`billing-demo`, `agent-dashboard` / Whale-Rader) —
+  intentionally unbranded.
+
+Spelling — single source of truth:
+
+| Context | Canonical form | Notes |
+|---|---|---|
+| Master wordmark | `Kuafuor HK` | Mixed case in source. All-caps looks (login `.brand`, Motion Lab report) come from CSS `text-transform`, not the source text. |
+| Sub-brand mark | `踢拳小班` | Chinese-only; always paired with the master (`踢拳小班 · Kuafuor HK`) on titles. |
+| Domain / email | `kuafuorhk.com`, `hello@kuafuorhk.com` | Always lowercase, incl. in `© 2026 kuafuorhk.com` footers. |
+| GitHub org / repo | `kuafuro/kaufuorhk-website` | External identifier — leave as-is even though it differs from the brand spelling. |
+
 ## Theme
 
 Classical 書卷編輯風 — scholarly editorial print on paper. Single light theme by design
