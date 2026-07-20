@@ -6,9 +6,10 @@ funasr==1.2.6                                  # SenseVoice-Small（口語）
 silero-vad                                     # VAD 切片
 srt                                            # SRT 組裝（冇裝會自動用 stdlib）
 numpy
-# torch：Intel macOS 最後有 x86 wheel 係 2.2.2；Apple Silicon / Linux 用 2.4.1
+# torch：Intel macOS 最後有 x86 wheel 係 2.2.2；Apple Silicon / Linux 用 2.4.1。
+# 注意：marker 文法冇 `not`，所以用 `!=` / `or` 表達「非 Intel macOS」。
 torch==2.2.2; platform_system == "Darwin" and platform_machine == "x86_64"
 torchaudio==2.2.2; platform_system == "Darwin" and platform_machine == "x86_64"
-torch==2.4.1; not (platform_system == "Darwin" and platform_machine == "x86_64")
-torchaudio==2.4.1; not (platform_system == "Darwin" and platform_machine == "x86_64")
+torch==2.4.1; platform_system != "Darwin" or platform_machine != "x86_64"
+torchaudio==2.4.1; platform_system != "Darwin" or platform_machine != "x86_64"
 modelscope==1.20.1                             # funasr 落模型
