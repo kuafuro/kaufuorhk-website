@@ -137,6 +137,30 @@ const slot = (id, over = {}) => ({ id, session_date: '2026-07-20', start_time: '
     ok('撳「我嘅堂」掣 → 處理到（冇堂出提示）', d2.sent.length === 1);
   }
 
+  // 13b. template 快速回覆掣（type:'button' + payload）→ 當菜單掣處理
+  {
+    const d = makeDeps({ slots: [slot('s1')] });
+    await handleInbound({ from: '85291110001', type: 'button', button: { payload: 'menu:book', text: '📅 報堂' } }, d);
+    ok('template button payload menu:book → 出時段 list', lastMsg(d).kind === 'list');
+  }
+
+  // 13c. WhatsApp Web 撳掣變咗普通文字（引用返掣 title）→ 靠 title 認返意圖，唔會淨彈招呼
+  {
+    const d = makeDeps({ slots: [slot('s1')] });
+    await handleInbound({ from: '85291110001', type: 'text', text: { body: '📅 報堂' } }, d);
+    ok('掣 title「📅 報堂」當文字入 → 出時段 list', lastMsg(d).kind === 'list');
+    const d2 = makeDeps({ bookings: [{ slot_id: 's1', session_date: '2026-07-20', start_time: '19:00:00', venue: 'KT', my_status: 'booked' }] });
+    await handleInbound({ from: '85291110001', type: 'text', text: { body: '📋 我嘅堂' } }, d2);
+    ok('掣 title「📋 我嘅堂」當文字入 → 出我嘅堂 list', lastMsg(d2).kind === 'list' && lastMsg(d2).rows[0].id === 'cancel:s1');
+  }
+
+  // 13d. 互動 button_reply 冇 id 但有 title → 靠 title 認返（防守）
+  {
+    const d = makeDeps({ slots: [slot('s1')] });
+    await handleInbound({ from: '85291110001', type: 'interactive', interactive: { type: 'button_reply', button_reply: { title: '📅 報堂' } } }, d);
+    ok('button_reply 只有 title → 靠 title 認返 book', lastMsg(d).kind === 'list');
+  }
+
   // 14. intentOf 各關鍵字
   {
     ok('intent: 報堂/book/1', intentOf('報') === 'book' && intentOf('book') === 'book' && intentOf('1') === 'book');

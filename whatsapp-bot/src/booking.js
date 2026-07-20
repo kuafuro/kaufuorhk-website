@@ -120,8 +120,28 @@ function errText(e) {
   return text('唔好意思,搞唔掂 😥 ' + m + '\nsend「報堂」再試多次,或者搵教練。');
 }
 
+// ── 由 inbound 訊息抽出「掣 id」+「文字」,統一之後嘅 routing ──
+// WhatsApp 撳掣可能有幾種形態,都要收到:
+//   • interactive.button_reply / list_reply  ← 手機 App 正式互動回覆(有 id）
+//   • type:'button' + button.payload/text    ← template 快速回覆掣
+//   • type:'text'（引用返掣 title）           ← WhatsApp Web 等對互動掣支援差,會變咗普通文字
+// 所以除咗直接對 id,亦都將掣 title / 文字經 intentOf 認多次,避免跌落招呼。
+function readReply(msg) {
+  const ir = (msg && msg.interactive) || {};
+  const btn = (msg && msg.button) || {};
+  const interactiveId = (ir.list_reply && ir.list_reply.id) || (ir.button_reply && ir.button_reply.id) || '';
+  const interactiveTitle = (ir.list_reply && ir.list_reply.title) || (ir.button_reply && ir.button_reply.title) || '';
+  const textBody = (msg && msg.text && msg.text.body) || '';
+  // id 優先次序:正式互動 id > template payload(如果係我哋自己嘅 id 格式)
+  const payloadId = /^(book|cancel|menu):/.test(btn.payload || '') ? btn.payload : '';
+  const id = interactiveId || payloadId;
+  // 文字補助:純文字 body > 互動掣 title > template 掣文字 / payload
+  const words = textBody || interactiveTitle || btn.text || btn.payload || '';
+  return { id, words };
+}
+
 // ── 主入口:收到一個 inbound WhatsApp 訊息物件 ──
-// msg 形如 { from:'85298765432', type:'text'|'interactive', text:{body}, interactive:{...} }
+// msg 形如 { from:'85298765432', type:'text'|'interactive'|'button', text:{body}, interactive:{...}, button:{...} }
 async function handleInbound(msg, deps) {
   const phone = msg && msg.from;
   if (!phone) return;
@@ -129,35 +149,31 @@ async function handleInbound(msg, deps) {
   const student = await deps.resolveStudent(phone);
   if (!student) { await deps.send(phone, NOT_LINKED); return; }
 
-  // 互動回覆（撳掣/揀清單）
-  if (msg.type === 'interactive') {
-    const ir = msg.interactive || {};
-    const id = (ir.list_reply && ir.list_reply.id) || (ir.button_reply && ir.button_reply.id) || '';
-    if (id.startsWith('book:')) {
-      try { await deps.send(phone, bookedMessage(await deps.book(id.slice(5), student.id))); }
-      catch (e) { await deps.send(phone, errText(e)); }
-      return;
-    }
-    if (id.startsWith('cancel:')) {
-      try { await deps.send(phone, cancelledMessage(await deps.cancel(id.slice(7), student.id))); }
-      catch (e) { await deps.send(phone, errText(e)); }
-      return;
-    }
-    if (id === 'menu:book') { await deps.send(phone, await slotListMessage(deps)); return; }
-    if (id === 'menu:mine') { await deps.send(phone, await myBookingsMessage(student, deps)); return; }
-    await deps.send(phone, menu());
+  const { id, words } = readReply(msg);
+
+  // 1) 明確掣 id:報名 / 取消某一堂
+  if (id.startsWith('book:')) {
+    try { await deps.send(phone, bookedMessage(await deps.book(id.slice(5), student.id))); }
+    catch (e) { await deps.send(phone, errText(e)); }
+    return;
+  }
+  if (id.startsWith('cancel:')) {
+    try { await deps.send(phone, cancelledMessage(await deps.cancel(id.slice(7), student.id))); }
+    catch (e) { await deps.send(phone, errText(e)); }
     return;
   }
 
-  // 純文字
-  const intent = intentOf(msg.text && msg.text.body);
+  // 2) 菜單掣 或 文字意圖:menu:* 直接對應,否則靠關鍵字(連掣 title 都會認到)
+  const intent = id === 'menu:book' ? 'book'
+    : id === 'menu:mine' ? 'mine'
+    : intentOf(words);
   if (intent === 'book') { await deps.send(phone, await slotListMessage(deps)); return; }
   if (intent === 'mine') { await deps.send(phone, await myBookingsMessage(student, deps)); return; }
   await deps.send(phone, menu());
 }
 
 export {
-  handleInbound, intentOf, slotListMessage, myBookingsMessage,
+  handleInbound, readReply, intentOf, slotListMessage, myBookingsMessage,
   bookedMessage, cancelledMessage, menu, NOT_LINKED,
   fmtDate, fmtTime, venueLabel, coachLabel,
 };

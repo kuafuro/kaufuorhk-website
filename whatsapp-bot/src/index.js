@@ -43,6 +43,19 @@ app.post('/webhook', (req, res) => {
       const value = req.body?.entry?.[0]?.changes?.[0]?.value;
       const msg = value?.messages?.[0];
       if (!msg) return;                       // 送遞狀態 callback 等,唔使理
+      // 診斷 log:睇實學生撳掣時實際送咩返嚟(interactive / button / text）,方便查「撳掣冇反應」
+      const ir = msg.interactive || {};
+      const btn = msg.button || {};
+      console.log('[inbound] ' + JSON.stringify({
+        from: msg.from,
+        type: msg.type,
+        itype: ir.type,
+        buttonReplyId: ir.button_reply && ir.button_reply.id,
+        listReplyId: ir.list_reply && ir.list_reply.id,
+        buttonPayload: btn.payload,
+        buttonText: btn.text,
+        text: msg.text && msg.text.body,
+      }));
       if (msg.id) markRead(msg.id);           // 藍剔(best-effort)
       await handleInbound(msg, realDeps);
     } catch (e) {
