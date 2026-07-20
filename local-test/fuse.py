@@ -9,8 +9,8 @@
 
 流程（同 Ming 個 plan）：
   0. PyAV 解碼 → 16kHz 單聲道（唔使 ffmpeg CLI）
-  1. Silero VAD 切片（max 8s／頭尾 pad 150ms／跳過 <0.5s）
-  2. 每 chunk 跑 Whisper（turbo）＋ SenseVoice（yue）
+  1. Whisper 成檔一次過轉（內置 VAD 分句 → 時間軸＋信心；快幾十倍，唔使逐 chunk 跑）
+  2. SenseVoice 逐句補刀（細 model，CPU 快）
   3. Gemini 融合：每 batch 15 句、帶 id、JSON schema；id 對唔上就縮半重試；帶上一 batch 尾 2 句做上文
   4. srt library 出 .srt；<|Laughter|> 類 tag 轉 [笑聲]
 
@@ -60,24 +60,10 @@ def decode_16k(src):
     return decode_audio(src, sampling_rate=16000)
 
 
-# ─────────────────────── Step 1：Silero VAD 切片 ───────────────────────
-def vad_chunks(audio):
-    import numpy as np
-    import torch
-    from silero_vad import get_speech_timestamps, load_silero_vad
-    vad = load_silero_vad()
-    wav = torch.from_numpy(np.ascontiguousarray(audio, dtype=np.float32))   # 1D float32 @16k
-    spans = get_speech_timestamps(
-        wav, vad, sampling_rate=16000,
-        max_speech_duration_s=8,        # 長氣位強制切開，字幕唔會超長
-        speech_pad_ms=150,              # 頭尾留 padding，唔切斷字頭字尾
-        min_speech_duration_ms=500,     # 跳過短過 0.5 秒（避免對垃圾片段作嘢）
-    )
-    return [{"id": i, "start": s["start"] / 16000, "end": s["end"] / 16000,
-             "a": s["start"], "b": s["end"]} for i, s in enumerate(spans)]
-
-
-# ─────────────────────── Step 2：雙軌 STT ───────────────────────
+# ─────────────────────── Step 1+2a：Whisper 成檔一次過轉（時間軸＋信心）───────────────────────
+# 提速關鍵（Ming 2026-07-20「太慢」）：原本 Silero 切完逐 chunk 跑 Whisper，長錄音切千幾段
+# 就跑千幾次、每次都有 overhead → 十幾個鐘。改成成個檔案一 pass（faster-whisper 內置 VAD
+# 分句，直接出時間軸＋avg_logprob 信心），SenseVoice 先逐句補刀。快幾十倍，結果一樣逐句。
 def load_whisper():
     # Apple Silicon → mlx-whisper（Apple GPU，快）；Intel Mac／其他 → faster-whisper（CPU）
     try:
@@ -88,14 +74,24 @@ def load_whisper():
                 try:
                     r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
                                                language=lg, initial_prompt=CANTO_PROMPT)
-                    return (r.get("text") or "").strip()
+                    out = []
+                    for s in r.get("segments", []):
+                        t = (s.get("text") or "").strip()
+                        if not t:
+                            continue
+                        lp = s.get("avg_logprob")
+                        conf = round(min(1.0, max(0.0, math.exp(lp))), 2) if lp is not None else None
+                        out.append({"start": float(s.get("start") or 0), "end": float(s.get("end") or 0),
+                                    "text": t, "conf": conf})
+                    if out:
+                        return out
                 except Exception:
                     continue
-            return ""
+            return []
         return run
     except ImportError:
         pass
-    # faster-whisper：跨平台（Intel Mac / Linux 都行）。turbo 快好多；Intel CPU 用 int8 唔會太慢。
+    # faster-whisper：跨平台（Intel Mac / Linux 都行）。turbo 快好多；CPU 用 int8。
     from faster_whisper import WhisperModel
     model = None
     for repo in ("large-v3-turbo", "large-v3"):
@@ -110,12 +106,23 @@ def load_whisper():
     def run(audio_np, lang="yue"):
         for lg in (lang, "zh"):
             try:
-                segs, _ = model.transcribe(audio_np, language=lg, beam_size=5,
-                                           initial_prompt=CANTO_PROMPT, condition_on_previous_text=False)
-                return " ".join((s.text or "").strip() for s in segs).strip()
+                segs, _ = model.transcribe(
+                    audio_np, language=lg, beam_size=5, initial_prompt=CANTO_PROMPT,
+                    condition_on_previous_text=False, vad_filter=True,
+                    vad_parameters={"min_silence_duration_ms": 500},
+                )
+                out = []
+                for s in segs:
+                    t = (s.text or "").strip()
+                    if not t:
+                        continue
+                    conf = round(min(1.0, max(0.0, math.exp(s.avg_logprob))), 2) if s.avg_logprob is not None else None
+                    out.append({"start": float(s.start or 0), "end": float(s.end or 0), "text": t, "conf": conf})
+                if out:
+                    return out
             except Exception:
                 continue
-        return ""
+        return []
     return run
 
 
@@ -126,7 +133,7 @@ def load_sensevoice():
                    device="cpu", disable_update=True)
 
     def run(audio_np):
-        res = sv.generate(input=audio_np, cache={}, language="yue", use_itn=True)
+        res = sv.generate(input=audio_np, cache={}, language="yue", use_itn=True, fs=16000, disable_pbar=True)
         return clean_tags(res[0].get("text", ""))
     return run
 
@@ -230,23 +237,33 @@ def write_srt(chunks, path):
 def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
     log("• 解碼音訊 → 16kHz mono（PyAV，唔使 ffmpeg）…")
     audio = decode_16k(audio_path)
-    log("• Silero VAD 切片…")
-    chunks = vad_chunks(audio)
-    if not chunks:
+    dur = len(audio) / 16000
+    log(f"• Whisper 成檔一次過轉（{dur/60:.1f} 分鐘音訊，內置 VAD 分句＋時間軸＋信心）…")
+    segs = whisper(audio)
+    if not segs:
         return []
-    log(f"  {len(chunks)} 段；雙軌 STT…")
-    for c in chunks:
-        clip = audio[c["a"]:c["b"]]
-        c["whisper"] = whisper(clip)
-        c["sensevoice"] = sv(clip) if (do_fuse and sv) else ""
-        log(f"  [{c['id']+1}/{len(chunks)}] {c['whisper'][:40]}")
+    chunks = [{"id": i, "start": s["start"], "end": s["end"],
+               "a": max(0, int(s["start"] * 16000)), "b": min(len(audio), int(s["end"] * 16000)),
+               "whisper": s["text"], "conf": s.get("conf")} for i, s in enumerate(segs)]
+    log(f"  {len(chunks)} 句")
     if do_fuse and sv:
+        log("• SenseVoice 逐句補刀（細 model，快）…")
+        for c in chunks:
+            clip = audio[c["a"]:c["b"]]
+            try:
+                c["sensevoice"] = sv(clip)
+            except Exception as e:  # noqa: BLE001
+                c["sensevoice"] = ""
+                log(f"  [{c['id']+1}] SenseVoice 跳過：{repr(e)[:80]}")
+            if (c["id"] + 1) % 10 == 0 or c["id"] + 1 == len(chunks):
+                log(f"  [{c['id']+1}/{len(chunks)}]")
         log("• Gemini 逐句融合…")
         fused = fuse_all(chunks, batch)
         for c in chunks:
             c["final"] = fused[c["id"]]
     else:
         for c in chunks:
+            c["sensevoice"] = ""
             c["final"] = clean_tags(c["whisper"])
     return chunks
 
