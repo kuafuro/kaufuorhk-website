@@ -33,6 +33,10 @@ import sys
 import tempfile
 import urllib.request
 
+# macOS：torch 同 ctranslate2/funasr 各自帶一份 OpenMP runtime（libomp），唔設呢個會撞
+# 「OMP: Error #15 … libiomp5.dylib already initialized」直接 abort。必須喺 import torch 之前設。
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
 WHISPER_REPO = "mlx-community/whisper-large-v3-turbo"
 # 塞句繁體引導 Whisper 出繁體（唔係佢好易嘔簡體）
