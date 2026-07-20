@@ -44,25 +44,21 @@ python3 fuse.py --demo               # 用示範對話行真 Gemini → 出 demo
 
 ### 0. 環境（做一次）
 
+> **唔使裝 ffmpeg**——解碼用 PyAV（`av`，隨 faster-whisper 一齊裝），本身就係 ffmpeg 嘅 library 版。
+
 **Apple Silicon（M1/M2/M3）：**
 ```bash
-brew install ffmpeg
 cd local-test
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**Intel Mac（`uname -m` 出 x86_64）或者 Python 舊過 3.10：**
+**Intel Mac（`uname -m` 出 x86_64）：** Python 3.9+ 就得，唔使 brew。
 ```bash
-# 1. 裝 Homebrew（如果 brew: command not found）
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-# 2. 裝新 Python + ffmpeg
-brew install python@3.11 ffmpeg
-# 3. 喺 local-test 用 python3.11 開 venv
 cd local-test
-python3.11 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt      # Intel 會自動裝 faster-whisper（唔係 mlx）
+pip install -r requirements.txt      # Intel 會自動裝 faster-whisper（唔係 mlx）＋ 相容版本
 ```
 Intel 冇 GPU，Whisper 行 CPU（faster-whisper large-v3-turbo int8），會慢啲但行到；SenseVoice＋Gemini 照補口語。
 

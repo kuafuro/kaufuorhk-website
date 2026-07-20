@@ -8,7 +8,7 @@
   SenseVoice-Small（口語地道，CPU 飛快）          準 + 原汁原味 + 執錯字 + 事件標註，粗口照留
 
 流程（同 Ming 個 plan）：
-  0. ffmpeg → 16kHz 單聲道 WAV
+  0. PyAV 解碼 → 16kHz 單聲道（唔使 ffmpeg CLI）
   1. Silero VAD 切片（max 8s／頭尾 pad 150ms／跳過 <0.5s）
   2. 每 chunk 跑 Whisper（turbo）＋ SenseVoice（yue）
   3. Gemini 融合：每 batch 15 句、帶 id、JSON schema；id 對唔上就縮半重試；帶上一 batch 尾 2 句做上文
@@ -28,7 +28,6 @@ import json
 import math
 import os
 import re
-import subprocess
 import sys
 import tempfile
 import urllib.request
@@ -53,30 +52,29 @@ def clean_tags(text, keep_events=True):
     return re.sub(r"\s+", " ", re.sub(r"<\|(\w+)\|>", repl, text or "")).strip()
 
 
-# ─────────────────────── Step 0：ffmpeg → 16k mono WAV ───────────────────────
-def to_wav16k(src):
-    out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
-    cmd = ["ffmpeg", "-y", "-i", src, "-ac", "1", "-ar", "16000", "-vn", out]
-    r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-    if r.returncode != 0:
-        raise RuntimeError("ffmpeg 轉檔失敗：" + r.stderr.decode()[-300:])
-    return out
+# ─────────────────────── Step 0：解碼 → 16k mono float32（PyAV，唔使 ffmpeg CLI）───────────────────────
+def decode_16k(src):
+    # faster-whisper 內置嘅 PyAV 解碼（av package）：任何格式（mp3/m4a/mp4…）→ 16kHz mono
+    # float32 numpy。用 libav 而唔係 ffmpeg 命令行，所以毋須另裝 ffmpeg。
+    from faster_whisper.audio import decode_audio
+    return decode_audio(src, sampling_rate=16000)
 
 
 # ─────────────────────── Step 1：Silero VAD 切片 ───────────────────────
-def vad_chunks(wav_path):
-    from silero_vad import get_speech_timestamps, load_silero_vad, read_audio
+def vad_chunks(audio):
+    import numpy as np
+    import torch
+    from silero_vad import get_speech_timestamps, load_silero_vad
     vad = load_silero_vad()
-    wav = read_audio(wav_path, sampling_rate=16000)          # torch 1D float32 @16k
+    wav = torch.from_numpy(np.ascontiguousarray(audio, dtype=np.float32))   # 1D float32 @16k
     spans = get_speech_timestamps(
         wav, vad, sampling_rate=16000,
         max_speech_duration_s=8,        # 長氣位強制切開，字幕唔會超長
         speech_pad_ms=150,              # 頭尾留 padding，唔切斷字頭字尾
         min_speech_duration_ms=500,     # 跳過短過 0.5 秒（避免對垃圾片段作嘢）
     )
-    audio = wav.numpy()
-    return audio, [{"id": i, "start": s["start"] / 16000, "end": s["end"] / 16000,
-                    "a": s["start"], "b": s["end"]} for i, s in enumerate(spans)]
+    return [{"id": i, "start": s["start"] / 16000, "end": s["end"] / 16000,
+             "a": s["start"], "b": s["end"]} for i, s in enumerate(spans)]
 
 
 # ─────────────────────── Step 2：雙軌 STT ───────────────────────
@@ -230,10 +228,10 @@ def write_srt(chunks, path):
 
 # ─────────────────────── 可重用 pipeline（CLI ＋ --serve 共用）───────────────────────
 def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
-    log("• ffmpeg → 16kHz mono WAV…")
-    wav_path = to_wav16k(audio_path)
+    log("• 解碼音訊 → 16kHz mono（PyAV，唔使 ffmpeg）…")
+    audio = decode_16k(audio_path)
     log("• Silero VAD 切片…")
-    audio, chunks = vad_chunks(wav_path)
+    chunks = vad_chunks(audio)
     if not chunks:
         return []
     log(f"  {len(chunks)} 段；雙軌 STT…")
