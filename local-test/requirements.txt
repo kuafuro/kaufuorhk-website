@@ -13,3 +13,6 @@ torchaudio==2.2.2; platform_system == "Darwin" and platform_machine == "x86_64"
 torch==2.4.1; platform_system != "Darwin" or platform_machine != "x86_64"
 torchaudio==2.4.1; platform_system != "Darwin" or platform_machine != "x86_64"
 modelscope==1.20.1                             # funasr 落模型
+# modelscope 會拉 cryptography；最新版冇 Intel-macOS/py3.9 現成 wheel，會走去 Rust+openssl
+# 由 source 砌（撞板）。喺 Intel macOS pin 去有 wheel 嘅 42.0.8。
+cryptography==42.0.8; platform_system == "Darwin" and platform_machine == "x86_64"
