@@ -551,6 +551,8 @@ def main():
     ap.add_argument("--serve", action="store_true", help="開個本地網頁（拖檔案就轉字幕）")
     ap.add_argument("--port", type=int, default=8765, help="--serve 用嘅 port（預設 8765）")
     ap.add_argument("--no-fuse", action="store_true", help="唔融合，淨雙軌 STT")
+    ap.add_argument("--engine", choices=["fuse", "whisper", "sensevoice"], default="fuse",
+                    help="fuse＝完整融合（預設）；whisper／sensevoice＝淨行單一引擎出 raw 逐字檔（benchmark 對比用）")
     ap.add_argument("--batch", type=int, default=15, help="每 batch 幾多句（預設 15）")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
@@ -585,6 +587,34 @@ def main():
             f.write("\n".join(c["final"] for c in chunks))
         show(chunks)
         print(f"\n✅ 完成：{base}.srt ／ {base}.txt")
+        return
+
+    # 單引擎 raw 逐字檔（benchmark 用）：唔清理、唔 s2hk、唔併段、唔融合——引擎出咩就係咩
+    if args.engine != "fuse":
+        print(f"• 載 {args.engine} 中（raw 引擎逐字檔）…")
+        audio = decode_16k(args.audio)
+        if args.engine == "whisper":
+            segs = load_whisper()(audio)
+        else:
+            sv = load_sensevoice()
+            from faster_whisper.vad import VadOptions, get_speech_timestamps
+            spans = get_speech_timestamps(audio, vad_options=VadOptions(
+                min_silence_duration_ms=500, max_speech_duration_s=28.0))
+            print(f"  VAD：{len(spans)} 段人聲")
+            segs = []
+            for i, sp in enumerate(spans):
+                t = sv(audio[sp["start"]:sp["end"]])
+                if t:
+                    segs.append({"start": sp["start"] / 16000, "end": sp["end"] / 16000, "text": t})
+                if (i + 1) % 10 == 0 or i + 1 == len(spans):
+                    print(f"  [{i+1}/{len(spans)}]")
+        if not segs:
+            print("❌ 冇嘢出。"); sys.exit(1)
+        base = os.path.splitext(args.out or args.audio)[0] + f".{args.engine}.raw"
+        write_srt([dict(s, final=s["text"]) for s in segs], base + ".srt")
+        with open(base + ".txt", "w", encoding="utf-8") as f:
+            f.write("\n".join(f"[{_fmt(s['start'])[3:8]}] {s['text']}" for s in segs))
+        print(f"✅ {len(segs)} 段 → {base}.srt ／ {base}.txt")
         return
 
     print("• 載模型中（第一次要幾分鐘）…")
