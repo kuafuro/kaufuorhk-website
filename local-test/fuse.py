@@ -94,6 +94,27 @@ def drop_stutter_segments(segs, keep=2):
     return out
 
 
+def merge_segments(segs, max_gap=0.6, max_dur=6.5, max_chars=32):
+    # Whisper 對住搭嘴／急口對話好易切到一舊舊碎片（實測 7 分鐘片 164 段、53% 短過 2 秒、
+    # 廿幾段得兩三個字）。咁碎：字幕閃到睇唔切、SenseVoice 逐段補刀冇上文、Gemini batch 又多。
+    # 醫法：相鄰段隔 < max_gap 秒就併埋一條，併到夠長（max_dur 秒）或者夠字（max_chars，
+    # 大約兩行香港字幕）就另起一條。字幕黃金位大約每條 1.5–6.5 秒。
+    out = []
+    for s in segs:
+        if out:
+            p = out[-1]
+            if (s["start"] - p["end"] <= max_gap
+                    and s["end"] - p["start"] <= max_dur
+                    and len(p["text"]) + len(s["text"]) <= max_chars):
+                p["end"] = s["end"]
+                p["text"] = (p["text"] + " " + s["text"]).strip()
+                confs = [x for x in (p.get("conf"), s.get("conf")) if x is not None]
+                p["conf"] = min(confs) if confs else None   # 攞低嗰個（保守）
+                continue
+        out.append(dict(s))
+    return out
+
+
 # ─────────────────────── Step 0：解碼 → 16k mono float32（PyAV，唔使 ffmpeg CLI）───────────────────────
 def decode_16k(src):
     # faster-whisper 內置嘅 PyAV 解碼（av package）：任何格式（mp3/m4a/mp4…）→ 16kHz mono
@@ -212,11 +233,12 @@ _ITEM = {"type": "OBJECT", "properties": {"id": {"type": "INTEGER"}, "text": {"t
 
 
 def _fuse_batch(batch, context):
-    lines = "\n".join(f"[id {c['id']}] A：{c['whisper']}｜B：{c['sensevoice']}" for c in batch)
+    lines = "\n".join(f"[id {c['id']}] A：{c['whisper']}｜B：{c['sensevoice'] or '（冇）'}" for c in batch)
     ctx = ("（上文最尾兩句，只作語氣參考，唔好輸出）：" + " / ".join(context) + "\n\n") if context else ""
     prompt = (
         "以下係同一段廣東話錄音、逐句嘅兩個 AI 轉錄，每句有 id。\n"
-        "【A】Whisper（字義較準，偏書面）｜【B】SenseVoice（口語地道，可能有錯字、含 [笑聲] 類事件標註）\n\n"
+        "【A】Whisper（字義較準，偏書面）｜【B】SenseVoice（口語地道，可能有錯字、含 [笑聲] 類事件標註）\n"
+        "B 寫住（冇）嘅句，就淨係根據 A 同埋上下文執。\n\n"
         + ctx + lines + "\n\n"
         "任務：逐句輸出改良版。以 A 嘅字義為準，寫成地道香港廣東話口語"
         "（係囉／㗎／喇／佢哋／喺度／咁樣／唔係），一律用香港繁體字，"
@@ -294,11 +316,11 @@ def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
     segs = whisper(audio)
     if not segs:
         return []
-    # 出廠前清一清：句內幻覺 loop 壓縮 → 簡轉繁（s2hk）→ 連續重複段合併
+    # 出廠前清一清：句內幻覺 loop 壓縮 → 簡轉繁（s2hk）→ 連續重複段合併 → 碎段併返做完整句
     n0 = len(segs)
-    segs = drop_stutter_segments([dict(s, text=to_hk(squash_repeats(s["text"]))) for s in segs])
+    segs = merge_segments(drop_stutter_segments([dict(s, text=to_hk(squash_repeats(s["text"]))) for s in segs]))
     if len(segs) != n0:
-        log(f"  清走 {n0 - len(segs)} 段幻覺重複（{n0}→{len(segs)}）")
+        log(f"  清幻覺＋併短段：{n0} 段 → {len(segs)} 段")
     chunks = [{"id": i, "start": s["start"], "end": s["end"],
                "a": max(0, int(s["start"] * 16000)), "b": min(len(audio), int(s["end"] * 16000)),
                "whisper": s["text"], "conf": s.get("conf")} for i, s in enumerate(segs)]
@@ -322,6 +344,48 @@ def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
         for c in chunks:
             c["sensevoice"] = ""
             c["final"] = clean_tags(c["whisper"])
+    return chunks
+
+
+# ─────────────────────── 直接食 .srt／.vtt：唔使行 STT，執靚已有字幕 ───────────────────────
+def parse_srt(path):
+    text = open(path, encoding="utf-8-sig").read()
+    segs = []
+    for block in re.split(r"\n\s*\n", text):
+        m = re.search(r"(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)", block)
+        if not m:
+            continue
+        g = [int(x) for x in m.groups()]
+        lines = [l for l in block.strip().splitlines()
+                 if "-->" not in l and not re.fullmatch(r"\d+", l.strip())]
+        t = re.sub(r"\s+", " ", " ".join(lines)).strip()
+        if t:
+            segs.append({"start": g[0] * 3600 + g[1] * 60 + g[2] + g[3] / 1000,
+                         "end": g[4] * 3600 + g[5] * 60 + g[6] + g[7] / 1000,
+                         "text": t, "conf": None})
+    return segs
+
+
+def polish_srt(segs, do_fuse=True, batch=15, log=print):
+    # 已有 .srt（例如 Whisper raw 出咗嗰份）→ 清幻覺 → 簡轉繁 → 併短段 → Gemini 口語化。
+    # 快、平、唔使重跑 STT——啱晒攞嚟單獨測「Gemini 層執唔執得返」。
+    # 天花板要知：佢冇聽過原聲，執到文風／錯別字／重複，執唔返「音都聽錯咗」嘅句。
+    if do_fuse and not os.environ.get("GEMINI_API_KEY", "").strip():
+        log("  ⚠️ 冇 GEMINI_API_KEY，改行淨清理（唔過 Gemini）")
+        do_fuse = False
+    n0 = len(segs)
+    segs = merge_segments(drop_stutter_segments([dict(s, text=to_hk(squash_repeats(s["text"]))) for s in segs]))
+    log(f"  清幻覺＋併短段：{n0} 段 → {len(segs)} 段")
+    chunks = [{"id": i, "start": s["start"], "end": s["end"], "whisper": s["text"],
+               "sensevoice": "", "conf": s.get("conf")} for i, s in enumerate(segs)]
+    if do_fuse:
+        log("• Gemini 逐句口語化（冇第二軌，淨執 A）…")
+        fused = fuse_all(chunks, batch)
+        for c in chunks:
+            c["final"] = to_hk(fused[c["id"]])
+    else:
+        for c in chunks:
+            c["final"] = c["whisper"]
     return chunks
 
 
@@ -481,8 +545,8 @@ def serve(port=8765, do_fuse_default=True):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="本地 VAD→雙軌STT→Gemini融合→SRT")
-    ap.add_argument("audio", nargs="?")
+    ap = argparse.ArgumentParser(description="本地 VAD→雙軌STT→Gemini融合→SRT；俾 .srt/.vtt 就直接執靚已有字幕")
+    ap.add_argument("audio", nargs="?", help="錄音／影片檔，或者 .srt/.vtt 字幕檔（字幕檔唔使行 STT）")
     ap.add_argument("--demo", action="store_true", help="唔使模型，淨試融合＋SRT")
     ap.add_argument("--serve", action="store_true", help="開個本地網頁（拖檔案就轉字幕）")
     ap.add_argument("--port", type=int, default=8765, help="--serve 用嘅 port（預設 8765）")
@@ -507,7 +571,21 @@ def main():
         return
 
     if not args.audio or not os.path.exists(args.audio):
-        ap.error("要俾個存在嘅錄音檔，或者用 --demo／--serve")
+        ap.error("要俾個存在嘅錄音檔或者 .srt/.vtt 字幕檔，或者用 --demo／--serve")
+
+    # 入嚟嘅係字幕檔 → 唔使行 STT／載模型，直接執靚（--no-fuse 就淨清理唔過 Gemini）
+    if os.path.splitext(args.audio)[1].lower() in (".srt", ".vtt"):
+        print("• 字幕檔入嚟：清幻覺 → 簡轉繁 → 併短段" + ("" if args.no_fuse else " → Gemini 口語化"))
+        chunks = polish_srt(parse_srt(args.audio), do_fuse=not args.no_fuse, batch=args.batch)
+        if not chunks:
+            print("❌ 讀唔到字幕內容。"); sys.exit(1)
+        base = os.path.splitext(args.out or args.audio)[0] + ".polished"
+        write_srt(chunks, base + ".srt")                    # 先寫檔後預覽：預覽中途斷咗都唔會冇成果
+        with open(base + ".txt", "w", encoding="utf-8") as f:
+            f.write("\n".join(c["final"] for c in chunks))
+        show(chunks)
+        print(f"\n✅ 完成：{base}.srt ／ {base}.txt")
+        return
 
     print("• 載模型中（第一次要幾分鐘）…")
     whisper = load_whisper()
@@ -516,11 +594,11 @@ def main():
     if not chunks:
         print("❌ VAD 搵唔到人聲。"); sys.exit(1)
 
-    show(chunks)
     base = os.path.splitext(args.out or args.audio)[0]
-    write_srt(chunks, base + ".srt")
+    write_srt(chunks, base + ".srt")                        # 先寫檔後預覽：預覽中途斷咗都唔會冇成果
     with open(base + ".txt", "w", encoding="utf-8") as f:
         f.write("\n".join(c["final"] for c in chunks))
+    show(chunks)
     print(f"\n✅ 完成：{base}.srt ／ {base}.txt（融合：{'冇' if args.no_fuse else '有'}）")
 
 

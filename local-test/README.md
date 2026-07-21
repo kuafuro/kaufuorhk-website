@@ -8,7 +8,7 @@ Whisper large-v3-turbo（準＋快，mlx GPU）
 SenseVoice-Small（口語地道，CPU 飛快）             準 + 原汁原味 + 執錯字 + [笑聲] 標註，粗口照留
 ```
 
-**流程**：PyAV 解碼 16k → **Whisper 成檔一次過轉**（內置 VAD 分句，直接出時間軸＋信心；唔逐 chunk 跑，快幾十倍）→ SenseVoice 逐句補刀（細 model，快）→ Gemini 逐句融合（每 batch 15 句、帶 id、id 對唔上就縮半重試、帶上文 2 句）→ `srt` 出字幕。
+**流程**：PyAV 解碼 16k → **Whisper 成檔一次過轉**（內置 VAD 分句，直接出時間軸＋信心；唔逐 chunk 跑，快幾十倍）→ 清幻覺＋簡轉繁＋**併短段**（碎片併返做完整句先落下一步）→ SenseVoice 逐句補刀（細 model，快）→ Gemini 逐句融合（每 batch 15 句、帶 id、id 對唔上就縮半重試、帶上文 2 句）→ `srt` 出字幕。
 
 ---
 
@@ -71,6 +71,23 @@ python3 fuse.py 你嘅錄音.m4a --batch 10  # 調 Gemini 每 batch 句數（預
 ```
 
 出 `你嘅錄音.srt`（字幕）＋ `你嘅錄音.txt`，terminal 亦會 print 逐句對照。
+
+---
+
+## 已有 .srt？直接執靚（唔使行 STT、唔使載模型）
+
+攞住一份 raw 字幕（例如 Whisper 出咗嗰份），唔使重跑成個轉錄：
+
+```bash
+export GEMINI_API_KEY=AQ...
+python3 fuse.py 舊字幕.srt              # 清幻覺 → 簡轉繁 → 併短段 → Gemini 口語化 → 舊字幕.polished.srt
+python3 fuse.py 舊字幕.srt --no-fuse    # 淨清理＋併段，唔過 Gemini（唔使 key，幾秒完）
+```
+
+實測（7 分鐘 WhatsApp 錄音嘅 raw Whisper SRT）：**164 段 → 82 段**，段長中位數 **1.7s → 4.2s**，短過 2 秒嘅段由 **53% → 20%**。
+
+**天花板要知**：Gemini 冇聽過原聲——文風、錯別字、幻覺重複、上下文推到嘅同音錯執得返；
+「音都聽錯咗」嘅句執唔返。要頂級質量始終行返完整雙軌 pipeline（餵音檔嗰條路）。
 
 ---
 
