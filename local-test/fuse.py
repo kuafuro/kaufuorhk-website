@@ -129,8 +129,20 @@ def load_whisper():
 def load_sensevoice():
     from funasr import AutoModel
     # SenseVoice-Small 細，CPU 已飛快，唔使爭 GPU（留 GPU 俾 mlx Whisper）
-    sv = AutoModel(model="iic/SenseVoiceSmall", trust_remote_code=False,
-                   device="cpu", disable_update=True)
+    # 預設 ModelScope（Mac 本地一路咁用，已 cache 嘅照舊）；連唔到 modelscope.cn
+    # （例如雲端 sandbox 白名單淨開 huggingface）就自動退去 HF 上同一個 model。
+    sv = None
+    err = None
+    for hub, repo in (("ms", "iic/SenseVoiceSmall"), ("hf", "FunAudioLLM/SenseVoiceSmall")):
+        try:
+            sv = AutoModel(model=repo, trust_remote_code=False,
+                           device="cpu", disable_update=True, hub=hub)
+            break
+        except Exception as e:  # noqa: BLE001
+            err = e
+            print(f"  ⚠️  SenseVoice hub={hub} 載入唔到（{repr(e)[:90]}），試下一個…", file=sys.stderr)
+    if sv is None:
+        raise RuntimeError(f"SenseVoice 載入失敗（ModelScope＋HF 都試過）：{err!r}")
 
     def run(audio_np):
         res = sv.generate(input=audio_np, cache={}, language="yue", use_itn=True, fs=16000, disable_pbar=True)
@@ -140,7 +152,8 @@ def load_sensevoice():
 
 # ─────────────────────── Step 3：Gemini 融合（加固版）───────────────────────
 def _gemini_array(prompt, item_schema):
-    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    # 本地用 GEMINI_API_KEY；Claude Code 雲端 sandbox 環境設定個名係細楷 gemini_key，讀埋佢
+    key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("gemini_key") or "").strip()
     if not key:
         return None
     body = {"contents": [{"parts": [{"text": prompt}]}],

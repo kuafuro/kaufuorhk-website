@@ -74,6 +74,30 @@ python3 fuse.py 你嘅錄音.m4a --batch 10  # 調 Gemini 每 batch 句數（預
 
 ---
 
+## ☁️ 喺 Claude Code 雲端 session 跑（唔使 Mac）
+
+雲端 sandbox 出網行白名單，環境設定要開呢兩個域名先落到模型：
+
+| 域名 | 做乜 |
+|---|---|
+| `huggingface.co` | repo 入口（config／tokenizer／細檔） |
+| `us.aws.cdn.hf.co` | **大檔（model weights）真正個 CDN**——2025 年 HF 搬咗去呢度；舊嗰啲 `cdn-lfs.huggingface.co`／`cas-bridge.xethub.hf.co` 已經廢咗，加咗都冇用 |
+
+（Gemini 融合行 `generativelanguage.googleapis.com`；PyPI 預設政策本身通。白名單改完要**開新 session** 先讀到。）
+
+```bash
+cd local-test
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+export HF_HUB_DISABLE_XET=1        # 行普通 HTTP 落檔（xet 協議用另一堆未開嘅域名）
+python3 fuse.py --demo             # Gemini key 用環境個 gemini_key，唔使自己 export
+# 想試完整 pipeline，攞 SenseVoice repo 個廣東話 sample：
+curl -sSLO https://huggingface.co/FunAudioLLM/SenseVoiceSmall/resolve/main/example/yue.mp3
+python3 fuse.py yue.mp3
+```
+
+Linux 冇 mlx，Whisper 自動行 faster-whisper（CPU int8）；`modelscope.cn` 唔喺白名單都唔緊要——SenseVoice 會自動由 ModelScope 退去 HuggingFace 落同一個 model。
+
 ## 要知嘅嘢
 
 - **跨平台**：Apple Silicon 自動用 `mlx-whisper`（Apple GPU，快）；Intel Mac／Linux 自動用 `faster-whisper`（CPU，慢啲但一樣行到）。唔使自己揀。

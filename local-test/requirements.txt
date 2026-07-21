@@ -1,5 +1,5 @@
 # 本地字幕 pipeline。跨平台：Apple Silicon 用 mlx-whisper；Intel Mac / 其他用 faster-whisper。
-# 另外系統要裝 ffmpeg（brew install ffmpeg）。建議 Python 3.10–3.11。
+# 唔使裝 ffmpeg（PyAV 解碼）。建議 Python 3.10–3.11。
 faster-whisper>=1.0.3                          # Whisper（Intel Mac / Linux · CPU）
 mlx-whisper; platform_machine == "arm64"       # Whisper（Apple Silicon · GPU，快）
 funasr==1.2.6                                  # SenseVoice-Small（口語）
