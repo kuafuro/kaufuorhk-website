@@ -38,8 +38,11 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
 WHISPER_REPO = "mlx-community/whisper-large-v3-turbo"
-# 塞句繁體引導 Whisper 出繁體（唔係佢好易嘔簡體）
-CANTO_PROMPT = "以下是一段廣東話口語對話，請以繁體中文輸出。"
+# initial_prompt 唔係「指令」——Whisper 唔識聽指令，只會「續寫」prompt 嘅文風。所以要餵一段
+# 地道繁體粵文做樣辦，佢先會跟住出口語繁體；之前嗰句「請以繁體中文輸出」本身係書面語，
+# 反而 prime 咗佢出書面語（成篇「什麼／哪裡／他」嘅病源之一）。
+CANTO_PROMPT = ("係咁嘅，呢段係香港人吹水嘅廣東話對話。「你哋琴日去咗邊度呀？」"
+                "「唔知喎，佢話嗰間嘢好貴，我哋咪冇去囉。」「係咩？咁得閒約埋佢哋一齊食啦。」")
 
 # SenseVoice 事件 tag → 中文標註（其餘 <|…|> 一律刪走）
 EVENT_TAGS = {"Laughter": "[笑聲]", "Applause": "[掌聲]", "BGM": "[音樂]",
@@ -50,6 +53,45 @@ def clean_tags(text, keep_events=True):
     def repl(m):
         return EVENT_TAGS.get(m.group(1), "") if keep_events else ""
     return re.sub(r"\s+", " ", re.sub(r"<\|(\w+)\|>", repl, text or "")).strip()
+
+
+# 繁體兜底：Whisper／SenseVoice 對粵語成日嘔簡體（訓練數據多簡體字幕），prompt 引導唔係 100%。
+# 裝咗 opencc（requirements 有）就逐句 s2hk 硬性轉繁，冇裝就照舊行。
+try:
+    from opencc import OpenCC
+    _S2HK = OpenCC("s2hk")
+except Exception:  # noqa: BLE001
+    _S2HK = None
+
+
+def to_hk(text):
+    return _S2HK.convert(text) if (_S2HK and text) else (text or "")
+
+
+def squash_repeats(text, keep=3):
+    # Whisper 幻覺經典款：同一組字句內連環 loop（「怎样说呢?」×6、「柔」×7）。最多保留 keep 次。
+    prev = None
+    while text and text != prev:
+        prev = text
+        text = re.sub(r"(.{1,12}?)\1{" + str(keep) + r",}", lambda m: m.group(1) * keep, text)
+    return text
+
+
+def drop_stutter_segments(segs, keep=2):
+    # 幻覺嘅另一款：連續好多段字幕一模一樣（「我覺得是」×5 段）。保留 keep 段，時間軸併埋落尾段。
+    out = []
+    for s in segs:
+        n = 0
+        for p in reversed(out):
+            if p["text"] == s["text"]:
+                n += 1
+            else:
+                break
+        if n >= keep:
+            out[-1]["end"] = s["end"]
+        else:
+            out.append(s)
+    return out
 
 
 # ─────────────────────── Step 0：解碼 → 16k mono float32（PyAV，唔使 ffmpeg CLI）───────────────────────
@@ -72,8 +114,10 @@ def load_whisper():
         def run(audio_np, lang="yue"):
             for lg in (lang, "zh"):
                 try:
+                    # condition_on_previous_text=False：防「上一句啱、跟住成分鐘 loop 同一句」嘅幻覺鏈
                     r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
-                                               language=lg, initial_prompt=CANTO_PROMPT)
+                                               language=lg, initial_prompt=CANTO_PROMPT,
+                                               condition_on_previous_text=False)
                     out = []
                     for s in r.get("segments", []):
                         t = (s.get("text") or "").strip()
@@ -84,8 +128,10 @@ def load_whisper():
                         out.append({"start": float(s.get("start") or 0), "end": float(s.get("end") or 0),
                                     "text": t, "conf": conf})
                     if out:
+                        print(f"  Whisper 語言 token：{lg}" + ("" if lg == "yue" else "（⚠️ yue 用唔到，跌咗落 zh——出書面語嘅重災區）"))
                         return out
-                except Exception:
+                except Exception as e:  # noqa: BLE001
+                    print(f"  ⚠️ Whisper({lg}) 失敗：{repr(e)[:120]}", file=sys.stderr)
                     continue
             return []
         return run
@@ -119,8 +165,10 @@ def load_whisper():
                     conf = round(min(1.0, max(0.0, math.exp(s.avg_logprob))), 2) if s.avg_logprob is not None else None
                     out.append({"start": float(s.start or 0), "end": float(s.end or 0), "text": t, "conf": conf})
                 if out:
+                    print(f"  Whisper 語言 token：{lg}" + ("" if lg == "yue" else "（⚠️ yue 用唔到，跌咗落 zh——出書面語嘅重災區）"))
                     return out
-            except Exception:
+            except Exception as e:  # noqa: BLE001
+                print(f"  ⚠️ Whisper({lg}) 失敗：{repr(e)[:120]}", file=sys.stderr)
                 continue
         return []
     return run
@@ -170,9 +218,13 @@ def _fuse_batch(batch, context):
         "以下係同一段廣東話錄音、逐句嘅兩個 AI 轉錄，每句有 id。\n"
         "【A】Whisper（字義較準，偏書面）｜【B】SenseVoice（口語地道，可能有錯字、含 [笑聲] 類事件標註）\n\n"
         + ctx + lines + "\n\n"
-        "任務：逐句輸出改良版。以 A 嘅字義為準，寫成地道廣東話口語"
-        "（係囉／㗎／喇／佢哋／喺度／咁樣／唔係），參考 B 還原口語講法同保留 [笑聲][音樂] 類事件標註，"
-        "順手修正明顯錯別字。粗口、語氣詞一律照留，唔准過濾。唔准加內容、唔准刪句或合併句、唔准改變意思。\n"
+        "任務：逐句輸出改良版。以 A 嘅字義為準，寫成地道香港廣東話口語"
+        "（係囉／㗎／喇／佢哋／喺度／咁樣／唔係），一律用香港繁體字，"
+        "參考 B 還原口語講法同保留 [笑聲][音樂] 類事件標註。"
+        "順手修正明顯錯別字，特別係同音聽錯字：按上下文執返正確嗰個寫法"
+        "（人名、俗語、粗口最常中招，前後句一致嘅叫法要統一）。"
+        "句內如果有 AI 轉錄幻覺式嘅無意義連環重複，執返做正常講法。"
+        "粗口、語氣詞一律照留，唔准過濾。唔准加內容、唔准刪句或合併句、唔准改變意思。\n"
         "輸出 JSON array，每項 {id, text}，同輸入 id 一一對應，唔准漏 id、唔准改 id。"
     )
     arr = _gemini_array(prompt, _ITEM)
@@ -242,6 +294,11 @@ def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
     segs = whisper(audio)
     if not segs:
         return []
+    # 出廠前清一清：句內幻覺 loop 壓縮 → 簡轉繁（s2hk）→ 連續重複段合併
+    n0 = len(segs)
+    segs = drop_stutter_segments([dict(s, text=to_hk(squash_repeats(s["text"]))) for s in segs])
+    if len(segs) != n0:
+        log(f"  清走 {n0 - len(segs)} 段幻覺重複（{n0}→{len(segs)}）")
     chunks = [{"id": i, "start": s["start"], "end": s["end"],
                "a": max(0, int(s["start"] * 16000)), "b": min(len(audio), int(s["end"] * 16000)),
                "whisper": s["text"], "conf": s.get("conf")} for i, s in enumerate(segs)]
@@ -251,7 +308,7 @@ def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
         for c in chunks:
             clip = audio[c["a"]:c["b"]]
             try:
-                c["sensevoice"] = sv(clip)
+                c["sensevoice"] = to_hk(sv(clip))
             except Exception as e:  # noqa: BLE001
                 c["sensevoice"] = ""
                 log(f"  [{c['id']+1}] SenseVoice 跳過：{repr(e)[:80]}")
@@ -260,7 +317,7 @@ def run_pipeline(audio_path, whisper, sv, do_fuse=True, batch=15, log=print):
         log("• Gemini 逐句融合…")
         fused = fuse_all(chunks, batch)
         for c in chunks:
-            c["final"] = fused[c["id"]]
+            c["final"] = to_hk(fused[c["id"]])
     else:
         for c in chunks:
             c["sensevoice"] = ""

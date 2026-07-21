@@ -4,6 +4,7 @@ faster-whisper>=1.0.3                          # Whisper（Intel Mac / Linux · 
 mlx-whisper; platform_machine == "arm64"       # Whisper（Apple Silicon · GPU，快）
 funasr==1.2.6                                  # SenseVoice-Small（口語）
 srt                                            # SRT 組裝（冇裝會自動用 stdlib）
+opencc-python-reimplemented                    # 簡→繁（s2hk）兜底：model 嘔簡體照執返繁（純 Python，冇 native 依賴）
 numpy<2                                         # torch 2.2.2（Intel）唔支援 numpy 2.x；1.26 全平台通用
 # torch：Intel macOS 最後有 x86 wheel 係 2.2.2；Apple Silicon / Linux 用 2.4.1。
 # 注意：marker 文法冇 `not`，所以用 `!=` / `or` 表達「非 Intel macOS」。

@@ -82,4 +82,6 @@ python3 fuse.py 你嘅錄音.m4a --batch 10  # 調 Gemini 每 batch 句數（預
 - **Gemini**：用 `gemini-2.5-flash` + JSON schema，stdlib `urllib` 直接打 REST（唔使 `google-genai` SDK——少一個 native 依賴、少一個出錯位）。
 - **加固**：融合逐句帶 id，Gemini 一漏／一改 id 就自動縮半 batch 重試，防跳行合併行；每 batch 帶上一 batch 尾 2 句做上文，語氣連貫。任何一步（Gemini／SenseVoice）出事都自動退返 Whisper-only，唔會成個死。
 - **粗口／語氣詞照留**、`[笑聲][音樂]` 事件標註保留——係產品原則，prompt 明確叫唔好過濾。
+- **點解試過成篇「普通話腔」書面語**：Whisper 對粵語嘅通病——訓練數據係「粵語聲＋書面語字幕」，佢學咗「聽粵語、寫書面」。三重醫法：① `initial_prompt` 改做地道粵文樣辦（Whisper 唔識聽指令，只識續寫文風，之前嗰句書面語 prompt 反而教壞佢）；② opencc `s2hk` 兜底簡轉繁；③ **Gemini 融合先係口語化主力**——`--no-fuse` 出嗰版係 raw 對照組，唔好攞嚟判斷質量。terminal 會 print 用咗邊個語言 token（`yue` 定跌咗落 `zh`）。
+- **幻覺 loop 自動清**：句內連環重複（「柔柔柔柔…」）壓返做正常長度；連續幾段一模一樣（「我覺得是」×5 段）會合併埋，時間軸保留。
 - 純本地工具，同 GitHub Pages 網站無關（Pages 唔 serve／執行）。
