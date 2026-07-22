@@ -37,7 +37,31 @@ import urllib.request
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
-WHISPER_REPO = "mlx-community/whisper-large-v3-turbo"
+
+# Whisper model：環境變量 WHISPER_MODEL 揀（唔使改 code），方便 A/B 對比。
+#   turbo（預設，快）｜ large-v3（full，粵語準啲、慢兩三倍）｜ large-v2
+#   亦可直接俾完整 repo 名（mlx repo 或 faster-whisper repo）。
+# 想試埋粵語 fine-tune（alvanlii／simonl0909…）就用 compare_models.py 擂台——嗰啲係 PyTorch
+# 格式，mlx／faster-whisper 唔直接食，要 transformers loader。
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "").strip() or "turbo"
+# 邏輯名 → (mlx repo, faster-whisper repo)
+_WHISPER_ALIASES = {
+    "turbo":    ("mlx-community/whisper-large-v3-turbo", "large-v3-turbo"),
+    "large-v3": ("mlx-community/whisper-large-v3",       "large-v3"),
+    "large-v2": ("mlx-community/whisper-large-v2",       "large-v2"),
+}
+
+
+def _whisper_repo(loader):
+    """loader ∈ {'mlx','fw'}：回傳 (主 repo, 要試嘅 repo 清單)。未知名當完整 repo 用。"""
+    alias = _WHISPER_ALIASES.get(WHISPER_MODEL)
+    primary = (alias[0] if loader == "mlx" else alias[1]) if alias else WHISPER_MODEL
+    order = [primary]
+    if loader == "fw" and "large-v3" not in order:   # faster-whisper 保底 fallback（同原本一致）
+        order.append("large-v3")
+    return primary, order
+
+
 # 塞句繁體引導 Whisper 出繁體（唔係佢好易嘔簡體）
 CANTO_PROMPT = "以下是一段廣東話口語對話，請以繁體中文輸出。"
 
@@ -68,11 +92,12 @@ def load_whisper():
     # Apple Silicon → mlx-whisper（Apple GPU，快）；Intel Mac／其他 → faster-whisper（CPU）
     try:
         import mlx_whisper
-        print("  Whisper：mlx-whisper large-v3-turbo（Apple GPU）")
+        mlx_repo, _ = _whisper_repo("mlx")
+        print(f"  Whisper：mlx-whisper {mlx_repo}（Apple GPU）")
         def run(audio_np, lang="yue"):
             for lg in (lang, "zh"):
                 try:
-                    r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=WHISPER_REPO,
+                    r = mlx_whisper.transcribe(audio_np, path_or_hf_repo=mlx_repo,
                                                language=lg, initial_prompt=CANTO_PROMPT)
                     out = []
                     for s in r.get("segments", []):
@@ -94,7 +119,8 @@ def load_whisper():
     # faster-whisper：跨平台（Intel Mac / Linux 都行）。turbo 快好多；CPU 用 int8。
     from faster_whisper import WhisperModel
     model = None
-    for repo in ("large-v3-turbo", "large-v3"):
+    _, fw_order = _whisper_repo("fw")
+    for repo in fw_order:
         try:
             model = WhisperModel(repo, device="cpu", compute_type="int8")
             print(f"  Whisper：faster-whisper {repo}（CPU int8）")
@@ -102,7 +128,7 @@ def load_whisper():
         except Exception:
             continue
     if model is None:
-        raise RuntimeError("faster-whisper 載入唔到 large-v3（試下 pip install -U faster-whisper）")
+        raise RuntimeError(f"faster-whisper 載入唔到 {fw_order}（試下 pip install -U faster-whisper）")
     def run(audio_np, lang="yue"):
         for lg in (lang, "zh"):
             try:
