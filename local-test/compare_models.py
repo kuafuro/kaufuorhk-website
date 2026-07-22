@@ -100,7 +100,7 @@ def build_srt(chunks):
 
 
 # ─────────────────────── 跑一個 model ───────────────────────
-def run_model(key, repo, audio, device, dtype, language, chunk_s=28):
+def run_model(key, repo, audio, device, dtype, language, fast=False, chunk_s=28):
     from transformers import pipeline
 
     print(f"\n▶ [{key}] 載入 {repo} …", flush=True)
@@ -125,14 +125,23 @@ def run_model(key, repo, audio, device, dtype, language, chunk_s=28):
 
     last_err = None
     for lg in tries:
-        gen = {"task": "transcribe"}
+        base = {"task": "transcribe"}
         if lg:
-            gen["language"] = lg
+            base["language"] = lg
+        if fast:
+            # chunked：快（batch 平行），但長音較易出重複幻覺；用 no_repeat_ngram guard 稍減。
+            gen = dict(base, no_repeat_ngram_size=4)
+            call = dict(chunk_length_s=chunk_s, stride_length_s=(6, 3), batch_size=batch)
+        else:
+            # sequential 長音（預設）：whisper 原生 30s 滑窗＋temperature fallback，撞到重複／低信心
+            # 會自動加溫重解——同 openai／faster-whisper 一樣嘅防幻覺，對比先貼近生產、公平。
+            gen = dict(base, temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+                       compression_ratio_threshold=1.35, logprob_threshold=-1.0, no_speech_threshold=0.6)
+            call = {}
         try:
             t1 = time.time()
             res = pipe({"raw": audio, "sampling_rate": 16000},
-                       chunk_length_s=chunk_s, stride_length_s=(6, 3),
-                       batch_size=batch, return_timestamps=True, generate_kwargs=gen)
+                       return_timestamps=True, generate_kwargs=gen, **call)
             infer_t = time.time() - t1
             chunks = res.get("chunks") or [{"text": res.get("text", ""), "timestamp": (0.0, None)}]
             text = (res.get("text") or "").strip()
@@ -192,6 +201,8 @@ def main():
                          "亦可直接俾 HF repo 名")
     ap.add_argument("--language", default="yue", help="強制語言（預設 yue；model 唔識就自動退 zh→auto）")
     ap.add_argument("--out", default=None, help="輸出資料夾（預設 <音檔>.compare）")
+    ap.add_argument("--fast", action="store_true",
+                    help="用 chunked 分段模式（快、batch 平行）；預設用 sequential＋防幻覺 fallback（穩、公平）")
     ap.add_argument("--list", action="store_true", help="淨列 model，唔跑")
     args = ap.parse_args()
 
@@ -228,9 +239,10 @@ def main():
         print("  ⚠️  CPU 冇 GPU：大 model（large-v3／v2）會慢，一條長音可能十幾分鐘一個。"
               "想快啲：喺有 GPU 嘅機、或先剪一條 30–60 秒代表性 clip。")
 
+    print(f"  解碼模式：{'chunked（--fast）' if args.fast else 'sequential＋temperature fallback（防幻覺）'}")
     results = []
     for key, repo in chosen:
-        results.append(run_model(key, repo, audio, device, dtype, args.language))
+        results.append(run_model(key, repo, audio, device, dtype, args.language, fast=args.fast))
 
     out_dir = args.out or (os.path.splitext(args.audio)[0] + ".compare")
     write_outputs(results, out_dir, os.path.basename(args.audio), dur, device, args.language)

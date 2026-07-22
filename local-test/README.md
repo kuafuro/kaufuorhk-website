@@ -100,8 +100,13 @@ mlx／faster-whisper 唔直接食，要 transformers loader。
 pip install torch transformers av          # CPU 都行；有 GPU／Apple MPS 會自動用，快好多
 python3 compare_models.py 你嘅真實錄音.m4a               # 跑預設全部 5 個 model
 python3 compare_models.py 錄音.m4a --models canto-small,large-v3,turbo
+python3 compare_models.py 錄音.m4a --fast                 # chunked 快啲（長音），但冇防幻覺 fallback
 python3 compare_models.py 錄音.m4a --list                # 淨列有咩 model
 ```
+
+**解碼**：預設用 Whisper 原生 sequential 長音解碼＋temperature fallback（撞到重複幻覺／低信心會
+自動加溫重解，同 openai／faster-whisper 一樣），對比先貼近生產、公平——唔會出現 turbo 打圈「专专专…」
+呢種假輸出扭曲結果。`--fast` 轉 chunked（batch 平行、長音快），但較易出重複幻覺，睇結果要留神。
 
 擂台名單（`--models` 揀 subset，或直接俾任何 HF whisper repo 名）：
 
