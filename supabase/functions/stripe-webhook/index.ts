@@ -24,7 +24,7 @@ function mapStripeStatus(s: string): Ent {
 
 // Which price IDs are the 'max' tier (spec §2.5). Everything else (the 'pro' prices) -> 'pro'.
 // Price is authoritative, so a portal plan-switch (Pro<->Max on the same subscription) is captured
-// on customer.subscription.updated. Add PRICE_ALL_MAX here if/when Kuafuor Max ships.
+// on customer.subscription.updated.
 function tierForSub(sub: Stripe.Subscription, maxPrices: Set<string>): 'pro' | 'max' {
   const priceId = sub.items?.data?.[0]?.price?.id;
   return priceId && maxPrices.has(priceId) ? 'max' : 'pro';
@@ -41,7 +41,10 @@ async function applyIfNewer(match: Record<string, string>, eventCreated: number,
 Deno.serve(async (req) => {
   const cfg = await billingCfg();
   const WHSEC = cfg.STRIPE_WEBHOOK_SECRET || Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
-  const maxPrices = new Set([cfg.PRICE_SUBTITLE_MAX || Deno.env.get('PRICE_SUBTITLE_MAX')].filter(Boolean) as string[]);
+  const maxPrices = new Set([
+    cfg.PRICE_SUBTITLE_MAX || Deno.env.get('PRICE_SUBTITLE_MAX'),
+    cfg.PRICE_ALL_MAX || Deno.env.get('PRICE_ALL_MAX'),
+  ].filter(Boolean) as string[]);
   const sig = req.headers.get('stripe-signature');
   const body = await req.text(); // RAW body — required for signature verification
   let event: Stripe.Event;

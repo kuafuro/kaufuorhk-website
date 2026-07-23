@@ -39,7 +39,7 @@
   .card{border-radius:6px}
   .lang{border-radius:4px}
   .lang button.on{background:var(--accent); color:#fff}
-  .tabs button,button.primary,button.ghost,label.f input,.row2 button,.user-row select{border-radius:4px}
+  .tabs button,button.primary,button.ghost,button.google-btn,label.f input,.row2 button,.user-row select{border-radius:4px}
   .steps li .n,.avatar{border-radius:50%}
   :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   a{text-underline-offset:3px}
@@ -95,6 +95,15 @@
     width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--line-strong);background:none;
     color:var(--ink);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;
   }
+  .or-div{display:flex;align-items:center;gap:10px;margin:16px 0 2px;color:var(--muted);font-size:.74rem}
+  .or-div::before,.or-div::after{content:"";flex:1;height:1px;background:var(--line)}
+  button.google-btn{
+    width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--line-strong);background:#fff;
+    color:#201f1d;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:8px;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  button.google-btn:disabled{opacity:.55}
+  button.google-btn svg{width:18px;height:18px;flex:none}
   .aux{font-size:.82rem;color:var(--muted);text-align:center;margin-top:14px}
   .aux a{color:var(--ink);cursor:pointer;text-decoration:underline;font-weight:600}
   .msg{font-size:.84rem;border-radius:10px;padding:11px 13px;margin-top:12px;display:none;line-height:1.55}
@@ -113,6 +122,11 @@
   .badge.student{color:var(--ink);background:var(--soft)}
   .badge.coach{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
   .badge.admin{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+  .badge.developer{color:#1655b8;border-color:#1655b8}
+  /* 訂閱 plan（課金）+ 修行 level（練返嚟）badges */
+  .badge.holder{color:var(--muted);border-color:var(--muted);border-style:dashed}
+  .badge.pro,.badge.max{background:#a83228;color:#fff;border-color:#a83228}
+  .badge.lv{border-color:var(--line-strong);background:none;color:var(--ink)}
   .features{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
   .features h3{font-size:.78rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px}
   .feat{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;font-size:.9rem;border-bottom:1px dashed var(--line)}
@@ -169,6 +183,11 @@
     <label class="f"><span data-t="emailLabel"></span><input type="email" id="email" autocomplete="email" placeholder="you@example.com"></label>
     <label class="f"><span data-t="passLabel"></span><input type="password" id="password" autocomplete="current-password"></label>
     <button class="primary" id="submitBtn"></button>
+    <div class="or-div"><span data-t="orContinue"></span></div>
+    <button class="google-btn" id="googleBtn">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+      <span data-t="googleBtn"></span>
+    </button>
     <div class="aux"><a id="forgot" data-t="forgotLink"></a></div>
   </div>
 
@@ -223,7 +242,7 @@
     <div class="avatar" id="avatar">?</div>
     <div style="flex:1">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <b id="pName"></b><span class="badge member" id="pRole">…</span>
+        <b id="pName"></b><span class="badge member" id="pRole">…</span><span class="badge holder" id="pPlan" style="display:none"></span><span class="badge lv" id="pLevel" style="display:none"></span>
       </div>
       <div class="email" id="pEmail"></div>
     </div>
@@ -232,9 +251,33 @@
     <label class="f"><span data-t="editNameLabel"></span><input type="text" id="editName"></label>
     <button class="ghost" id="saveName" data-t="saveBtn"></button>
   </div>
+  <div class="row2">
+    <label class="f"><span data-t="editPhoneLabel"></span><input type="tel" id="editPhone" inputmode="tel" maxlength="20" placeholder="9123 4567"></label>
+    <button class="ghost" id="savePhone" data-t="saveBtn"></button>
+  </div>
+  <p class="hint" data-t="phoneHint" style="margin-top:-6px"></p>
+  <!-- 踢拳堂數餘額（買咗幾多、剩幾多、到期） -->
+  <div class="features" id="pkgBox" style="display:none">
+    <h3 data-t="pkgTitle"></h3>
+    <div id="pkgList"></div>
+  </div>
   <div class="features">
     <h3 data-t="featTitle"></h3>
     <div id="featList"></div>
+  </div>
+  <!-- 訂閱方案（Stripe）：Holder 免費 → Pro / Max -->
+  <div class="features" id="planBox" style="display:none">
+    <h3 data-t="planTitle"></h3>
+    <div class="feat" id="rowPro" style="display:none">
+      <span data-t="planProDesc"></span><a href="#" id="upPro" data-t="upPro"></a>
+    </div>
+    <div class="feat" id="rowMax" style="display:none">
+      <span data-t="planMaxDesc"></span><a href="#" id="upMax" data-t="upMax"></a>
+    </div>
+    <div class="feat" id="rowManage" style="display:none">
+      <span data-t="planManageDesc"></span><a href="#" id="manageSub" data-t="manageSub"></a>
+    </div>
+    <p class="hint" data-t="planHint" style="margin-top:8px"></p>
   </div>
   <div class="msg" id="profMsg"></div>
   <button class="ghost" id="logout" data-t="logoutBtn" style="margin-top:14px"></button>
@@ -273,6 +316,7 @@ const I18N = {
     step3: "返嚟呢頁登入，即可使用",
     nameLabel: "名（俾教練認得你）", emailLabel: "電郵", passLabel: "密碼（至少6位）",
     loginBtn: "登入", signupBtn: "建立帳戶（第1步）",
+    orContinue: "或", googleBtn: "用 Google 繼續",
     forgotLink: "唔記得密碼？撳呢度重設",
     statusLoginTitle: "你而家：未登入。",
     statusLogin: "已有帳戶就直接登入；未有帳戶請撳「註冊」，3 步搞掂。",
@@ -294,21 +338,39 @@ const I18N = {
     recoveryTitle: "設定新密碼",
     newPassLabel: "新密碼（至少6位）", setPassBtn: "確認新密碼",
     passUpdated: "✔ 密碼改好喇！你而家已經登入。",
-    signupOk: "✔ 帳戶建立咗！而家去到第2步。",
+    welcomeDone: "✔ 電郵確認咗，註冊完成！帶緊你返主頁…",
+    signupOk: "✔ 帳戶建立咗！確認信寄緊去你信箱（有時要等一兩分鐘，記得睇埋垃圾郵件）。",
     resendOk: "✔ 已再寄一次確認信，記得睇埋垃圾郵件。",
+    resendWait: "可再寄（{secs} 秒後）",
     editNameLabel: "改顯示名", saveBtn: "儲存", saved: "✔ 已儲存",
+    editPhoneLabel: "WhatsApp 電話（連結排堂機械人用）",
+    phoneHint: "填咗之後，之後喺 WhatsApp 排堂機械人度會自動認到你。淨係填香港號碼 8 位數字就得。",
+    phoneBad: "電話格式唔啱：請入 8 位香港號碼（可以連 +852）。",
+    phoneTaken: "呢個號碼已經連結咗第二個帳戶，如有問題請搵 Ming。",
     featTitle: "功能權限", open: "開啟 →", needs: "需要：",
     logoutBtn: "登出",
-    adminTitle: "👥 用戶管理（管理員）",
+    adminTitle: "👥 用戶管理（Holder）",
     adminHint: "喺下拉揀身份即刻生效。唔可以改自己。",
     cantChangeSelf: "唔可以改自己",
-    footNote: "註冊後預設係「普通會員」；學生／教練身份由管理員開通。",
+    footNote: "註冊後預設係「普通會員」；學生／菁英（教練）身份由 Holder 開通。",
     backHome: "← 返回主頁",
     fillEmailPass: "請入電郵，密碼至少6位。",
     fillEmail: "請先入你嘅電郵。",
     passTooShort: "新密碼至少要6位。",
-    nextNoRole: "你想去嘅頁面（{next}）需要 {roles} 身份，你而家係「{role}」。想開通請聯絡 Ming。",
-    roleNames: { member:"普通會員", student:"學生", coach:"教練", admin:"管理員" },
+    passLeaked: "呢個密碼喺公開外洩資料庫出現過，唔安全 — 請改用另一個。（檢查只送出密碼指紋頭5個字元，密碼唔會離開你部機）",
+    nextNoRole: "你嘅帳戶用唔到嗰一頁（{next}）。有需要請聯絡 Ming。",
+    roleNames: { member:"普通會員", student:"學生", coach:"菁英（教練）", developer:"技術人員（開發）", admin:"Holder（主理人）" },
+    planNames: { holder:"Holder", pro:"Pro", max:"Max" },
+    levelNames: { rising:"新星", challenger:"挑戰者", ascetic:"苦行僧" },
+    planTitle:"💳 訂閱方案",
+    planProDesc:"Kuafuor Pro — 解鎖全部網站付費功能（HK$70/月）", upPro:"升級 Pro",
+    planMaxDesc:"Kuafuor Max — Pro 全部＋最高用量（HK$120/月）", upMax:"升級 Max",
+    planManageDesc:"改卡、轉 plan、取消訂閱或睇發票", manageSub:"管理訂閱",
+    planHint:"經 Stripe 安全付款。踢拳堂數（新星／挑戰者／苦行僧）係上堂用嘅，請直接搵教練購買。",
+    pkgPick:"＋堂數…", pkgRising:"新星 4堂 $800", pkgChallenger:"挑戰者 8堂 $1,400", pkgAscetic:"苦行僧 1對1（自訂）",
+    pkgAskSessions:"苦行僧堂數（例：4）", pkgAskPrice:"議定總價 HK$（例：1200）",
+    pkgFail:"記錄失敗：",
+    pkgTitle:"🥋 我的堂數", pkgLeft:"堂", pkgExpires:"到期：", pkgExpired:"已過期",
     errInvalidLogin: "電郵或密碼唔啱。未註冊過？撳上面「註冊」開個新帳戶；唔記得密碼就撳下面「唔記得密碼」重設。",
     errNotConfirmed: "你仲未完成第2步（確認電郵）。去你個信箱撳確認連結；搵唔到封信就撳下面「寄多次確認信」。",
     errExists: "呢個電郵已經註冊咗 — 請直接登入；唔記得密碼就用「唔記得密碼」重設。",
@@ -333,6 +395,7 @@ const I18N = {
     step3: "Come back to this page and log in",
     nameLabel: "Name (so coaches recognise you)", emailLabel: "Email", passLabel: "Password (min. 6 characters)",
     loginBtn: "Log in", signupBtn: "Create account (Step 1)",
+    orContinue: "or", googleBtn: "Continue with Google",
     forgotLink: "Forgot your password? Reset it here",
     statusLoginTitle: "You are: not logged in.",
     statusLogin: "Have an account? Log in. New here? Tap “Register” — 3 easy steps.",
@@ -354,21 +417,39 @@ const I18N = {
     recoveryTitle: "Set a new password",
     newPassLabel: "New password (min. 6 characters)", setPassBtn: "Confirm new password",
     passUpdated: "✔ Password updated! You are now logged in.",
-    signupOk: "✔ Account created! You are now on Step 2.",
+    welcomeDone: "✔ Email confirmed — you're all set! Taking you to the home page…",
+    signupOk: "✔ Account created! The confirmation email is on its way (it can take a minute or two — check spam too).",
     resendOk: "✔ Confirmation email re-sent. Remember to check spam.",
+    resendWait: "Resend available in {secs}s",
     editNameLabel: "Display name", saveBtn: "Save", saved: "✔ Saved",
+    editPhoneLabel: "WhatsApp phone (links the booking bot)",
+    phoneHint: "Once saved, the WhatsApp booking bot will recognise you automatically. Enter your 8-digit Hong Kong number.",
+    phoneBad: "That doesn't look right — enter an 8-digit HK number (with or without +852).",
+    phoneTaken: "This number is already linked to another account — contact Ming if that's unexpected.",
     featTitle: "Feature access", open: "Open →", needs: "Requires: ",
     logoutBtn: "Log out",
-    adminTitle: "👥 User management (admin)",
+    adminTitle: "👥 User management (Holder)",
     adminHint: "Pick a role from the dropdown — it applies immediately. You can't change your own.",
     cantChangeSelf: "You can't change yourself",
-    footNote: "New accounts start as “Member”; Student / Coach roles are granted by an admin.",
+    footNote: "New accounts start as “Member”; Student / Elite (Coach) roles are granted by the Holder.",
     backHome: "← Back to home",
     fillEmailPass: "Enter your email; password needs at least 6 characters.",
     fillEmail: "Enter your email first.",
     passTooShort: "New password needs at least 6 characters.",
-    nextNoRole: "The page you wanted ({next}) requires {roles}. You are currently “{role}”. Contact Ming to upgrade.",
-    roleNames: { member:"Member", student:"Student", coach:"Coach", admin:"Admin" },
+    passLeaked: "This password appears in public breach databases — please choose a different one. (Only the first 5 characters of its fingerprint are checked; the password never leaves your device.)",
+    nextNoRole: "That page ({next}) isn't available on your account. Contact Ming if you need it.",
+    roleNames: { member:"Member", student:"Student", coach:"Elite (Coach)", developer:"Tech staff (Dev)", admin:"Holder (Owner)" },
+    planNames: { holder:"Holder", pro:"Pro", max:"Max" },
+    levelNames: { rising:"Rising Star", challenger:"Challenger", ascetic:"Ascetic" },
+    planTitle:"💳 Subscription",
+    planProDesc:"Kuafuor Pro — unlock all paid site features (HK$70/mo)", upPro:"Upgrade to Pro",
+    planMaxDesc:"Kuafuor Max — everything in Pro + top quotas (HK$120/mo)", upMax:"Upgrade to Max",
+    planManageDesc:"Change card, switch plan, cancel or view invoices", manageSub:"Manage subscription",
+    planHint:"Payments are handled securely by Stripe. Kickboxing class packs (Rising Star / Challenger / Ascetic) are bought from your coach directly.",
+    pkgPick:"+ Class pack…", pkgRising:"Rising Star · 4 classes $800", pkgChallenger:"Challenger · 8 classes $1,400", pkgAscetic:"Ascetic · 1-on-1 (custom)",
+    pkgAskSessions:"Ascetic sessions (e.g. 4)", pkgAskPrice:"Agreed total HK$ (e.g. 1200)",
+    pkgFail:"Failed to record: ",
+    pkgTitle:"🥋 My class packs", pkgLeft:"left", pkgExpires:"Expires: ", pkgExpired:"Expired",
     errInvalidLogin: "Wrong email or password. New here? Tap “Register” above. Forgot your password? Use the reset link below.",
     errNotConfirmed: "You haven't finished Step 2 (email confirmation). Click the link in your inbox; can't find it? Tap “Resend confirmation email” below.",
     errExists: "This email is already registered — log in instead, or use “Forgot your password” to reset.",
@@ -400,8 +481,10 @@ const roleName = r => (I18N[lang] || I18N.zh).roleNames[r] || r;
 
 /* ================= state ================= */
 const FEATURES = [
-  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["student","coach","admin"] },
-  { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","admin"] },
+  // Motion Lab 個頁本身公開（主頁 showcase）；雲端拳手檔案／訓練紀錄喺 app 入面先要登入
+  { zh:"Motion Lab 動作分析", en:"Motion Lab — motion analysis", url:"/motion-lab/", roles:["member","student","coach","developer","admin"] },
+  { zh:"排堂報名", en:"Class booking", url:"/schedule/", roles:["student","coach","developer","admin"] },
+  { zh:"分成計算器（財務）", en:"Profit-split calculator (finance)", url:"/split-calculator/", roles:["coach","developer","admin"] },
 ];
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -510,25 +593,98 @@ async function render(){
   $("#pName").textContent = profile.name || (user.email||"").split("@")[0];
   $("#pEmail").textContent = user.email || "";
   $("#editName").value = profile.name || "";
+  // 顯示已儲存嘅 WhatsApp 號碼（去咗 852 前綴方便睇）
+  $("#editPhone").value = (profile.phone || "").replace(/^852(?=\d{8}$)/, "");
   $("#avatar").textContent = (profile.name || user.email || "?").trim().charAt(0).toUpperCase();
   const badge = $("#pRole");
   badge.textContent = roleName(role);
   badge.className = "badge " + role;
-  $("#featList").innerHTML = FEATURES.map(f=>{
-    const ok = f.roles.includes(role);
-    return `<div class="feat ${ok?"":"locked"}">
-      <span>${esc(lang==="zh"?f.zh:f.en)}<div class="need">${esc(t("needs"))}${f.roles.map(roleName).join(" / ")}</div></span>
-      ${ok ? `<a href="${f.url}">${esc(t("open"))}</a>` : "<span>🔒</span>"}
-    </div>`;
-  }).join("");
+  // 訂閱 plan badge + 堂數 level badge（my_tiers RPC；攞唔到就靜靜哋唔顯示）
+  (async ()=>{
+    try{
+      const { data: tiers } = await sb.rpc("my_tiers");
+      if(!tiers) return;
+      const dict = I18N[lang] || I18N.zh;
+      // 免費 plan 唔顯示 badge（「Holder」呢個名留返俾主理人身份用）；Pro/Max 先顯示
+      const pp = $("#pPlan");
+      if(tiers.plan === "pro" || tiers.plan === "max"){
+        pp.textContent = dict.planNames[tiers.plan] || tiers.plan;
+        pp.className = "badge " + tiers.plan;
+        pp.style.display = "";
+      } else { pp.style.display = "none"; }
+      // level = 學員買咗邊種堂數（新星4堂/挑戰者8堂/苦行僧1對1）；未買過 → 唔顯示
+      const pl = $("#pLevel");
+      if(tiers.level){
+        pl.textContent = dict.levelNames[tiers.level] || tiers.level;
+        pl.className = "badge lv";
+        pl.style.display = "";
+      } else { pl.style.display = "none"; }
+      renderPlanBox(tiers.plan);
+    }catch(e){}
+  })();
+  renderPackages();
+  // 只顯示呢個身份用到嘅功能——用唔到嘅完全唔出現，亦唔講需要咩權限
+  $("#featList").innerHTML = FEATURES.filter(f=>f.roles.includes(role)).map(f=>
+    `<div class="feat"><span>${esc(lang==="zh"?f.zh:f.en)}</span><a href="${f.url}">${esc(t("open"))}</a></div>`
+  ).join("");
   const next = new URLSearchParams(location.search).get("next");
   if(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")){
     const feat = FEATURES.find(f=>next.startsWith(f.url));
     if(!feat || feat.roles.includes(role)){ location.replace(next); return; }
-    msg($("#profMsg"), t("nextNoRole", { next, roles: feat.roles.map(roleName).join(" / "), role: roleName(role) }), "info");
+    msg($("#profMsg"), t("nextNoRole", { next }), "info");
+  }
+  // 由確認電郵條 link 返嚟（?welcome=1）：話聲註冊完成，帶返去主頁
+  if(new URLSearchParams(location.search).get("welcome") === "1"){
+    history.replaceState(null, "", location.pathname);
+    msg($("#profMsg"), t("welcomeDone"), "ok");
+    setTimeout(()=>location.replace("/"), 1600);
   }
   if(role==="admin"){ renderAdmin(); renderEnquiries(); }
   else { $("#adminCard").style.display="none"; $("#enquiryCard").style.display="none"; }
+}
+
+/* 踢拳堂數餘額（學員睇自己買咗幾多、剩幾多、到期） */
+async function renderPackages(){
+  const box = $("#pkgBox"), list = $("#pkgList");
+  try{
+    const { data, error } = await sb.rpc("my_packages");
+    if(error || !data || !data.length){ box.style.display = "none"; return; }
+    const dict = I18N[lang] || I18N.zh;
+    list.innerHTML = data.map(p=>{
+      const nm = dict.levelNames[p.package] || p.package;
+      const exp = p.expired
+        ? `<span style="color:var(--muted)">${esc(t("pkgExpired"))}</span>`
+        : `${esc(t("pkgExpires"))}${esc(p.expires_at)}`;
+      const low = !p.expired && p.remaining <= 1;
+      return `<div class="feat">
+        <span>${esc(nm)}<div class="need">${exp}</div></span>
+        <b style="${p.expired?"color:var(--muted);text-decoration:line-through":low?"color:var(--accent)":""}">${p.remaining}/${p.sessions} ${esc(t("pkgLeft"))}</b>
+      </div>`;
+    }).join("");
+    box.style.display = "";
+  }catch(e){ box.style.display = "none"; }
+}
+
+/* 訂閱升級（Stripe，經 entitlements.js）。lazy-load：撳掣先入 billing 代碼 */
+let _entLib = null;
+async function entLib(){
+  if(_entLib) return _entLib;
+  const { Entitlements } = await import("/assets/entitlements.js");
+  _entLib = await Entitlements.init();
+  return _entLib;
+}
+function renderPlanBox(plan){
+  $("#planBox").style.display = "";
+  $("#rowPro").style.display = plan==="holder" ? "" : "none";
+  $("#rowMax").style.display = plan!=="max" ? "" : "none";
+  $("#rowManage").style.display = plan!=="holder" ? "" : "none";
+  $("#upPro").onclick = async e=>{ e.preventDefault(); (await entLib()).upgrade("all","pro"); };
+  $("#upMax").onclick = async e=>{ e.preventDefault(); (await entLib()).upgrade("all","max"); };
+  $("#manageSub").onclick = async e=>{ e.preventDefault(); (await entLib()).manage(); };
+  // 由 Stripe Checkout 返嚟（?upgraded=1）：等 webhook 寫好 entitlement 就 reload 更新 badge
+  if(new URLSearchParams(location.search).get("upgraded")==="1"){
+    entLib().then(ent=>ent.on("change", ()=>location.reload()));
+  }
 }
 
 async function renderAdmin(){
@@ -539,15 +695,40 @@ async function renderAdmin(){
     <div class="user-row">
       <span class="em">${esc(p.name||"")} <span style="color:var(--muted)">${esc(p.email||"")}</span></span>
       <select data-uid="${p.id}" ${p.id===user.id?`disabled title="${esc(t("cantChangeSelf"))}"`:""}>
-        ${["member","student","coach","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
+        ${["member","student","coach","developer","admin"].map(k=>`<option value="${k}" ${p.role===k?"selected":""}>${esc(roleName(k))}</option>`).join("")}
       </select>
+      ${p.role==="student" ? `<select data-pkg="${p.id}">
+        <option value="">${esc(t("pkgPick"))}</option>
+        <option value="rising">${esc(t("pkgRising"))}</option>
+        <option value="challenger">${esc(t("pkgChallenger"))}</option>
+        <option value="ascetic">${esc(t("pkgAscetic"))}</option>
+      </select>` : ""}
     </div>`).join("");
   $("#userList").querySelectorAll("select[data-uid]").forEach(sel=>{
     sel.addEventListener("change", async ()=>{
       const { error } = await sb.rpc("set_user_role", { target_id: sel.dataset.uid, new_role: sel.value });
       if(error){ alert(t("changeFail")+error.message); renderAdmin(); return; }
-      sel.style.outline = "2px solid var(--line-strong)";
-      setTimeout(()=>sel.style.outline="", 1200);
+      // 角色變咗成行重新 render——轉做學生嗰下「＋堂數」即刻現身（其他身份冇）
+      await renderAdmin();
+      const again = $("#userList").querySelector(`select[data-uid="${sel.dataset.uid}"]`);
+      if(again){ again.style.outline = "2px solid var(--line-strong)"; setTimeout(()=>again.style.outline="", 1200); }
+    });
+  });
+  // 記堂數（新星/挑戰者標準價自動帶入；苦行僧問堂數＋議價）
+  $("#userList").querySelectorAll("select[data-pkg]").forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const pkg = sel.value; if(!pkg) return;
+      const args = { p_student: sel.dataset.pkg, p_package: pkg };
+      if(pkg==="ascetic"){
+        const s = parseInt(prompt(t("pkgAskSessions")) || "", 10);
+        const pr = parseFloat(prompt(t("pkgAskPrice")) || "");
+        if(!s || !pr){ sel.value=""; return; }
+        args.p_sessions = s; args.p_price = pr;
+      }
+      const { error } = await sb.rpc("record_class_package", args);
+      if(error) alert(t("pkgFail")+error.message);
+      else { sel.style.outline = "2px solid var(--line-strong)"; setTimeout(()=>sel.style.outline="",1200); }
+      sel.value = "";
     });
   });
 }
@@ -568,6 +749,25 @@ $("#backToLogin2").onclick = ()=>{ showView("auth"); setMode("login"); };
 $("#backToLogin3").onclick = ()=>{ showView("auth"); setMode("login"); };
 $("#forgot").onclick = ()=>{ $("#forgotEmail").value = $("#email").value.trim(); showView("forgot"); };
 
+// 外洩密碼檢查（HaveIBeenPwned k-anonymity）：只送出 SHA-1 頭 5 個字元，
+// 密碼本身唔會離開瀏覽器。查唔到（網絡／API 問題）就放行，唔好窒礙註冊。
+// （Supabase 內置版要 Pro plan；呢個免費做到同樣保護。）
+async function isLeakedPassword(pw){
+  try{
+    const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
+    const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+    const res = await fetch("https://api.pwnedpasswords.com/range/" + hex.slice(0,5), {
+      headers: { "Add-Padding": "true" },   // 回應加 padding，連 prefix 群組大小都唔洩露
+    });
+    if(!res.ok) return false;
+    const suffix = hex.slice(5);
+    return (await res.text()).split("\n").some(line=>{
+      const [suf, count] = line.trim().split(":");
+      return suf === suffix && parseInt(count, 10) > 0;
+    });
+  }catch(e){ return false; }
+}
+
 $("#submitBtn").onclick = async ()=>{
   const email = $("#email").value.trim(), password = $("#password").value;
   const box = $("#authMsg");
@@ -575,13 +775,14 @@ $("#submitBtn").onclick = async ()=>{
   $("#submitBtn").disabled = true;
   try{
     if(mode==="signup"){
+      if(await isLeakedPassword(password)){ msg(box, t("passLeaked"), "err"); return; }
       const name = $("#name").value.trim();
       const { data, error } = await sb.auth.signUp({
         email, password,
-        options: { data: { name }, emailRedirectTo: location.origin + "/login/" }
+        options: { data: { name }, emailRedirectTo: location.origin + "/login/?welcome=1" }
       });
       if(error){ msg(box, friendlyError(error), "err"); return; }
-      if(data.session){ return; } // 唔使確認電郵嘅情況：已直接登入
+      if(data.session){ goHomeAfterLogin(); return; } // 唔使確認電郵嘅情況：已直接登入
       // Supabase 對已註冊電郵回傳「假成功」（identities 空）做私隱保護 — 唔會寄信
       if(data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0){
         setMode("login");
@@ -592,6 +793,7 @@ $("#submitBtn").onclick = async ()=>{
       $("#sentTo").textContent = email;
       showView("checkmail");
       msg($("#authMsg"), t("signupOk"), "ok");
+      startResendCooldown(60);   // 同一封確認信 60 秒內唔俾再寄，避免撞 429
     }else{
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if(error){
@@ -605,16 +807,49 @@ $("#submitBtn").onclick = async ()=>{
         }
         msg(box, friendlyError(error), "err"); return;
       }
+      goHomeAfterLogin();   // 撳「登入」成功嗰一下先跳——撳個名入嚟嘅人唔會被彈走
     }
   } finally { $("#submitBtn").disabled = false; }
 };
 $("#password").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#submitBtn").click(); });
 
-$("#resendBtn").onclick = async ()=>{
+// Google 登入（Supabase Google provider 已 Enabled）：繞過確認電郵同 email rate limit。
+// 回到本頁後 supabase-js 會自動處理 OAuth callback → onAuthStateChange → render()。
+$("#googleBtn").onclick = async ()=>{
   const box = $("#authMsg");
-  const { error } = await sb.auth.resend({ type:"signup", email: lastSignupEmail, options:{ emailRedirectTo: location.origin + "/login/" } });
+  if(!sb){ msg(box, t("errUnknown"), "err"); return; }
+  $("#googleBtn").disabled = true;
+  const nx = new URLSearchParams(location.search).get("next");
+  const back = location.origin + "/login/" + (nx ? "?next=" + encodeURIComponent(nx) : "");
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: back } });
+  if(error){ $("#googleBtn").disabled = false; msg(box, friendlyError(error), "err"); }
+  // 成功嘅話瀏覽器即刻 redirect 去 Google，唔會返到呢行
+};
+
+// 確認信重寄冷卻：GoTrue 對同一地址有 per-request 冷卻（同埋內置電郵服務有每小時上限），
+// 客戶端封住個掣做倒數，避免用戶連撳撞 429。語言切換時 applyStatic 會蓋走個 label，
+// 倒數 tick（每秒）會即刻補返，所以照樣顯示。
+let resendTimer = null, resendLeft = 0;
+function startResendCooldown(secs){
+  const btn = $("#resendBtn");
+  if(!btn) return;
+  clearInterval(resendTimer);
+  resendLeft = secs;
+  btn.disabled = true;
+  btn.textContent = t("resendWait", { secs: resendLeft });
+  resendTimer = setInterval(()=>{
+    resendLeft--;
+    if(resendLeft <= 0){ clearInterval(resendTimer); resendTimer = null; btn.disabled = false; btn.textContent = t("resendBtn"); }
+    else btn.textContent = t("resendWait", { secs: resendLeft });
+  }, 1000);
+}
+$("#resendBtn").onclick = async ()=>{
+  if(resendLeft > 0) return;
+  const box = $("#authMsg");
+  const { error } = await sb.auth.resend({ type:"signup", email: lastSignupEmail, options:{ emailRedirectTo: location.origin + "/login/?welcome=1" } });
   if(error){ msg(box, friendlyError(error), "err"); return; }
   msg(box, t("resendOk"), "ok");
+  startResendCooldown(60);
 };
 
 $("#sendResetBtn").onclick = async ()=>{
@@ -633,6 +868,10 @@ $("#setPassBtn").onclick = async ()=>{
   const box = $("#authMsg");
   const pw = $("#newPassword").value;
   if(pw.length < 6){ msg(box, t("passTooShort"), "err"); return; }
+  $("#setPassBtn").disabled = true;
+  const leaked = await isLeakedPassword(pw);
+  $("#setPassBtn").disabled = false;
+  if(leaked){ msg(box, t("passLeaked"), "err"); return; }
   const { error } = await sb.auth.updateUser({ password: pw });
   if(error){ msg(box, friendlyError(error), "err"); return; }
   showView("auth");
@@ -647,10 +886,39 @@ $("#saveName").onclick = async ()=>{
   if(error){ msg(box, t("saveFail")+error.message, "err"); return; }
   msg(box, t("saved"), "ok"); render();
 };
+$("#savePhone").onclick = async ()=>{
+  const box = $("#profMsg");
+  // 標準化做「純數字＋國家碼」：8523xxxxxxx；容許 +852 / 852 / 淨 8 位
+  let raw = $("#editPhone").value.replace(/[^0-9]/g, "");
+  let phone = "";
+  if(raw){
+    if(/^\d{8}$/.test(raw)) phone = "852" + raw;
+    else if(/^852\d{8}$/.test(raw)) phone = raw;
+    else { msg(box, t("phoneBad"), "err"); return; }
+  }
+  const { error } = await sb.from("profiles").update({ phone: phone || null }).eq("id", user.id);
+  if(error){
+    msg(box, /duplicate|unique/i.test(error.message) ? t("phoneTaken") : t("saveFail")+error.message, "err");
+    return;
+  }
+  msg(box, t("saved"), "ok"); render();
+};
 $("#logout").onclick = async ()=>{ await sb.auth.signOut(); showView("auth"); setMode("login"); };
 
 /* ================= boot ================= */
 applyStatic();
+// 「啱啱登入完」先彈返主頁——唔可以齋靠 SIGNED_IN event：supabase-js 開頁
+// recover session／token refresh 都可能發 SIGNED_IN，會令撳個名入嚟睇 setting
+// 嘅人被彈走。所以：密碼登入喺 submit handler 直接跳；OAuth（Google）／確認
+// 電郵返嚟嗰下 URL 一定帶 token/code——喺 supabase-js 未剝走佢之前記低。
+const cameFromAuthLink = /access_token=|type=signup|type=invite|type=magiclink/.test(location.hash)
+  || /[?&]code=/.test(location.search);
+const cameFromRecovery = /type=recovery/.test(location.hash);
+function goHomeAfterLogin(){
+  const nx = new URLSearchParams(location.search).get("next");
+  if(nx && nx.startsWith("/") && !nx.startsWith("//") && !nx.startsWith("/\\")) return;  // render() 帶去目標頁（有角色檢查）
+  location.replace("/");
+}
 try{
   const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
   sb = createClient(SB_URL, SB_KEY);
@@ -658,6 +926,7 @@ try{
     user = session?.user || null;
     if(event === "PASSWORD_RECOVERY"){ showView("recovery"); render(); return; }
     if(event === "SIGNED_OUT"){ showView("auth"); setMode("login"); }
+    if(event === "SIGNED_IN" && cameFromAuthLink && !cameFromRecovery){ goHomeAfterLogin(); }
     render();
   });
   user = (await sb.auth.getSession()).data.session?.user || null;

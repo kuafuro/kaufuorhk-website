@@ -343,8 +343,10 @@
   <div id="mobileMenu">
     <a href="#data" data-t="navData"></a>
     <a href="stats/" data-t="navStats"></a>
+    <a href="notes/" data-t="navGraph"></a>
     <a href="#motionlab" data-t="navMl"></a>
-    <a href="schedule/" data-t="navBook"></a>
+    <a href="motion-lab/posture/" data-t="navPosture"></a>
+    <a id="navBookM" href="schedule/" data-t="navBook"></a>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
     <a id="navCalcM" href="split-calculator/" style="display:none" data-t="navCalc"></a>
     <a class="m-only" href="#business" data-t="navBiz"></a>
@@ -456,7 +458,7 @@
         <a class="btn btn-secondary" href="stats/" data-t="daNotesCta"></a>
       </div>
       <p class="ml-note">
-        <span data-t="daArtTeaser"></span><a href="data-insights/" data-t="daArtLink"></a>
+        <span data-t="daArtTeaser"></span><a id="daArtA" href="data-insights/" data-t="daArtLink"></a>
       </p>
     </div>
     <div class="plate da-plate fade">
@@ -594,6 +596,7 @@
     <a href="login/" data-t="navLogin"></a><span class="sep" aria-hidden="true">·</span>
     <a href="#data" data-t="navData"></a><span class="sep" aria-hidden="true">·</span>
     <a href="stats/" data-t="navStats"></a><span class="sep" aria-hidden="true">·</span>
+    <a href="notes/" data-t="navGraph"></a><span class="sep" aria-hidden="true">·</span>
     <a href="#motionlab" data-t="navMl"></a><span class="sep" aria-hidden="true">·</span>
     <a href="cantonese-subtitle/" data-t="navSub"></a>
   </span>
@@ -614,7 +617,7 @@ const SB_KEY = "sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O"; // publishable 
 /* ════════════ i18n（書卷版文案，沿用現有機制） ════════════ */
 const I18N = {
   zh: {
-    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕", navData:"數據分析", navStats:"數據筆記", navMl:"Motion Lab",
+    navBiz:"流程自動化", navContact:"聯絡我哋", navLogin:"登入", navSub:"轉字幕", navData:"數據分析", navStats:"數據筆記", navGraph:"筆記圖譜", navMl:"Motion Lab", navPosture:"體態評估",
     kicker:"香港 · 流程自動化 × 數據分析",
     heroTitle:"簡化繁瑣流程，釋放數據潛能",
     heroSub:"企業的資源應當專注於關鍵決策。我們致力於協助企業將繁瑣的重複性工作系統化，同時從龐雜的數據中，提煉出具備實踐價值的業務洞察。",
@@ -668,7 +671,7 @@ const I18N = {
     footCopy:"© 2026 Kuafuorhk.com · All Rights Reserved",
   },
   en: {
-    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles", navData:"Data Analysis", navStats:"Stats Notes", navMl:"Motion Lab",
+    navBiz:"Automation", navContact:"Contact", navLogin:"Log in", navSub:"Subtitles", navData:"Data Analysis", navStats:"Stats Notes", navGraph:"Notes Graph", navMl:"Motion Lab", navPosture:"Posture Check",
     kicker:"HONG KONG · AUTOMATION × DATA ANALYSIS",
     heroTitle:"Streamline the busywork. Unleash your data.",
     heroSub:"Your resources belong on the decisions that matter. We help businesses systemise tedious, repetitive work — and distil practical, actionable insight from sprawling data.",
@@ -695,7 +698,7 @@ const I18N = {
     daFinding:"1973 Berkeley graduate admissions: on the surface men were admitted at 44% and women at 35% — apparent gender bias. But department by department the bias vanished, even slightly favouring women — women had simply applied more to the most competitive departments. The aggregate lied; the right grouping reversed the conclusion.",
     daFindNote:"*This is Simpson's Paradox: on the same data, looking at the whole vs the parts can give opposite answers. Finding the right cut is exactly what data analysis is for.",
     daFindLink:"See more stats notes",
-    daArtTeaser:"In depth: ", daArtLink:"Six statistical concepts every decision-maker should know (Chinese)",
+    daArtTeaser:"In depth: ", daArtLink:"Six statistical concepts every decision-maker should know",
     mlTitle:"The Motion Lab sports-analysis model",
     mlSub:"Our Motion Lab data model was originally built to help athletes perform better — precise motion capture and analysis that sharpens training. It is one part of a broader library of analytical models: we apply the same deep data-mining capability to business, helping clients tease operating patterns out of large datasets and turn data into real momentum for growth.",
     ml1:"AI posture tracking · real-time capture", ml2:"WAKO-standard scoring & taxonomy",
@@ -741,6 +744,9 @@ function applyLang(){
   document.querySelectorAll("[data-taria]").forEach(el => {
     el.setAttribute("aria-label", t(el.getAttribute("data-taria")));
   });
+  // 深度文章連結：跟語言去中／英版
+  const artA = $("#daArtA");
+  if (artA) artA.href = lang === "en" ? "data-insights/en/" : "data-insights/";
   // 已顯示嘅逐欄錯誤：跟住切語言重新翻譯（佢哋無 data-t，用記低嘅 key）
   document.querySelectorAll(".field-err.show").forEach(el => {
     if (el.dataset.k) el.textContent = t(el.dataset.k);
@@ -911,6 +917,10 @@ function renderAccount(){
   const canCalc = userRole === "coach" || userRole === "admin";
   const mc = $("#navCalcM");
   if(mc) mc.style.display = canCalc ? "flex" : "none";
+  // 排堂報名：未登入照顯示（新學生要搵到入口）；登入咗但唔係學生／教練／Holder 就唔顯示
+  const canBook = !userEmail || userRole === "student" || userRole === "coach" || userRole === "admin";
+  const mb = $("#navBookM");
+  if(mb) mb.style.display = canBook ? "" : "none";
 }
 async function refreshRole(session){
   userEmail = session?.user?.email || null;

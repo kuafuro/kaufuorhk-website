@@ -11,37 +11,38 @@
 <style>
 /* ============ Design tokens (dark lab theme) ============ */
 :root{
-  --page:#0d0d0d;
-  --surface:#1a1a19;
-  --surface-2:#232322;
-  --ink:#ffffff;
-  --ink-2:#c3c2b7;
-  --ink-muted:#898781;
-  --hairline:#2c2c2a;
-  --border:rgba(255,255,255,0.10);
-  --brand:#d32f2f;           /* Kuafuor HK red — branding only, not data */
-  --series-1:#3987e5;        /* skeleton / trend line */
-  --series-2:#199e70;
-  --good:#0ca30c;
-  --warning:#fab219;
-  --serious:#ec835a;
-  --critical:#d03b3b;
-  --radius:12px;
+  /* 書卷編輯風 — 同主站一套 token（紙／墨／朱紅）；video 覆蓋層顏色喺 JS 入面另計 */
+  --page:#f3f2f2;
+  --surface:#f8f4f4;
+  --surface-2:#eae9e9;
+  --ink:#201f1d;
+  --ink-2:#3f3c39;
+  --ink-muted:#605d5d;
+  --hairline:#d7d3d3;
+  --border:rgba(32,31,29,0.12);
+  --brand:#a83228;           /* Kuafuor HK 朱紅 — branding only, not data */
+  --series-1:#2e63b8;        /* trend line（淺底加深保對比） */
+  --series-2:#147a58;
+  --good:#1e7d46;
+  --warning:#8a6100;
+  --serious:#b5502a;
+  --critical:#8f1f1f;
+  --radius:6px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{
-  font-family:system-ui,-apple-system,"Segoe UI","PingFang HK","PingFang TC","Microsoft JhengHei",sans-serif;
+  font-family:"Lora","Noto Serif TC",serif;
   background:var(--page);color:var(--ink-2);line-height:1.6;
 }
 h1,h2,h3,h4{color:var(--ink);line-height:1.3}
-a{color:var(--series-1)}
+a{color:var(--brand)}
 button{font-family:inherit}
 
 /* ============ Header ============ */
 header{
   position:sticky;top:0;z-index:50;
-  background:rgba(13,13,13,0.92);backdrop-filter:blur(8px);
+  background:rgba(243,242,242,0.92);backdrop-filter:blur(8px);
   border-bottom:1px solid var(--hairline);
 }
 .hd-in{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
@@ -108,7 +109,7 @@ section.tab-panel.active{display:block}
 .stage-msg{
   position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:10px;
   align-items:center;justify-content:center;text-align:center;padding:24px;
-  color:var(--ink-2);font-size:.95rem;background:rgba(13,13,13,.55);
+  color:#e8e6e3;font-size:.95rem;background:rgba(13,13,13,.55);
 }
 .stage-msg.hidden{display:none}
 .spinner{width:34px;height:34px;border:3px solid var(--hairline);border-top-color:var(--series-1);border-radius:50%;animation:spin 1s linear infinite}
@@ -121,7 +122,7 @@ section.tab-panel.active{display:block}
 .progressbar>div{height:100%;width:0;background:var(--series-1);transition:width .25s linear}
 .prog-label{
   position:absolute;top:10px;left:10px;z-index:6;background:rgba(13,13,13,.78);
-  border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.78rem;color:var(--ink-2);display:none;
+  border:1px solid rgba(255,255,255,0.18);border-radius:6px;padding:4px 10px;font-size:.78rem;color:#e8e6e3;display:none;
 }
 .loadbar{width:min(240px,70%);height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
 .loadbar>div{height:100%;width:0;background:var(--series-1);transition:width .2s}
@@ -246,16 +247,17 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 </header>
 
 <nav class="tabs" aria-label="功能">
-  <button class="tab-btn active" data-tab="posture">🧍 體態評估 <small>Posture</small></button>
-  <button class="tab-btn" data-tab="motion">🥊 動作分析 <small>Motion</small></button>
+  <button class="tab-btn active" data-tab="motion">🥊 動作分析 <small>Motion</small></button>
+  <a class="tab-btn" href="posture/" style="text-decoration:none">🧍 體態評估 ↗ <small>Posture</small></a>
   <button class="tab-btn" data-tab="records">📊 紀錄 <small>Records</small></button>
   <button class="tab-btn" data-tab="guide">📋 使用說明 <small>Guide</small></button>
 </nav>
 
 <main>
 
-<!-- ==================== POSTURE TAB ==================== -->
-<section class="tab-panel active" id="tab-posture">
+<!-- ==================== POSTURE TAB（已搬去 posture/ 獨立頁；DOM 保留係因為
+     成個 module script 會 bind 呢啲元素——移走會令 JS 死。呢度永冇 active。） -->
+<section class="tab-panel" id="tab-posture">
   <div class="card">
     <div class="controls">
       <div class="seg" id="viewSeg">
@@ -345,8 +347,8 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
             <ellipse class="m-region" id="mr-chest" cx="100" cy="108" rx="30" ry="14"/>
             <ellipse class="m-region" id="mr-hipflexor" cx="100" cy="200" rx="24" ry="12"/>
             <!-- L/R tags (subject's own left/right) -->
-            <text x="30" y="20" fill="#898781" font-size="12">右 R</text>
-            <text x="150" y="20" fill="#898781" font-size="12">左 L</text>
+            <text x="30" y="20" fill="#605d5d" font-size="12">右 R</text>
+            <text x="150" y="20" fill="#605d5d" font-size="12">左 L</text>
           </svg>
         </div>
         <div class="muscle-list" id="muscleList"></div>
@@ -361,8 +363,33 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 </section>
 
 <!-- ==================== MOTION TAB ==================== -->
-<section class="tab-panel" id="tab-motion">
+<section class="tab-panel active" id="tab-motion">
+  <!-- ☁️ 雲端精析（主打路徑）：上載片 → 伺服器 yolo11m-pose + ByteTrack 多人追蹤 → 標註影片＋統計 -->
+  <div class="card" id="clCard" style="border-color:var(--brand)">
+    <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">建議用呢個 · 伺服器級 AI・唔佔你部機</small></h3>
+    <p class="hint">上載訓練片，雲端伺服器逐格畫骨架、同時追蹤場上<b>每一個人</b>，計手速同揮拳次數，俾返一條<b>標註好嘅影片</b>你下載。運算全部喺雲端做——部機舊、電量低都用得。影片<b>只用作今次分析，最遲 12 小時自動刪除</b>。登入即可用：免費每月 2 分鐘・Pro 60・Max 180（每條片上限 3 分鐘）。</p>
+    <div class="controls">
+      <button class="btn primary" id="clUploadBtn">🎬 揀片・開始精析</button>
+      <input type="file" id="clFile" accept="video/*" hidden>
+      <span class="hint" id="clQuota" style="align-self:center;margin:0"></span>
+    </div>
+    <div id="clProgWrap" style="display:none;margin-top:12px">
+      <div style="height:6px;border-radius:99px;background:var(--surface);overflow:hidden">
+        <div id="clProgFill" style="height:100%;width:10%;background:var(--brand);transition:width .3s"></div>
+      </div>
+      <div class="hint" id="clStatusMsg" style="margin-top:6px"></div>
+    </div>
+    <div id="clResult" style="display:none;margin-top:12px">
+      <div style="background:#000;border-radius:10px;overflow:hidden">
+        <video id="clVideo" controls playsinline style="width:100%;display:block"></video>
+      </div>
+      <div id="clStats" style="margin-top:10px"></div>
+      <a class="btn" id="clDownload" download="motion-lab.mp4" style="margin-top:10px;display:none">⬇︎ 下載標註影片</a>
+    </div>
+  </div>
+
   <div class="card">
+    <p class="hint" style="margin:0 0 10px"><b>即時分析（本地）</b>——開鏡頭或者上載片，喺你部機即場睇骨架、對戰統計、技術分析。想睇即時畫面／A-B 對打數據就用呢個。</p>
     <div class="controls">
       <button class="btn primary" id="mCamBtn">📷 開啟鏡頭</button>
       <button class="btn" id="mFlipBtn" style="display:none">🔄 切換鏡頭</button>
@@ -489,8 +516,12 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <label class="field">密碼 <input type="password" id="authPass" style="width:140px;background:var(--page);border:1px solid var(--border);color:var(--ink);border-radius:8px;padding:8px 10px" autocomplete="current-password"></label>
         <button class="btn primary" id="loginBtn">登入</button>
         <button class="btn" id="signupBtn">註冊新帳戶</button>
+        <button class="btn" id="googleLoginBtn" style="background:#fff;color:#201f1d;display:inline-flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+          用 Google 繼續
+        </button>
       </div>
-      <p class="hint">首次註冊後請去電郵撳確認連結先可以登入。資料存喺你嘅雲端資料庫（Supabase），只有你登入先睇到。</p>
+      <p class="hint">用 Google 一撳即入（免確認電郵）。或者用電郵註冊——首次註冊要去電郵撳確認連結先登入到。資料存喺你嘅雲端資料庫（Supabase），只有你登入先睇到。</p>
       <div id="signupSteps" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--page)">
         <b style="font-size:.92rem">📧 註冊成功！仲差一步——確認電郵</b>
         <ol style="font-size:.88rem;line-height:1.7;margin:8px 0 4px;padding-left:20px">
@@ -577,7 +608,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
     </div>
     <div class="card">
       <h3>🔬 技術與私隱</h3>
-      <p style="font-size:.86rem">本工具使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點。影像唔會上傳到任何伺服器。首次使用需要下載約 9MB 模型（之後會快取）。</p>
+      <p style="font-size:.86rem">即時分析使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點，影像唔會上傳（首次使用需下載約 9MB 模型，之後會快取）。<b>☁️ 雲端精析</b>會將你揀嘅影片上載到伺服器分析：影片<b>只用作今次分析</b>，分析完成後最遲 <b>12 小時內自動刪除</b>，唔會攞嚟做其他用途。</p>
       <p style="font-size:.86rem;margin-top:8px">公分數值由身高比例換算，屬<b>估算</b>；適合追蹤變化趨勢及作教練篩查，唔可以取代 X 光、臨床姿勢評估或醫療診斷。</p>
     </div>
     <div class="card">
@@ -600,7 +631,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 </div>
 
 <footer>
-  © 2026 Kuafuorhk.com · Kuafuor Motion Lab · Powered by MediaPipe Pose（裝置本地運算）
+  © 2026 Kuafuorhk.com · Kuafuor Motion Lab · 本地 MediaPipe ＋ ☁️ 雲端 YOLO Pose（雲端影片最遲 12 小時自動刪除）
 </footer>
 
 <div class="toast" id="toast"></div>
@@ -929,6 +960,34 @@ const tracker = {
    Model loading (single landmarker, mode-switched)
    ============================================================ */
 let landmarker = null, currentMode = null, modeLock = Promise.resolve();
+/* device-level degradation: some GPUs pass landmarker CREATION but crash mid-inference
+   with WASM "memory access out of bounds" — after which every detect() on the corrupted
+   heap fails (camera dies, photo upload "fails", video "no response": one bug, three faces).
+   On a fatal WASM error we dispose the engine, persist CPU-only for this device, and
+   re-init. CPU is slower but stable — the analysis quality is identical. */
+const FATAL_WASM = /memory access out of bounds|out of bounds|unreachable|null function or function signature|RuntimeError|Aborted/i;
+const engineOnCpu = () => window.__forceCpu || localStorage.getItem("ml_force_cpu") === "1";
+let engineRecovering = false;
+async function recoverEngine(err){
+  const m = String(err?.message || err || "");
+  if(!FATAL_WASM.test(m)) return false;          // not an engine-death — caller handles it
+  if(engineRecovering) return true;
+  engineRecovering = true;
+  console.error("AI engine crashed — recovering", err);
+  try{ stopPostureSource(); }catch(_){}
+  try{ if(typeof mRun !== "undefined" && mRun.on) stopMotion(); }catch(_){}
+  try{ landmarker?.close?.(); }catch(_){}
+  landmarker = null; currentMode = null; modeLock = Promise.resolve();
+  if(!engineOnCpu()){
+    localStorage.setItem("ml_force_cpu", "1");
+    toast("你部機嘅顯示晶片同 AI 引擎唔夾——已自動轉用穩定模式重啟緊，幾秒後再試一次", 5600);
+  }else{
+    toast("AI 引擎出錯，請重新整理頁面再試", 5600);
+  }
+  try{ await initModel(); }catch(_){}
+  engineRecovering = false;
+  return true;
+}
 const MODEL_URLS = {
   lite:  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
   full:  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
@@ -937,7 +996,8 @@ const MODEL_URLS = {
 const MODEL_MB = { lite:"5", full:"9", heavy:"29" };
 let modelChoice = localStorage.getItem("ml_model") || "full";
 if(!MODEL_URLS[modelChoice]) modelChoice = "full";
-const setLoadMsg = html => { $("pMsg").innerHTML = html; $("pMsg").classList.remove("hidden"); };
+// 載入進度同時鏡去姿勢 stage（pMsg）同動作 stage（mMsg）——兩頁各自得一個 active panel
+const setLoadMsg = html => { ["pMsg","mMsg"].forEach(id=>{ const el = $(id); if(el){ el.innerHTML = html; el.classList.remove("hidden"); } }); };
 
 /* download the model with a visible progress bar, and keep it in the Cache API
    so repeat visits skip the ~9MB download entirely */
@@ -996,7 +1056,7 @@ async function initModel(){
       runningMode:"VIDEO", numPoses:6,
       minPoseDetectionConfidence:0.35, minPosePresenceConfidence:0.35, minTrackingConfidence:0.35
     });
-    try{ landmarker = await make(window.__forceCpu ? "CPU" : "GPU"); }
+    try{ landmarker = await make(engineOnCpu() ? "CPU" : "GPU"); }
     catch(e){ console.warn("GPU delegate failed, falling back to CPU", e); landmarker = await make("CPU"); }
     currentMode = "VIDEO";
     loadEmbedder(vision);   // identity-memory model loads in the background
@@ -1027,7 +1087,7 @@ async function loadEmbedder(vision){
       baseOptions: buf ? { modelAssetBuffer: buf.slice(), delegate: d } : { modelAssetPath: EMB_URL, delegate: d },
       runningMode: "IMAGE",
     });
-    try{ embedder = await make(window.__forceCpu ? "CPU" : "GPU"); }catch(e){ embedder = await make("CPU"); }
+    try{ embedder = await make(engineOnCpu() ? "CPU" : "GPU"); }catch(e){ embedder = await make("CPU"); }
     console.log("identity embedder ready");
   }catch(e){ console.warn("identity embedder unavailable — colour signatures only", e); }
 }
@@ -1052,6 +1112,7 @@ initModel();
    Tabs
    ============================================================ */
 document.querySelectorAll(".tab-btn").forEach(b=>{
+  if(!b.dataset.tab) return;   // link-style tabs (去第二頁嗰啲) 唔參與 panel 切換
   b.addEventListener("click", ()=>{
     document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active", x===b));
     document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("active", p.id === "tab-"+b.dataset.tab));
@@ -1165,7 +1226,9 @@ function postureLiveLoop(){
   const ts = performance.now();
   if(ts <= pState.lastTs) return;
   pState.lastTs = ts;
-  const res = landmarker.detectForVideo(pVideo, ts);
+  let res;
+  try{ res = landmarker.detectForVideo(pVideo, ts); }
+  catch(e){ pState.previewOn = false; cancelAnimationFrame(pState.raf); recoverEngine(e); return; }
   const W = pVideo.videoWidth, H = pVideo.videoHeight;
   if(!W) return;
   if(pCanvas.width !== W || pCanvas.height !== H){ pCanvas.width = W; pCanvas.height = H; }
@@ -1209,6 +1272,8 @@ $("pFile").addEventListener("change", e=>{
   const f = e.target.files[0];
   e.target.value = "";
   if(!f) return;
+  // iPhone 預設影 HEIC——Safari 解到，Chrome/Android 解唔到；要俾一個講得明點解決嘅錯誤
+  const isHeic = /hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
   const img = new Image();
   img.onload = ()=>{
     const MAXW = 1600;
@@ -1220,7 +1285,12 @@ $("pFile").addEventListener("change", e=>{
     stopPostureSource();
     analyzePosture(c);
   };
-  img.onerror = ()=>toast("讀取相片失敗");
+  img.onerror = ()=>{
+    URL.revokeObjectURL(img.src);
+    toast(isHeic
+      ? "呢張係 HEIC 格式，你嘅瀏覽器解讀唔到。iPhone：設定 → 相機 → 格式 → 揀「最高相容性」再影過；或者將相 WhatsApp 傳一次再儲存（會自動轉 JPG）"
+      : "讀取相片失敗——請用 JPG／PNG 格式再試", 7000);
+  };
   img.src = URL.createObjectURL(f);
 });
 
@@ -1266,7 +1336,11 @@ async function analyzePosture(srcCanvas){
     if(currentMode !== "IMAGE"){ toast("AI 未就緒，請再試一次"); return; }
     let res;
     try{ res = landmarker.detect(srcCanvas); }
-    catch(e){ console.error(e); toast("偵測失敗：" + (e?.message||e)); return; }
+    catch(e){
+      console.error(e);
+      if(await recoverEngine(e)){ $("pMsg").classList.add("hidden"); return; }   // engine restarted — user retries
+      toast("偵測失敗：" + (e?.message||e)); return;
+    }
     const people = res.landmarks || [];
     if(!people.length){ toast("偵測唔到人體，請確保全身清晰入鏡、光線充足"); return; }
     const ranked = rankPeople(people);
@@ -1762,7 +1836,7 @@ function detectROI(slot, box, W, H, src){
   if(cnv.width !== dw || cnv.height !== dh){ cnv.width = dw; cnv.height = dh; }
   try{ cnv.getContext("2d").drawImage(src, px, py, pw, ph, 0, 0, dw, dh); }
   catch(e){ return []; }
-  let r; try{ r = landmarker.detect(cnv); }catch(e){ return []; }
+  let r; try{ r = landmarker.detect(cnv); }catch(e){ recoverEngine(e); return []; }
   const out = [];
   const n = (r.landmarks || []).length;
   for(let i = 0; i < n; i++){
@@ -1805,7 +1879,7 @@ function detectPeople(tSec){
   // source of candidates while they're not
   if(boxes.length < 2 || tSec - (mRun.lastFullScan ?? -9) > 0.8){
     mRun.lastFullScan = tSec;
-    let r = null; try{ r = landmarker.detect(detectFrame(snap)); }catch(e){}
+    let r = null; try{ r = landmarker.detect(detectFrame(snap)); }catch(e){ recoverEngine(e); }
     const n = (r?.landmarks || []).length;
     for(let i = 0; i < n; i++) cands.push({ lm: r.landmarks[i], wl: r.worldLandmarks?.[i] });
   }
@@ -2242,7 +2316,7 @@ async function batchAnalyze(){
         lastMedia = mt;
         const s0 = performance.now();
         let res2 = null;
-        try{ res2 = mRun.multi ? detectPeople(mt) : landmarker.detect(detectFrame()); }catch(e){}
+        try{ res2 = mRun.multi ? detectPeople(mt) : landmarker.detect(detectFrame()); }catch(e){ recoverEngine(e); }
         inferEMA = 0.8*inferEMA + 0.2*(performance.now()-s0)/1000;
         mRun.inferEMA = inferEMA;
         try{ mVideo.playbackRate = Math.max(mRun.minRate || 0.15, Math.min(6, 1/(inferEMA*(mRun.density || 15)))); }catch(e){}
@@ -2518,7 +2592,7 @@ function motionLoop(){
   mRun.lastTs = ts;
   let res;
   try{ res = mRun.multi ? detectPeople(ts/1000) : landmarker.detectForVideo(mVideo, ts); }
-  catch(e){ return; }
+  catch(e){ recoverEngine(e); return; }
   // live FPS estimate — drives the low-frame-rate warning and identity cadence
   if(mRun.lastDetTs){ const d = ts - mRun.lastDetTs; mRun.detMs = mRun.detMs ? 0.8*mRun.detMs + 0.2*d : d; }
   mRun.lastDetTs = ts;
@@ -3386,7 +3460,7 @@ function drawSpark(){
         ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 4, 0, 7); ctx.fillStyle = col; ctx.fill();
       }
     }
-    ctx.fillStyle = "#898781"; ctx.font = "10px system-ui,sans-serif";
+    ctx.fillStyle = "#605d5d"; ctx.font = "10px system-ui,sans-serif";
     ctx.fillText(`${vmax.toFixed(0)} m/s`, 4, 10);
   }
   ctx.restore();
@@ -3447,6 +3521,12 @@ $("signupBtn").addEventListener("click", async ()=>{
   $("signupSteps").style.display = "";
   $("signupSteps").scrollIntoView({ behavior: "smooth", block: "nearest" });
   toast("註冊成功 ✔ 跟住下面三步完成確認", 5000);
+});
+$("googleLoginBtn").addEventListener("click", async ()=>{
+  if(!sb){ toast("雲端服務未載入，請檢查網絡後重新整理"); return; }
+  // 返返本頁（motion-lab/ 或 motion-lab/posture/）；supabase-js 自動處理 OAuth callback
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } });
+  if(error){ toast("Google 登入失敗：" + error.message, 4500); }
 });
 $("logoutBtn").addEventListener("click", async ()=>{ await sb?.auth.signOut(); toast("已登出"); });
 
@@ -3533,7 +3613,7 @@ function lineChart(canvas, pts, dec){
   ctx.clearRect(0, 0, cw, chh);
   ctx.strokeStyle = "#2c2c2a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(30, chh-18); ctx.lineTo(cw-6, chh-18); ctx.stroke();
-  if(!pts.length){ ctx.fillStyle = "#898781"; ctx.font = "11px system-ui,sans-serif"; ctx.fillText("未有數據", 34, chh/2); return; }
+  if(!pts.length){ ctx.fillStyle = "#605d5d"; ctx.font = "11px system-ui,sans-serif"; ctx.fillText("未有數據", 34, chh/2); return; }
   let vmin = Math.min(...pts.map(p=>p.v)), vmax = Math.max(...pts.map(p=>p.v));
   if(vmax === vmin){ vmax += 1; vmin = Math.max(0, vmin-1); }
   const pad = (vmax-vmin)*0.15; vmin = Math.max(0, vmin-pad); vmax += pad;
@@ -3543,9 +3623,9 @@ function lineChart(canvas, pts, dec){
   ctx.beginPath(); pts.forEach((p,i)=> i ? ctx.lineTo(X(i), Y(p.v)) : ctx.moveTo(X(i), Y(p.v))); ctx.stroke();
   pts.forEach((p,i)=>{
     ctx.beginPath(); ctx.arc(X(i), Y(p.v), 6, 0, 7); ctx.fillStyle = "#1a1a19"; ctx.fill();
-    ctx.beginPath(); ctx.arc(X(i), Y(p.v), 4, 0, 7); ctx.fillStyle = "#3987e5"; ctx.fill();
+    ctx.beginPath(); ctx.arc(X(i), Y(p.v), 4, 0, 7); ctx.fillStyle = "#2e63b8"; ctx.fill();
   });
-  ctx.fillStyle = "#898781"; ctx.font = "10px system-ui,sans-serif";
+  ctx.fillStyle = "#605d5d"; ctx.font = "10px system-ui,sans-serif";
   ctx.fillText(vmax.toFixed(dec), 2, 14);
   ctx.fillText(vmin.toFixed(dec), 2, chh-22);
   const dstr = t => new Date(t).toLocaleDateString("zh-HK", { month:"numeric", day:"numeric" });
@@ -3915,6 +3995,170 @@ document.addEventListener("visibilitychange", ()=>{
    demand with real footage. Nothing in the app reads this. */
 window.__ml = { handleDetections, tracker, coreVisOf,
   get mRun(){ return mRun; }, get mState(){ return mState; } };
+
+/* ==================== ☁️ 雲端精析：async cloud pose pipeline ====================
+   所有登入用戶都用得（2026-07-18 開放）——唔蝕錢改由配額把關：free 10 / pro 60 /
+   max 180 分鐘/月，pose-fast 先查先開 GPU。上載片去 private bucket（RLS：只寫自己
+   uid 路徑）→ POST pose-fast → poll motion_jobs → done 就用 signed URL 播返標註影片
+   ＋統計。唔佔用戶部機、影片 12 小時後 sweep 剷走。 */
+const POSE_FN = SB_URL + "/functions/v1/pose-fast";
+const CL_MAX_MS = 183_000, CL_MAX_BYTES = 200 * 1024 * 1024;
+let clBusy = false, clQuotaCeil = null, clPollTimer = null;
+
+function clSetProg(pct, msg){
+  $("clProgWrap").style.display = "";
+  $("clProgFill").style.width = Math.max(5, Math.min(100, pct)) + "%";
+  $("clStatusMsg").textContent = msg;
+}
+function clHideProg(){ $("clProgWrap").style.display = "none"; }
+
+async function clRefreshQuota(){
+  const el = $("clQuota"); if(!el) return;
+  if(!sbUser){ el.textContent = ""; return; }
+  try{
+    const { data } = await sb.rpc("motionlab_minutes_this_month", { p_user: sbUser.id });
+    const used = Number(data ?? 0);
+    const ceil = clQuotaCeil ? ` / ${clQuotaCeil}` : "";
+    el.textContent = mlEN() ? `Used ${used.toFixed(0)}${ceil} min this month`
+                            : `本月已用 ${used.toFixed(0)}${ceil} 分鐘`;
+  }catch(e){ el.textContent = ""; }
+}
+
+function clProbe(file){        // → { url, durationMs }；讀唔到就 reject
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata"; v.muted = true;
+    v.onloadedmetadata = () => resolve({ url, durationMs: isFinite(v.duration) ? Math.round(v.duration * 1000) : 0 });
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error("unreadable")); };
+    v.src = url;
+  });
+}
+
+$("clUploadBtn").addEventListener("click", () => {
+  if(clBusy) return;
+  if(!sbUser){
+    toast(mlEN() ? "Please log in on the 📊 Records tab first (free)" : "請先去「📊 紀錄」分頁登入／註冊（免費）");
+    document.querySelector('.tab-btn[data-tab="records"]')?.click();
+    return;
+  }
+  $("clFile").click();   // 免費會員都用得——配額由 pose-fast 把關
+});
+
+$("clFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  if(f.size > CL_MAX_BYTES){ toast(mlEN() ? "Video too large (max 200 MB)" : "影片太大（上限 200MB）"); return; }
+  clBusy = true;
+  $("clResult").style.display = "none"; $("clDownload").style.display = "none"; $("clStats").innerHTML = "";
+  try{
+    clSetProg(10, mlEN() ? "Reading video…" : "讀取影片中…");
+    let probe;
+    try{ probe = await clProbe(f); }
+    catch{ clHideProg(); clBusy = false; toast(mlEN() ? "Can't read this video (try MP4/WebM)" : "讀唔到呢條片（建議 MP4/WebM）"); return; }
+    if(probe.durationMs > CL_MAX_MS){
+      URL.revokeObjectURL(probe.url); clHideProg(); clBusy = false;
+      toast(mlEN() ? "Video too long (max 3 min)" : "影片太長（上限 3 分鐘）"); return;
+    }
+
+    clSetProg(25, mlEN() ? "Uploading…" : "上載中…");
+    const ext = (f.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "mp4";
+    const path = `${sbUser.id}/in/${Date.now()}.${ext}`;
+    const up = await sb.storage.from("motionlab-video").upload(path, f, { contentType: f.type || "video/mp4", upsert: false });
+    URL.revokeObjectURL(probe.url);
+    if(up.error){ clHideProg(); clBusy = false; toast((mlEN() ? "Upload failed: " : "上載失敗：") + up.error.message); return; }
+
+    clSetProg(45, mlEN() ? "Starting analysis…" : "啟動精析…");
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(POSE_FN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ storage_path: path, duration_ms: probe.durationMs }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok){
+      clHideProg(); clBusy = false;
+      if(res.status === 402){
+        clQuotaCeil = body.quota ?? clQuotaCeil; clRefreshQuota();
+        if(ent) ent.requirePro("motionlab", mlEN() ? "more cloud minutes" : "更多雲端分鐘");
+        toast(mlEN() ? `Monthly quota used up (${body.quota} min)` : `本月配額用晒（${body.quota} 分鐘）`);
+      }else if(res.status === 403){
+        if(ent) ent.requirePro("motionlab", mlEN() ? "cloud analysis" : "雲端精析");
+      }else if(res.status === 503){
+        toast(mlEN() ? "Cloud engine warming up — try again shortly" : "雲端引擎啟動緊，一陣再試");
+      }else{
+        toast((mlEN() ? "Analysis failed: " : "精析失敗：") + (body.error || res.status));
+      }
+      return;
+    }
+    clQuotaCeil = body.quota ?? clQuotaCeil;
+    clPoll(body.job_id);
+  }catch(err){
+    clHideProg(); clBusy = false;
+    toast((mlEN() ? "Error: " : "出錯：") + (err.message || err));
+  }
+});
+
+function clPoll(jobId){
+  const started = Date.now(), MAX = 6 * 60 * 1000;
+  clSetProg(60, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（唔佔你部機）");
+  clearInterval(clPollTimer);
+  clPollTimer = setInterval(async () => {
+    if(Date.now() - started > MAX){
+      clearInterval(clPollTimer); clBusy = false; clHideProg();
+      toast(mlEN() ? "Timed out — please try again" : "等太耐喇，請再試"); return;
+    }
+    let row;
+    try{ row = (await sb.from("motion_jobs").select("status,out_path,stats,error").eq("id", jobId).maybeSingle()).data; }
+    catch(e){ return; }
+    if(!row) return;
+    if(row.status === "processing") clSetProg(78, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（唔佔你部機）");
+    if(row.status === "error"){
+      clearInterval(clPollTimer); clBusy = false; clHideProg();
+      toast((mlEN() ? "Analysis failed: " : "精析失敗：") + (row.error || "")); return;
+    }
+    if(row.status === "done"){
+      clearInterval(clPollTimer); clBusy = false;
+      clSetProg(95, mlEN() ? "Fetching result…" : "攞緊結果…");
+      await clShowResult(row);
+      clHideProg(); clRefreshQuota();
+    }
+  }, 3000);
+}
+
+async function clShowResult(row){
+  try{
+    const { data: signed } = await sb.storage.from("motionlab-video").createSignedUrl(row.out_path, 3600);
+    if(signed?.signedUrl){
+      $("clVideo").src = signed.signedUrl;
+      $("clDownload").href = signed.signedUrl;
+      $("clDownload").style.display = "";
+    }
+  }catch(e){}
+  const ppl = (row.stats && row.stats.people) || [];
+  if(ppl.length){
+    const hd = mlEN() ? ["#", "On-screen (s)", "Peak hand speed", "Avg hand speed", "Est. strikes"]
+                      : ["人物", "出鏡（秒）", "最快手速", "平均手速", "估計揮拳"];
+    const unit = mlEN() ? " body/s" : " 身位/秒";
+    const cell = "padding:6px 8px;border-bottom:1px solid var(--border)";
+    let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.86rem">`
+      + `<thead><tr>${hd.map(h => `<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--ink);white-space:nowrap">${h}</th>`).join("")}</tr></thead><tbody>`;
+    ppl.forEach((p, i) => {
+      html += `<tr><td style="${cell}">${i + 1}</td><td style="${cell}">${p.seconds ?? "–"}</td>`
+        + `<td style="${cell}">${p.max_hand_speed ?? "–"}${unit}</td>`
+        + `<td style="${cell}">${p.avg_hand_speed ?? "–"}${unit}</td>`
+        + `<td style="${cell}">${p.punch_estimate ?? "–"}</td></tr>`;
+    });
+    html += `</tbody></table></div><p class="hint" style="margin-top:8px">${mlEN()
+      ? "Speeds are wrist travel per second, normalised by body height (comparable across camera distances). Videos auto-delete after 12h."
+      : "手速＝手腕每秒移動距離，以身高歸一化（唔同鏡頭距離都可比較）。影片 12 小時後自動刪除。"}</p>`;
+    $("clStats").innerHTML = html;
+  }
+  $("clResult").style.display = "";
+}
+
+setTimeout(clRefreshQuota, 1800);   // ent 載完後顯示本月配額
 </script>
 
 </body>

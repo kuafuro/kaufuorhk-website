@@ -1,0 +1,20 @@
+{
+  "name": "kuafuor-whatsapp-bot",
+  "version": "0.2.0",
+  "description": "WhatsApp conversational booking + class-reminder + cancel-notice bot for Kuafuor Motion Lab (Supabase + WhatsApp Cloud API, deploy on Railway)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "run-once": "node src/run-once.js",
+    "test": "node test/booking.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  }
+}

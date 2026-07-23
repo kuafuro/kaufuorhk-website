@@ -1,0 +1,7 @@
+{
+  "files": ["*.html", "*/index.html", "data-insights/en/index.html"],
+  "exclude": ["agent-dashboard/**", "billing-demo/**", "motion-lab/**"],
+  "insertBefore": "</body>",
+  "commentSyntax": "html",
+  "cspChecked": true
+}

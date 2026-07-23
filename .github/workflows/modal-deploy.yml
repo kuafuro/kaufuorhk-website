@@ -11,6 +11,8 @@ on:
     branches: [main, claude/website-improvement-review-wr8keq]
     paths:
       - 'sensevoice/**'
+      - 'motionlab-cloud/**'
+      - 'whisper/**'
       - '.github/workflows/modal-deploy.yml'
 
 permissions:
@@ -47,6 +49,12 @@ jobs:
             echo "::add-mask::$VAL"
             echo "$KEY=$VAL" >> "$GITHUB_ENV"
           done
+          # 字幕準確模式 Gemini 融合用（OPTIONAL）：未入 Vault 就當空字串，Modal 內部唔做融合
+          for KEY in GEMINI_API_KEY GEMINI_MODEL; do
+            VAL=$(jq -r --arg k "$KEY" '.[$k] // empty' <<<"$CFG")
+            if [ -n "$VAL" ]; then echo "::add-mask::$VAL"; fi
+            echo "$KEY=$VAL" >> "$GITHUB_ENV"
+          done
 
       - name: Authenticate to Modal
         run: |
@@ -59,6 +67,8 @@ jobs:
             SENSEVOICE_TOKEN="$SENSEVOICE_TOKEN" \
             CALLBACK_URL="$CALLBACK_URL" \
             CALLBACK_SECRET="$CALLBACK_SECRET" \
+            GEMINI_API_KEY="$GEMINI_API_KEY" \
+            GEMINI_MODEL="$GEMINI_MODEL" \
             --force
 
       - name: Deploy
@@ -70,6 +80,24 @@ jobs:
           echo "ENDPOINT_URL=$URL" >> "$GITHUB_ENV"
           echo "Deployed endpoint: $URL"
 
+      - name: Deploy pose endpoint (Motion Lab cloud)
+        run: |
+          set -euo pipefail
+          modal deploy motionlab-cloud/modal_app.py 2>&1 | tee pose-deploy.log
+          PURL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.modal\.run' pose-deploy.log | tail -1)
+          if [ -z "$PURL" ]; then echo "no pose endpoint URL in deploy output" >&2; exit 1; fi
+          echo "POSE_ENDPOINT_URL=$PURL" >> "$GITHUB_ENV"
+          echo "Deployed pose endpoint: $PURL"
+
+      - name: Deploy whisper endpoint (準確模式 large-v3)
+        run: |
+          set -euo pipefail
+          modal deploy whisper/modal_app.py 2>&1 | tee whisper-deploy.log
+          WURL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.modal\.run' whisper-deploy.log | tail -1)
+          if [ -z "$WURL" ]; then echo "no whisper endpoint URL in deploy output" >&2; exit 1; fi
+          echo "WHISPER_ENDPOINT_URL=$WURL" >> "$GITHUB_ENV"
+          echo "Deployed whisper endpoint: $WURL"
+
       - name: Register endpoint URL
         run: |
           set -euo pipefail
@@ -78,7 +106,7 @@ jobs:
           RES=$(curl -sS -X POST \
             "https://ikzoxrvnpsseyjviawti.supabase.co/functions/v1/ci-config" \
             -H 'Content-Type: application/json' \
-            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\"}}")
+            -d "{\"oidc_token\":\"$OIDC\",\"register\":{\"SENSEVOICE_URL\":\"$ENDPOINT_URL\",\"POSE_URL\":\"$POSE_ENDPOINT_URL\",\"WHISPER_URL\":\"$WHISPER_ENDPOINT_URL\"}}")
           echo "register response: $RES"
           [ "$(jq -r '.registered // false' <<<"$RES")" = "true" ]
 

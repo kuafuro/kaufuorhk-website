@@ -131,6 +131,11 @@
     font-family:-apple-system,"PingFang HK","Noto Sans TC",monospace;white-space:pre-wrap;}
   .segview{max-height:400px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
   .seg{display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.9rem}
+  .seg.conf-low{background:#f9e9e6}   /* 信心 <60%：幫手搵返最需要校嗰啲句 */
+  .seg.conf-mid{background:#f3ecd9}   /* 信心 60–80% */
+  .seg .ts{cursor:pointer}
+  .seg .ts:hover{color:var(--ink);text-decoration:underline}
+  .seg .tx[contenteditable]:focus{outline:2px solid #a83228;outline-offset:2px;border-radius:4px}
   .seg:last-child{border-bottom:none}
   .seg .ts{color:var(--muted);font-size:.72rem;white-space:nowrap;padding-top:2px;font-variant-numeric:tabular-nums}
   .seg .tx{flex:1}
@@ -157,7 +162,7 @@
 
   <header class="top">
     <h1>🎙️ 廣東話轉字幕
-      <small>Cantonese → Subtitles · 本地免費私密,或雲端快速（Pro）</small>
+      <small>Cantonese → Subtitles · 本地免費私密（雲端最準·內部測試中）</small>
     </h1>
     <a class="back" href="/">← 返 Kuafuor HK</a>
   </header>
@@ -168,78 +173,50 @@
     <div id="drop" tabindex="0" role="button" aria-label="揀檔案或者拖入嚟">
       <div class="big">📂</div>
       <div class="t">撳一下揀檔案，或者拖入嚟</div>
-      <div class="s">Podcast、訪問、會議錄音都得 · 檔案唔會離開你部機</div>
+      <div class="s">Podcast、訪問、會議錄音都得 · 檔案唔會離開你部機 · 粗口、語氣詞照出唔過濾</div>
     </div>
     <input type="file" id="file" accept="audio/*,video/*" hidden>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+      <button class="btn" id="recBtn">🎙 直接錄音</button>
+      <span id="recTime" class="muted fs-sm" style="display:none;color:#a83228;font-weight:700">● 00:00</span>
+      <span class="muted fs-xs">訪問／會議即錄即轉，錄完自動當一個檔案</span>
+    </div>
     <div id="fileInfo"></div>
   </div>
 
   <!-- STEP 2: 設定 -->
   <div class="card">
-    <h2>② 設定 <span class="hint">預設已經係「廣東話口語」最佳組合</span></h2>
-
-    <!-- 引擎：本地（免費／私密）vs 雲端快速（Pro · SenseVoice） -->
-    <div class="engine" role="tablist" aria-label="轉字幕引擎">
-      <button id="engLocal" class="eng on" role="tab" aria-selected="true">
-        💻 本地 <span class="s">免費 · 私密 · 慢</span>
-      </button>
-      <button id="engCloud" class="eng" role="tab" aria-selected="false">
-        ☁️ 雲端快速 <span class="s">Pro · 快 15× · 有講者</span>
-      </button>
-    </div>
-    <div class="notice info" id="cloudNote" style="display:none">
-      <b>雲端快速（SenseVoice）</b>：廣東話原生模型,分「邊個講」+ 時間軸。<b>背景處理</b> —— 首次開機約 1–2 分鐘,之後好快,唔使企喺度等。
-      音檔會上傳到我哋嘅私密處理伺服器,轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
-    </div>
-
-    <div class="grid2" id="localOpts">
-      <label class="f">模型 Model
-        <select id="model"></select>
-      </label>
-      <label class="f">語言 Language
-        <select id="lang">
-          <option value="zh" selected>廣東話 / 中文（zh）— 建議</option>
-          <option value="yue">Cantonese（yue）— 實驗性</option>
-          <option value="">自動偵測 Auto</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="notice info" id="modelNote"></div>
-
-    <details class="adv">
-      <summary>進階設定 &amp; 點解要咁揀（秘技說明）</summary>
-      <div class="body">
-        <div class="notice warn">
-          <b>點解語言要揀「zh」唔揀「yue」？</b><br>
-          Whisper 一強制 <code class="k">yue</code>（Cantonese）好多時會「decoder 塌」——
-          不停重複、出亂碼、成段廢咗。實測強制 <code class="k">zh</code> + 用
-          <b>large-v3-turbo</b> 反而會穩定咁打出「係、喺、佢哋、咁樣、㗎、喇」呢啲原汁原味口語字。
-          所以呢版工具預設就係 <code class="k">zh</code> + turbo。想試 <code class="k">yue</code> 可以喺上面轉，覺得亂就轉返 zh。
-        </div>
-
-        <label class="f">
-          時間戳精度 Timestamps
-          <select id="ts">
-            <option value="segment" selected>句子級（做字幕用 · 快）</option>
-            <option value="word">逐字級（更精準 · 慢好多）</option>
-          </select>
-        </label>
-
-        <div class="promptbox">
-          <div class="fs-sm" style="margin-bottom:6px">
-            <b>提示詞（Initial Prompt）</b> —
-            <span class="muted">畀你喺電腦版 Buzz / faster-whisper 用。<u>瀏覽器版 Whisper 暫時未支援 initial prompt</u>，所以呢度淨係方便你 copy 去 desktop app。</span>
-          </div>
-          <pre id="promptText">這是一段廣東話口語對話，請完全保留原汁原味的廣東話字詞，不要翻譯成書面語。例如：係囉、咁樣、佢哋、喺度、嘅、㗎、喇。</pre>
-          <button class="btn fs-sm" id="copyPrompt" style="margin-top:8px;padding:7px 14px">📋 Copy 提示詞</button>
-        </div>
+    <div id="advSettings" hidden>
+      <!-- 引擎／模型／語言／進階全部自動：Pro→雲端最準，免費→本地。呢啲元素保留返俾 JS bind，用戶睇唔到。 -->
+      <div class="engine" role="tablist" aria-label="轉字幕引擎">
+        <button id="engLocal" class="eng on" role="tab" aria-selected="true">💻 本地</button>
+        <button id="engCloud" class="eng" role="tab" aria-selected="false">☁️ 雲端</button>
       </div>
-    </details>
+      <div class="grid2" id="localOpts">
+        <label class="f">模型 <select id="model"></select></label>
+        <label class="f">語言 <select id="lang">
+          <option value="zh" selected>zh</option>
+          <option value="yue">yue</option>
+          <option value="">auto</option>
+        </select></label>
+      </div>
+      <div class="notice info" id="modelNote"></div>
+      <label class="f">時間戳 <select id="ts">
+        <option value="segment" selected>segment</option>
+        <option value="word">word</option>
+      </select></label>
+      <pre id="promptText" hidden>這是一段廣東話口語對話，請完全保留原汁原味的廣東話字詞。</pre>
+      <button id="copyPrompt" hidden></button>
+    </div>
+
+    <div class="notice info" id="cloudNote" style="display:none">
+      首次開機要等幾分鐘,之後就快。音檔轉完 <b>6 個鐘內自動刪除</b>,只留返字幕文字。<span id="cloudQuota" class="muted"></span>
+    </div>
 
     <div class="btnrow">
-      <button class="btn primary block" id="run" disabled>▶️ 開始轉字幕 Transcribe</button>
+      <button class="btn primary block" id="run" disabled>▶️ 開始轉字幕</button>
     </div>
+    <div id="engHint" class="fs-xs muted" style="margin-top:10px;text-align:center;line-height:1.7"></div>
 
     <div id="status">
       <div class="bar"><i id="barFill"></i></div>
@@ -250,7 +227,7 @@
 
   <!-- STEP 3: 結果 -->
   <div class="card" id="result">
-    <h2>③ 字幕結果 <span class="hint" id="resultMeta"></span></h2>
+    <h2>② 字幕結果 <span class="hint" id="resultMeta"></span></h2>
     <div class="tabs">
       <button data-tab="text" class="on">純文字</button>
       <button data-tab="seg">分段時間軸</button>
@@ -259,7 +236,9 @@
       <textarea id="outText" spellcheck="false"></textarea>
     </div>
     <div id="tab-seg" style="display:none">
+      <audio id="playback" controls style="width:100%;margin-bottom:8px;display:none"></audio>
       <div class="segview" id="segView"></div>
+      <p class="hint" id="segHint" style="display:none;margin-top:6px"></p>
     </div>
     <div class="btnrow">
       <button class="btn" id="copyText">📋 Copy 全文</button>
@@ -267,6 +246,14 @@
       <button class="btn" id="dlSrt">⬇️ 下載 .srt 字幕</button>
       <button class="btn" id="dlVtt">⬇️ 下載 .vtt</button>
       <button class="btn" id="saveCloud">☁️ 存去雲端</button>
+      <label class="fs-xs muted" style="display:inline-flex;align-items:center;gap:5px;margin-left:auto">每行字數
+        <select id="maxLine" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-family:inherit">
+          <option value="0" selected>唔限</option>
+          <option value="14">14</option>
+          <option value="20">20</option>
+          <option value="28">28</option>
+        </select>
+      </label>
     </div>
   </div>
 
@@ -276,12 +263,8 @@
     <div id="cloudList" class="fs-xs muted">—</div>
   </div>
 
-  <div class="card fs-xs muted">
-    <b>私隱：</b><b>本地引擎（預設）</b>—— 你嘅錄音同字幕全部喺你部瀏覽器本地處理，<u>唔會上傳去任何伺服器</u>。
-    第一次用會由 Hugging Face 下載模型檔（turbo 約 1.6GB，之後會 cache 喺瀏覽器，第二次即刻用）。
-    建議用 <b>Chrome / Edge</b>（有 WebGPU 最快）；冇 WebGPU 會自動轉用相容模式（細啲嘅模型、慢啲）。<br>
-    <b>雲端快速（Pro）</b>—— 為咗快，音檔會上傳到我哋嘅私密處理伺服器，轉完 6 個鐘內自動刪除，只保留字幕文字。
-    廣東話雲端轉錄由 <b>SenseVoice</b>（FunASR · Alibaba）提供。
+  <div class="card fs-xs muted" style="text-align:center">
+    使用本工具即表示你同意私隱條款（音檔轉完即刪、只留字幕）。
   </div>
 
 </div>
@@ -300,11 +283,16 @@ const $ = id => document.getElementById(id);
 
 // ── Freemium 閘（非阻塞：免費層唔會等 billing 初始化）──
 let ent = null;
-const isPro = () => !!(ent && ent.hasAccess("subtitle"));
+// 內部測試：雲端轉字幕（Whisper+SenseVoice→Gemini）暫時只限 holder（admin）＋技術人員（developer）。
+// 佢哋當 Pro 睇（解鎖全文＋匯出）；付費 Pro 用戶一樣解鎖本地全文，但雲端路要等公開先開。
+const isTechStaff = () => !!(ent && ent.isTechStaff);
+const cloudAllowed = () => isTechStaff();
+const isPro = () => !!(ent && (ent.hasAccess("subtitle") || ent.isTechStaff));
 Entitlements.init().then(e => {
   ent = e;
-  e.on("change", () => { applyGate(); loadHistory(); });   // 升級後即時解鎖 + 顯示雲端歷史
+  e.on("change", () => { applyGate(); loadHistory(); autoEngine(); });   // 升級後即時解鎖 + 換雲端
   applyGate();
+  autoEngine();
   loadHistory();
 }).catch(err => console.warn("billing init", err));
 const toast = (msg) => {
@@ -366,7 +354,7 @@ function refreshModelNote(){
 }
 refreshModelNote();
 
-/* ---------- 引擎切換：本地（免費）vs 雲端快速（Pro · SenseVoice）---------- */
+/* ---------- 引擎切換：本地（免費）vs 雲端（Pro · 最準）---------- */
 let engine = "local";
 const engLocalBtn = $("engLocal"), engCloudBtn = $("engCloud");
 function setEngine(e){
@@ -376,13 +364,28 @@ function setEngine(e){
   engLocalBtn.classList.toggle("on", !cloud); engLocalBtn.setAttribute("aria-selected", String(!cloud));
   $("localOpts").style.display = cloud ? "none" : "";
   $("modelNote").style.display = cloud ? "none" : "";
-  const adv = document.querySelector("details.adv"); if (adv) adv.style.display = cloud ? "none" : "";
   $("cloudNote").style.display = cloud ? "block" : "none";
-  $("run").textContent = cloud ? "☁️ 開始轉字幕（雲端快速）" : "▶️ 開始轉字幕 Transcribe";
+}
+// 引擎自動揀：內部技術人員 → 雲端最準；其他人 → 本地。用戶唔使揀。
+// 雲端測試期間只限內部，所以唔再對公眾賣「升級 Pro 用雲端」（避免變假承諾）。
+function autoEngine(){
+  // Modal 停緊：一律行瀏覽器本地（喺用戶部機跑 Whisper，音檔唔上傳）。內部人員（holder／技術人員）
+  // 多一層 Gemini 口語收正（gemini-fuse edge）。Modal 復活後想俾內部人員行返雲端 SenseVoice 版，
+  // 將下面改返 setEngine(cloudAllowed() ? "cloud" : "local") 即可。
+  setEngine("local");
+  const eh = $("engHint"); if (!eh) return;
+  const en = cloudEN();
+  if (isTechStaff()) eh.textContent = en
+    ? "☁️ Website local: in-browser Whisper + Gemini colloquial polish (Holder / tech staff · audio never uploaded)"
+    : "☁️ 網站本地模式 · 瀏覽器 Whisper ＋ Gemini 口語收正（Holder／技術人員 · 音檔唔上傳）";
+  else eh.textContent = en
+    ? "Local mode (free · private). Cloud most-accurate is in internal testing — opening later."
+    : "本地模式（免費・私密）· 雲端最準功能內部測試中，稍後開放";
 }
 engLocalBtn.addEventListener("click", () => setEngine("local"));
+try { autoEngine(); } catch(_) {}   // 即時render引擎提示（ent 未load都有預設）
 engCloudBtn.addEventListener("click", () => {
-  if (!isPro()) { if (ent) ent.requirePro("subtitle", cloudEN() ? "cloud transcription" : "雲端快速轉錄"); else toast("請稍等…"); return; }
+  if (!cloudAllowed()) { toast(cloudEN() ? "Cloud transcription is in internal testing" : "雲端轉字幕內部測試中，暫未開放"); return; }
   setEngine("cloud");
 });
 
@@ -397,13 +400,96 @@ drop.addEventListener("drop", e => { const f = e.dataTransfer.files?.[0]; if (f)
 fileInput.addEventListener("change", e => { const f = e.target.files?.[0]; if (f) setFile(f); });
 
 function fmtSize(b){ return b > 1e9 ? (b/1e9).toFixed(1)+" GB" : b > 1e6 ? (b/1e6).toFixed(1)+" MB" : (b/1e3).toFixed(0)+" KB"; }
+let playbackUrl = null;
 function setFile(f){
   audioFile = f;
   const info = $("fileInfo");
   info.style.display = "block";
   info.innerHTML = `已揀：<b>${f.name}</b> <span class="muted">(${fmtSize(f.size)})</span>`;
   $("run").disabled = false;
+  // 分段 view 嘅「撳時間跳去嗰句」試聽用（video 檔一樣播到音軌）
+  try {
+    if (playbackUrl) URL.revokeObjectURL(playbackUrl);
+    playbackUrl = URL.createObjectURL(f);
+    const pb = $("playback");
+    pb.src = playbackUrl;
+    pb.style.display = "";
+  } catch (_) {}
 }
+function seekAudio(t){
+  const pb = $("playback");
+  if (!pb || !pb.src) return;
+  pb.style.display = "";
+  pb.currentTime = Math.max(0, t || 0);
+  pb.play().catch(() => {});
+}
+
+/* ---------- 🎙 直接錄音（MediaRecorder → 錄完當一個檔案入返同一條流程） ---------- */
+let recRec = null, recChunks = [], recT0 = 0, recTimer = null, recStream = null;
+const recClock = ms => { const s = Math.floor(ms/1000); return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; };
+$("recBtn").addEventListener("click", async () => {
+  if (recRec) { recRec.stop(); return; }                       // 撳多次＝停止
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
+    toast("你嘅瀏覽器唔支援錄音——請用檔案上載"); return;
+  }
+  try { recStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { toast("開唔到咪高風——請喺瀏覽器俾錄音權限"); return; }
+  const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(m => MediaRecorder.isTypeSupported(m)) || "";
+  recChunks = [];
+  recRec = new MediaRecorder(recStream, mime ? { mimeType: mime } : undefined);
+  recRec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+  recRec.onstop = () => {
+    clearInterval(recTimer);
+    recStream.getTracks().forEach(tr => tr.stop());
+    const type = recRec.mimeType || "audio/webm";
+    const ext = type.includes("mp4") ? "m4a" : "webm";
+    const d = new Date(), p = n => String(n).padStart(2, "0");
+    const f = new File(recChunks, `錄音_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.${ext}`, { type });
+    recRec = null;
+    $("recBtn").textContent = "🎙 直接錄音";
+    $("recTime").style.display = "none";
+    if (f.size < 1000) { toast("錄唔到聲——檢查咪高風之後再試"); return; }
+    setFile(f);
+    toast("錄好喇 ✓ 撳「開始轉字幕」");
+  };
+  recRec.start();
+  recT0 = Date.now();
+  $("recBtn").textContent = "⏹ 停止錄音";
+  $("recTime").style.display = "";
+  $("recTime").textContent = "● 00:00";
+  recTimer = setInterval(() => { $("recTime").textContent = "● " + recClock(Date.now() - recT0); }, 500);
+});
+
+/* ---------- 字幕自動分割（每行上限 N 字，時間按字數比例插值）——CantoSub 收費，我哋免費 ---------- */
+function splitSeg(s, maxN){
+  const txt = (s.text || "");
+  if (!maxN || txt.length <= maxN) return [s];
+  const parts = [];
+  let rest = txt;
+  while (rest.length > maxN){
+    let cut = -1;
+    for (let i = maxN; i >= Math.ceil(maxN/2); i--){          // 優先喺標點／空格後斬
+      if (/[，。！？；、,.!?;\s]/.test(rest[i-1])){ cut = i; break; }
+    }
+    if (cut < 0) cut = maxN;
+    parts.push(rest.slice(0, cut)); rest = rest.slice(cut);
+  }
+  if (rest.trim()) parts.push(rest);
+  const dur = Math.max(0, (s.end ?? 0) - (s.start ?? 0));
+  const total = parts.reduce((a, p) => a + p.length, 0) || 1;
+  let t = s.start ?? 0;
+  return parts.map(p => {
+    const d = dur * (p.length / total);
+    const out = { ...s, start: t, end: t + d, text: p.trim() };
+    t += d;
+    return out;
+  }).filter(o => o.text);
+}
+function applySplit(segs){
+  const n = parseInt($("maxLine")?.value || "0", 10);
+  return n ? segs.flatMap(s => splitSeg(s, n)) : segs;
+}
+$("maxLine").addEventListener("change", () => { if (lastResult) applyGate(); });
 
 /* ---------- 解碼音訊 → 16kHz mono Float32 ---------- */
 async function decodeTo16k(file){
@@ -516,7 +602,12 @@ async function runLocal(){
     }
 
     const secs = ((performance.now() - t0)/1000).toFixed(0);
-    renderResult(output, duration, secs);
+    let segs = normSegments(output, duration);
+    if (isTechStaff()) {                                    // 內部人員：Gemini 口語收正
+      setText(`<span class="spinner"></span>Gemini 口語收正中…（音檔唔上傳，只送字幕文字）`);
+      segs = await fuseLocalSegs(segs);
+    }
+    renderResult(output, duration, secs, segs);
     statusBox.style.display = "none";
   } catch (e) {
     console.error(e);
@@ -529,7 +620,7 @@ async function runLocal(){
   }
 }
 
-/* ---------- 雲端快速（SenseVoice · Pro）---------- */
+/* ---------- 雲端（Pro · 最準）---------- */
 // 快速攞音訊長度（只讀 metadata，唔使整條解碼）—— 用嚟做配額 pre-flight
 function getDurationMeta(file){
   return new Promise(resolve => {
@@ -546,7 +637,7 @@ function getDurationMeta(file){
 async function runCloud(){
   if (!audioFile) return;
   const en = cloudEN();
-  if (!isPro()) { if (ent) ent.requirePro("subtitle", en ? "cloud transcription" : "雲端快速轉錄"); return; }
+  if (!cloudAllowed()) { toast(en ? "Cloud transcription is internal-only right now" : "雲端轉字幕內部測試中，暫未開放"); setEngine("local"); return; }
   const db = ent && await ent.db();
   const token = db && (await db.auth.getSession()).data.session?.access_token;
   if (!db || !ent.userId || !token) { toast(en ? "Please sign in" : "請先登入"); return; }
@@ -565,10 +656,13 @@ async function runCloud(){
     if (up.error) throw new Error((en ? "upload failed: " : "上傳失敗：") + up.error.message);
 
     setBar(45); setText(`<span class="spinner"></span>${en ? "Submitting to cloud…" : "提交到雲端…"}`);
+    const mode = "accurate";   // Pro 一律用最準嗰個——唔俾人揀 model
     const resp = await fetch(`${BILLING.EDGE_BASE}/transcribe-fast`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "apikey": BILLING.SB_KEY },
-      body: JSON.stringify({ storage_path: path, duration_ms: Math.round(dur * 1000) }),
+      // 唔好加 apikey header：edge function 嘅 CORS Allow-Headers 冇佢，preflight 會被拒
+      // （「Failed to fetch」2026-07-18 嗰單）。verify_jwt 靠 Authorization 就夠。
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ storage_path: path, duration_ms: Math.round(dur * 1000), engine: mode }),
     });
 
     if (resp.status === 402) { const j = await resp.json().catch(() => ({})); statusBox.style.display = "none"; showQuotaUpsell(j); return; }
@@ -585,6 +679,7 @@ async function runCloud(){
     const segs = (job.segments || []).map(s => ({
       start: (s.start_ms || 0) / 1000, end: (s.end_ms || 0) / 1000,
       spk: (typeof s.spk === "number" ? s.spk : null), text: (s.text || "").trim(),
+      conf: (typeof s.conf === "number" ? s.conf : null),   // 準確模式先有（低過 0.8 會 highlight）
     })).filter(s => s.text);
     if (!segs.length) throw new Error(en ? "empty result" : "轉唔到字（可能係靜音或者格式問題）");
 
@@ -627,8 +722,8 @@ async function pollJob(db, jobId, en, t0){
     if (row.status === "error") throw new Error(row.error || (en ? "transcription failed" : "轉錄失敗"));
     const s = Math.round((Date.now() - t0) / 1000);
     setText(`<span class="spinner"></span>${en
-      ? `Transcribing on SenseVoice cloud… (${s}s)`
-      : `雲端 SenseVoice 轉字幕中…（已 ${s} 秒;首次開機約 1–2 分鐘,可以唔使企喺度等）`}`);
+      ? `Transcribing in the cloud… (${s}s)`
+      : `雲端轉字幕中…（已 ${s} 秒;首次開機約 1–2 分鐘,可以唔使企喺度等）`}`);
   }
   throw new Error(en ? "cloud timed out — try again (engine now warm)" : "等太耐 —— 引擎啱啱開好,再撳多次通常即刻得");
 }
@@ -668,7 +763,7 @@ function fmtTime(sec, comma=true){
   return `${pad(h)}:${pad(m)}:${pad(s)}${comma?",":"."}${pad(ms,3)}`;
 }
 
-// 有多過一個講者時，喺每句前面加「講者N：」（雲端 SenseVoice 先有 spk；本地 Whisper 冇）
+// 有多過一個講者時，喺每句前面加「講者N：」（雲端先有 spk；本地引擎冇）
 function segText(s){ return (lastResult?.multiSpk && s?.spk != null ? `講者${s.spk + 1}：` : "") + (s?.text || ""); }
 
 // 逐字模式：合併成大約一句句子（避免 SRT 一字一格）
@@ -709,9 +804,30 @@ function normSegments(output, duration){
   return segs.filter(s => (s.text || "").trim().length);
 }
 
-function renderResult(output, duration, secs){
-  const segs = normSegments(output, duration);
-  const fullText = (output.text || segs.map(s => s.text).join("")).trim();
+// 網站本地模式：內部人員（holder／技術人員）行完瀏覽器 Whisper 之後，用 gemini-fuse edge
+// 做 Gemini 口語收正（音檔唔上傳，淨係送字幕文字上去）。非內部人員 / 失敗 → 靜靜哋出返原文。
+async function fuseLocalSegs(segs){
+  if (!isTechStaff() || !segs.length) return segs;
+  try {
+    const db = ent && await ent.db();
+    const token = db && (await db.auth.getSession()).data.session?.access_token;
+    if (!token) return segs;
+    const resp = await fetch(`${BILLING.EDGE_BASE}/gemini-fuse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ segments: segs.map(s => s.text) }),
+    });
+    if (!resp.ok) return segs;
+    const { fused } = await resp.json();
+    if (Array.isArray(fused) && fused.length === segs.length)
+      return segs.map((s, i) => ({ ...s, text: String(fused[i] || s.text).trim() }));
+  } catch (_) {}
+  return segs;
+}
+
+function renderResult(output, duration, secs, preSegs){
+  const segs = preSegs || normSegments(output, duration);
+  const fullText = preSegs ? segs.map(s => s.text).join("\n") : (output.text || segs.map(s => s.text).join("")).trim();
   lastResult = { segs, fullText, secs };
   try { sessionStorage.setItem("kf-sub-last", JSON.stringify(lastResult)); } catch (_) {}   // 留返俾付款後還原
   $("result").style.display = "block";
@@ -751,13 +867,38 @@ function applyGate(){
 
   const sv = $("segView");
   sv.innerHTML = "";
-  shownSegs.forEach(s => {
+  const splitOn = parseInt($("maxLine")?.value || "0", 10) > 0;
+  const editable = pro && !splitOn && !gated;   // 1:1 對應原始段先可以就地編輯（分割/預覽模式唔得）
+  shownSegs = applySplit(shownSegs);   // 每行上限：顯示同匯出一致
+  shownSegs.forEach((s, i) => {
     const row = document.createElement("div");
-    row.className = "seg";
-    row.innerHTML = `<div class="ts">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
-    row.querySelector(".tx").textContent = segText(s);
+    row.className = "seg" + (s.conf != null && s.conf < 0.6 ? " conf-low" : s.conf != null && s.conf < 0.8 ? " conf-mid" : "");
+    row.innerHTML = `<div class="ts" title="撳一下跳去呢句">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
+    const tx = row.querySelector(".tx");
+    tx.textContent = segText(s);
+    row.querySelector(".ts").addEventListener("click", () => seekAudio(s.start));
+    if (editable){
+      try { tx.contentEditable = "plaintext-only"; } catch (_) { tx.contentEditable = "true"; }
+      tx.spellcheck = false;
+      // 就地校字：寫返入 lastResult（SRT/VTT/txt 匯出即刻用新字）
+      tx.addEventListener("input", () => {
+        const clean = (tx.textContent || "").replace(/^講者\d+：/, "").trim();
+        if (lastResult && lastResult.segs[i]) {
+          lastResult.segs[i].text = clean;
+          lastResult.fullText = lastResult.segs.map(x => (lastResult.multiSpk && x.spk != null ? `講者${x.spk + 1}：` : "") + x.text).join("\n");
+          $("outText").value = lastResult.fullText;
+        }
+      });
+    }
     sv.appendChild(row);
   });
+  $("segHint").style.display = "";
+  $("segHint").textContent = editable
+    ? (en ? "Click a timestamp to jump; click any line to edit it — exports use your edits. Tinted lines = lower AI confidence."
+          : "撳時間＝跳去嗰句試聽；撳句字＝直接改，匯出即刻用你改完嘅版本。有底色嗰啲句＝AI 冇咁有信心，優先校佢哋。")
+    : (splitOn ? (en ? "Line-length split is on — switch it to 唔限 to edit text inline."
+                     : "「每行上限」開咗——想就地改字，將佢較返「唔限」。")
+               : "");
 
   const pct = Math.min(100, Math.round((budget / Math.max(1, total)) * 100));
   $("resultMeta").textContent = pro
@@ -830,8 +971,8 @@ function exportGate(){
   return false;
 }
 $("dlTxt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".txt", lastResult.fullText); });
-$("dlSrt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".srt", buildSRT(lastResult.segs)); });
-$("dlVtt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".vtt", buildVTT(lastResult.segs)); });
+$("dlSrt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".srt", buildSRT(applySplit(lastResult.segs))); });
+$("dlVtt").addEventListener("click", () => { if (!exportGate()) return; lastResult && download(baseName()+".vtt", buildVTT(applySplit(lastResult.segs))); });
 
 async function copy(text){
   try { await navigator.clipboard.writeText(text); toast("已複製 ✓"); }

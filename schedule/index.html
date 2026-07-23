@@ -5,46 +5,63 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>排堂報名｜踢拳小班</title>
 <script src="/assets/guard.js" data-roles=""></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
 <style>
+  /* 書卷編輯風 — 沿用主頁／登入頁 token（紅／黑／米白，淨淺色） */
   :root{
-    color-scheme: light dark;
-    --bg:#fafafa; --card:#ffffff; --ink:#111111; --muted:#666666;
-    --line:#e2e2e2; --line-strong:#111111; --accent:#a83228; --accent-soft:#fdeeec;
-    --ok:#1e7d46; --ok-soft:#e6f4ec; --warn:#7a5400; --warn-soft:#fff6de; --btn:#111; --btn-ink:#fff;
+    color-scheme: light;
+    --bg:#f3f2f2; --card:#f8f4f4; --ink:#201f1d; --muted:#605d5d;
+    --line:#d7d3d3; --line-strong:#201f1d; --accent:#a83228; --accent-soft:#fdeeec;
+    --ok:#1e7d46; --ok-soft:#e6f0e9; --warn:#7a5400; --warn-soft:#f3ecd9;
+    --btn:#a83228; --btn-ink:#ffffff;
   }
+  /* 統一淺色識別：深色模式都用返同一套（同主頁一致，唔做 dark） */
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0e0e0e; --card:#1a1a1a; --ink:#f2f2f2; --muted:#9a9a9a; --line:#333;
-      --line-strong:#f2f2f2; --accent:#ff8a80; --accent-soft:#3a1d1a; --ok:#5fd08d; --ok-soft:#1d3327;
-      --warn:#ffd166; --warn-soft:#3a3018; --btn:#f2f2f2; --btn-ink:#111; }
+    :root{
+      --bg:#f3f2f2; --card:#f8f4f4; --ink:#201f1d; --muted:#605d5d;
+      --line:#d7d3d3; --line-strong:#201f1d; --accent:#a83228; --accent-soft:#fdeeec;
+      --ok:#1e7d46; --ok-soft:#e6f0e9; --warn:#7a5400; --warn-soft:#f3ecd9;
+      --btn:#a83228; --btn-ink:#ffffff;
+    }
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,"PingFang HK","Noto Sans TC","Microsoft JhengHei",sans-serif;
-    background:var(--bg); color:var(--ink); line-height:1.55; padding:16px 12px 60px}
+  body{font-family:"Lora","Noto Serif TC",serif;
+    background:var(--bg); color:var(--ink); line-height:1.6; padding:20px 14px 60px}
+  h1,h2{font-family:"Cormorant Garamond","Noto Serif TC",serif; letter-spacing:-0.01em}
   .wrap{max-width:720px;margin:0 auto}
-  header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-  header.top h1{font-size:1.25rem}
-  header.top .sub{font-size:.75rem;color:var(--muted);width:100%}
-  .lang{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:99px;overflow:hidden;flex:none}
-  .lang button{padding:5px 11px;border:none;background:none;color:var(--ink);font-size:.75rem;font-weight:700;cursor:pointer}
+  header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  header.top h1{font-size:1.6rem;font-weight:600}
+  header.top .sub{font-size:.8rem;color:var(--muted);width:100%}
+  .lang{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;flex:none}
+  .lang button{padding:5px 12px;border:none;background:none;color:var(--ink);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit}
   .lang button.on{background:var(--btn);color:var(--btn-ink)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
-  .daygroup h2{font-size:.9rem;color:var(--muted);margin:18px 4px 8px;letter-spacing:.5px}
-  .slot{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--card);
+  .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+  .daygroup h2{
+    font-size:1.15rem;font-weight:600;color:var(--ink);margin:22px 2px 10px;
+    padding-bottom:6px;border-bottom:1px solid var(--line);
+  }
+  .slot{border:1px solid var(--line);border-radius:6px;padding:13px 15px;margin-bottom:10px;background:var(--card);
     display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .slot .when{font-weight:700;font-size:1.02rem;min-width:96px}
+  .slot .when{
+    font-family:"Cormorant Garamond","Noto Serif TC",serif;font-weight:600;font-size:1.25rem;
+    min-width:104px;font-feature-settings:'tnum';color:var(--ink);
+  }
   .slot .meta{font-size:.82rem;color:var(--muted);display:flex;gap:6px 12px;flex-wrap:wrap;flex:1}
   .slot .meta b{color:var(--ink);font-weight:600}
-  .tag{display:inline-flex;align-items:center;font-size:.72rem;padding:2px 9px;border-radius:99px;font-weight:700;white-space:nowrap}
-  .tag.open{background:var(--warn-soft);color:var(--warn)}
-  .tag.confirmed{background:var(--ok-soft);color:var(--ok)}
-  .tag.mine{background:var(--accent-soft);color:var(--accent)}
-  .tag.full{background:var(--line);color:var(--muted)}
-  .tag.off{background:var(--line);color:var(--muted)}
-  .btn{border:1px solid var(--accent);background:none;color:var(--accent);border-radius:10px;
-    padding:9px 16px;font-size:.88rem;font-weight:700;cursor:pointer;min-height:40px;white-space:nowrap}
+  .tag{display:inline-flex;align-items:center;font-size:.72rem;padding:2px 10px;border-radius:99px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+  .tag.open{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb, var(--warn) 25%, transparent)}
+  .tag.confirmed{background:var(--ok-soft);color:var(--ok);border-color:color-mix(in srgb, var(--ok) 25%, transparent)}
+  .tag.mine{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb, var(--accent) 30%, transparent)}
+  .tag.full,.tag.off{background:var(--bg);color:var(--muted);border-color:var(--line)}
+  .btn{border:1.5px solid var(--accent);background:none;color:var(--accent);border-radius:4px;
+    padding:9px 16px;font-size:.88rem;font-weight:600;cursor:pointer;min-height:40px;white-space:nowrap;font-family:inherit}
   .btn:hover{background:var(--accent-soft)}
   .btn.solid{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+  .btn.solid:hover{background:#8c2a21;border-color:#8c2a21}
   .btn.ghost{border-color:var(--line-strong);color:var(--ink)}
+  .btn.ghost:hover{background:var(--bg)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .btn.small{padding:5px 11px;min-height:0;font-size:.78rem}
   .empty{text-align:center;color:var(--muted);font-size:.9rem;padding:26px}
@@ -52,18 +69,20 @@
   .roster .r{display:flex;gap:8px;align-items:center;padding:3px 0}
   .roster .r .rn{flex:1}
   .roster .r .rs{font-size:.72rem;color:var(--muted)}
-  details.addslot summary{cursor:pointer;font-weight:700;font-size:.95rem}
+  details.addslot summary{cursor:pointer;font-weight:600;font-size:.95rem;font-family:"Cormorant Garamond","Noto Serif TC",serif;letter-spacing:.02em}
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
   @media(max-width:520px){.grid{grid-template-columns:1fr}}
   label.f{display:flex;flex-direction:column;gap:4px;font-size:.74rem;color:var(--muted)}
-  label.f input,label.f select{font-size:.95rem;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+  label.f input,label.f select{font-size:.95rem;padding:9px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font-family:inherit}
+  label.f input:focus,label.f select:focus{outline:2px solid var(--line-strong)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .staff-only{display:none}
   html[data-user-role="coach"] .staff-only,html[data-user-role="admin"] .staff-only{display:block}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
-    padding:10px 18px;border-radius:99px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;max-width:90%}
+    padding:10px 18px;border-radius:4px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:90%}
   .toast.show{opacity:1}
   .foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:20px}
-  .foot a{color:var(--muted)}
+  .foot a{color:var(--muted);text-underline-offset:3px}
 </style>
 </head>
 <body>
@@ -83,6 +102,7 @@
       <div class="grid">
         <label class="f"><span data-t="fDate"></span><input type="date" id="a-date"></label>
         <label class="f"><span data-t="fTime"></span><input type="time" id="a-time" value="19:00"></label>
+        <label class="f"><span data-t="fEnd"></span><input type="time" id="a-end" value="20:00"></label>
         <label class="f"><span data-t="fVenue"></span>
           <select id="a-venue"><option value="KT" data-t="vKT"></option><option value="MK" data-t="vMK"></option></select></label>
         <label class="f"><span data-t="fCoach"></span>
@@ -91,6 +111,11 @@
         <label class="f"><span data-t="fMin"></span><input type="number" id="a-min" min="1" step="1" value="2"></label>
         <label class="f"><span data-t="fDeadline"></span><input type="datetime-local" id="a-by"></label>
         <label class="f"><span data-t="fNotes"></span><input type="text" id="a-notes" maxlength="120"></label>
+        <label class="f" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:9px">
+          <input type="checkbox" id="a-split" checked style="width:18px;height:18px;accent-color:var(--accent);flex:none">
+          <span data-t="fSplit" style="font-size:.85rem;color:var(--ink)"></span>
+        </label>
+        <div id="splitPv" style="grid-column:1/-1;font-size:.78rem;color:var(--muted);margin-top:-4px"></div>
       </div>
       <button class="btn solid" id="addBtn" style="margin-top:12px;width:100%" data-t="addBtn"></button>
     </details>
@@ -110,27 +135,49 @@ const SB_KEY="sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O";
 
 const I18N={
   zh:{title:"🥊 排堂報名",sub:"揀你想上嘅堂，撳報名。夠人（預設 2 位）就自動開班。",
-    addTitle:"➕ 開放時段（教練）",fDate:"日期",fTime:"開始時間",fVenue:"地點",fCoach:"教練",
+    addTitle:"➕ 開放時段（教練）",fDate:"日期",fTime:"開始時間",fEnd:"結束時間",fVenue:"地點",fCoach:"教練",
     fCap:"人數上限",fMin:"開班門檻（夠幾人開）",fDeadline:"報名截止（可留空）",fNotes:"備註（可留空）",
     addBtn:"開放呢個時段",loading:"載入緊…",empty:"暫時未有開放時段。",
     vKT:"觀塘 KT",vMK:"旺角 MK",
     stOpen:"開放報名",stConfirmed:"已開班 ✓",stMine:"你已報名 ✓",stWait:"後補中",stFull:"已滿",stOff:"已取消",
     needMore:s=>`仲爭 ${s} 人開班`,cntLabel:(a,b)=>`${a}/${b} 人`,
     book:"報名",wait:"後補",cancel:"取消報名",roster:"名單",hideRoster:"收起",kick:"移除",
+    markAttend:"點名出席",attended:"✓ 已出席",
+    attDeducted:"已點名，扣咗一堂 ✅",attNoPack:"已點名（冇有效堂數可扣）",attUndone:"已取消出席，退返堂",
+    cancelAsk:"確定取消報名？",
+    cancelSlot:"取消時段",
+    csAsk1:w=>`確定取消成個時段（${w}）？已報名學員會見到堂被取消，唔會扣佢哋堂數。`,
+    csAsk2:"再確認一次：取消後冇得返轉頭。真係要取消呢個時段？",
+    csDone:"時段已取消 ✅",csDoneN:n=>`時段已取消，會 WhatsApp 通知 ${n} 位學員 ✅`,
     booked:"報咗名喇 ✅",waited:"排咗後補 ✅",cancelled:"已取消報名",already:"你之前已經報咗",
-    added:"時段已開放 ✅",err:"出錯：",noDate:"請揀日期",
+    err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
+    fSplit:"拆做每小時一堂（例：19:00–22:00 → 3 堂）",
+    pvN:n=>`會開 ${n} 堂：`,
+    badSplit:"要拆做每小時一堂，時間範圍必須係整數粒鐘（例：19:00–22:00）",
+    addedN:n=>n>1?`開咗 ${n} 堂 ✅`:"時段已開放 ✅",
     footNote:"報名只係排位；實際扣堂／出席照舊由教練點名決定。",backHome:"返主頁",
     wk:["日","一","二","三","四","五","六"]},
   en:{title:"🥊 Class Booking",sub:"Pick a class and tap book. It opens automatically once enough people (default 2) join.",
-    addTitle:"➕ Open a slot (coach)",fDate:"Date",fTime:"Start time",fVenue:"Venue",fCoach:"Coach",
+    addTitle:"➕ Open a slot (coach)",fDate:"Date",fTime:"Start time",fEnd:"End time",fVenue:"Venue",fCoach:"Coach",
     fCap:"Capacity",fMin:"Min to open",fDeadline:"Booking deadline (optional)",fNotes:"Notes (optional)",
     addBtn:"Open this slot",loading:"Loading…",empty:"No open slots yet.",
     vKT:"Kwun Tong (KT)",vMK:"Mong Kok (MK)",
     stOpen:"Open",stConfirmed:"Confirmed ✓",stMine:"You're booked ✓",stWait:"Waitlisted",stFull:"Full",stOff:"Cancelled",
     needMore:s=>`${s} more to open`,cntLabel:(a,b)=>`${a}/${b}`,
     book:"Book",wait:"Waitlist",cancel:"Cancel",roster:"Roster",hideRoster:"Hide",kick:"Remove",
+    markAttend:"Mark present",attended:"✓ Present",
+    attDeducted:"Marked present, 1 session deducted ✅",attNoPack:"Marked present (no active pack to deduct)",attUndone:"Attendance undone, session refunded",
+    cancelAsk:"Cancel this booking?",
+    cancelSlot:"Cancel slot",
+    csAsk1:w=>`Cancel the whole slot (${w})? Booked students will see it as cancelled; no sessions are deducted.`,
+    csAsk2:"Confirm once more: this cannot be undone. Really cancel this slot?",
+    csDone:"Slot cancelled ✅",csDoneN:n=>`Slot cancelled; ${n} student${n>1?"s":""} will be notified on WhatsApp ✅`,
     booked:"Booked ✅",waited:"Added to waitlist ✅",cancelled:"Booking cancelled",already:"You already booked",
-    added:"Slot opened ✅",err:"Error: ",noDate:"Please pick a date",
+    err:"Error: ",noDate:"Please pick a date",badEnd:"End time must be after start time",
+    fSplit:"Split into one class per hour (e.g. 19:00–22:00 → 3 classes)",
+    pvN:n=>`Will open ${n} class${n>1?"es":""}: `,
+    badSplit:"To split hourly, the range must be whole hours (e.g. 19:00–22:00)",
+    addedN:n=>n>1?`Opened ${n} classes ✅`:"Slot opened ✅",
     footNote:"Booking reserves a spot; class deduction/attendance is still set by the coach at roll-call.",backHome:"Home",
     wk:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]},
 };
@@ -142,6 +189,7 @@ function applyLang(){
   document.querySelectorAll("[data-t]").forEach(el=>{ const v=t(el.getAttribute("data-t")); if(typeof v==="string") el.textContent=v; });
   $("#langZh").classList.toggle("on",lang==="zh"); $("#langEn").classList.toggle("on",lang==="en");
   document.documentElement.lang=lang==="zh"?"zh-Hant-HK":"en";
+  if(typeof updatePreview==="function") updatePreview();   // 開班預覽跟語言更新
 }
 function setLang(l){lang=l;try{localStorage.setItem("kf-lang",l);}catch(e){} applyLang(); render();}
 $("#langZh").onclick=()=>setLang("zh"); $("#langEn").onclick=()=>setLang("en");
@@ -186,6 +234,7 @@ function actionBtn(s){
   const past = s.book_by && new Date(s.book_by) < new Date();
   if(s.my_status==="booked"||s.my_status==="waitlist")
     return `<button class="btn ghost" data-cancel="${s.id}">${t("cancel")}</button>`;
+  if(STAFF) return "";   // 菁英（教練）／Holder 唔報名上堂（server 都有擋）
   if(past) return `<button class="btn" disabled>${t("stOff")}</button>`;
   const full = s.booked_count>=s.capacity;
   return `<button class="btn solid" data-book="${s.id}">${full?t("wait"):t("book")}</button>`;
@@ -213,6 +262,7 @@ function render(){
         </div>
         ${statusTag(s)}
         ${actionBtn(s)}
+        ${ROLE==="admin"?`<button class="btn small ghost" data-cancelslot="${s.id}">${t("cancelSlot")}</button>`:""}
         ${STAFF?`<button class="btn small ghost" data-roster="${s.id}">${t("roster")}</button>
         <div class="roster" id="roster-${s.id}" style="display:none"></div>`:""}
       </div>`;
@@ -233,6 +283,7 @@ async function showRoster(id){
   box.innerHTML=data.map(r=>`<div class="r">
     <span class="rn">${esc(r.name||r.email||"?")}</span>
     <span class="rs">${r.status==="booked"?"✓":r.status==="waitlist"?t("stWait"):t("stOff")}</span>
+    ${r.status==="booked"?`<button class="btn small ${r.attended?"solid":"ghost"}" data-attend="${r.booking_id}|${r.attended?0:1}">${r.attended?t("attended"):t("markAttend")}</button>`:""}
     ${r.status!=="cancelled"?`<button class="btn small ghost" data-kick="${id}|${r.student_id}">${t("kick")}</button>`:""}
   </div>`).join("");
 }
@@ -246,10 +297,25 @@ document.addEventListener("click",async e=>{
     await load(); return;
   }
   const cx=e.target.closest("[data-cancel]");
-  if(cx){ cx.disabled=true;
+  if(cx){
+    if(!confirm(t("cancelAsk"))) return;
+    cx.disabled=true;
     const { error }=await sb.rpc("cancel_booking",{p_slot_id:cx.dataset.cancel});
     if(error){toast(t("err")+error.message);cx.disabled=false;return;}
     toast(t("cancelled")); await load(); return;
+  }
+  // Holder（admin）取消成個時段：雙重確認
+  const cs=e.target.closest("[data-cancelslot]");
+  if(cs){
+    const s=SLOTS.find(x=>x.id===cs.dataset.cancelslot); if(!s) return;
+    const when=`${fmtDay(s.session_date)} ${hhmm(s.start_time)}${s.end_time?"–"+hhmm(s.end_time):""}`;
+    if(!confirm(t("csAsk1")(when))) return;
+    if(!confirm(t("csAsk2"))) return;
+    cs.disabled=true;
+    // cancel_slot：取消時段 + 為已報名學員排 WhatsApp 取消通知
+    const { data,error }=await sb.rpc("cancel_slot",{p_slot_id:cs.dataset.cancelslot});
+    if(error){toast(t("err")+error.message);cs.disabled=false;return;}
+    toast(data && data.notified ? t("csDoneN")(data.notified) : t("csDone")); await load(); return;
   }
   const rs=e.target.closest("[data-roster]");
   if(rs){ const id=rs.dataset.roster; const box=$("#roster-"+id);
@@ -263,20 +329,73 @@ document.addEventListener("click",async e=>{
     if(error){toast(t("err")+error.message);kk.disabled=false;return;}
     toast(t("cancelled")); await load(); return;
   }
+  // 點名出席 → 扣一堂（再撳一次 = 取消出席、退返堂）
+  const at=e.target.closest("[data-attend]");
+  if(at){ const [bid,val]=at.dataset.attend.split("|"); at.disabled=true;
+    const { data,error }=await sb.rpc("mark_attendance",{p_booking_id:bid,p_attended:val==="1"});
+    if(error){toast(t("err")+error.message);at.disabled=false;return;}
+    toast(val==="1" ? (data.deducted?t("attDeducted"):t("attNoPack")) : t("attUndone"));
+    // 只刷新呢張名單，唔重載成頁（唔會影響其他已開名單）
+    const slotId=[...openRosters].find(id=>$("#roster-"+id)?.contains(at));
+    if(slotId) await showRoster(slotId); else await load();
+    return;
+  }
 });
+
+// 結束時間自動跟開始時間 +1 小時，教練自己改過就唔再跟
+let endTouched=false;
+$("#a-end").addEventListener("input",()=>{endTouched=true; updatePreview();});
+$("#a-time").addEventListener("input",()=>{
+  if(!endTouched){
+    const v=$("#a-time").value;
+    if(v){ const [h,m]=v.split(":").map(Number);
+      $("#a-end").value=String((h+1)%24).padStart(2,"0")+":"+String(m).padStart(2,"0"); }
+  }
+  updatePreview();
+});
+$("#a-split").addEventListener("change", updatePreview);
+
+// 時間範圍 → 每小時 [開始,結束] 段；唔係整數粒鐘就回 {err:true}（每堂一小時）
+function hourChunks(start, end){
+  const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
+  const toHM=m=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+  const s=toMin(start), e=toMin(end);
+  if(e<=s) return null;
+  if((e-s)%60!==0) return {err:true};
+  const out=[];
+  for(let m=s;m<e;m+=60) out.push([toHM(m), toHM(m+60)]);
+  return out;
+}
+function plannedSlots(){
+  const start=$("#a-time").value||"19:00", end=$("#a-end").value||null;
+  if(!end||end<=start) return {start, end, err:"badEnd"};
+  if(!$("#a-split").checked) return {start, end, list:[[start,end]]};
+  const chunks=hourChunks(start,end);
+  if(!chunks||chunks.err) return {start, end, err:"badSplit"};
+  return {start, end, list:chunks};
+}
+function updatePreview(){
+  const pv=$("#splitPv"); if(!pv) return;
+  const plan=plannedSlots();
+  if(plan.err){ pv.textContent = plan.err==="badSplit" ? t("badSplit") : ""; return; }
+  pv.textContent = t("pvN")(plan.list.length) + plan.list.map(([s,e])=>`${s}–${e}`).join(" · ");
+}
 
 $("#addBtn").onclick=async()=>{
   const date=$("#a-date").value; if(!date){toast(t("noDate"));return;}
-  const row={ session_date:date, start_time:$("#a-time").value||"19:00",
+  const plan=plannedSlots();
+  if(plan.err){toast(t(plan.err));return;}
+  const base={ session_date:date,
     venue:$("#a-venue").value, coach:$("#a-coach").value,
     capacity:+$("#a-cap").value||6, min_to_open:+$("#a-min").value||2,
     book_by:$("#a-by").value?new Date($("#a-by").value).toISOString():null,
     notes:$("#a-notes").value.trim()||null };
+  const rows=plan.list.map(([s,e])=>({ ...base, start_time:s, end_time:e }));
   const btn=$("#addBtn"); btn.disabled=true;
-  const { error }=await sb.from("class_slots").insert(row);
+  const { error }=await sb.from("class_slots").insert(rows);
   btn.disabled=false;
   if(error){toast(t("err")+error.message);return;}
-  toast(t("added")); $("#a-notes").value="";
+  toast(t("addedN")(rows.length)); $("#a-notes").value="";
   await load();
 };
 
