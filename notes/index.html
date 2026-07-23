@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>筆記圖譜 Notes Graph｜Kuafuor HK</title>
-<meta name="description" content="Kuafuor HK 筆記圖譜 — Obsidian 式知識圖譜，連結網站所有數據筆記、深度文章、服務同工具。Interactive knowledge graph linking every note, article and tool on the site.">
+<meta name="description" content="Kuafuor HK 筆記圖譜 — Obsidian 式知識圖譜，連結網站所有數據筆記、深度文章、服務與工具。Interactive knowledge graph linking every note, article and tool on the site.">
 <meta name="theme-color" content="#f3f2f2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -180,7 +180,7 @@
 const I18N = {
   zh: {
     pageName:"筆記圖譜", back:"← 返回主頁",
-    hint:"拖節點 · 滾輪縮放 · 撳節點睇內容 · 雙擊開啟",
+    hint:"拖曳節點 · 滾輪縮放 · 點按節點查看內容 · 雙擊開啟",
     searchPh:"搜尋筆記…",
     lgNote:"統計筆記", lgChapter:"文章章節", lgService:"服務", lgTool:"工具／實例",
     links:"連結", backlinks:"反向連結", openNote:"開啟筆記", none:"（無）",
@@ -208,64 +208,64 @@ const $ = s => document.querySelector(s);
 const NODES = [
   // 服務
   {id:"svc-auto", type:"service", url:"../#business", zh:"流程自動化", en:"Process Automation",
-   sumZh:"幫企業將日日重複嘅工序交俾系統：客服、報表、審批一條龍。",
+   sumZh:"協助企業將每日重複的工序交由系統處理：客服、報表、審批一站式。",
    sumEn:"Hand your team's repetitive daily work to systems: service, reporting, approvals."},
   {id:"svc-data", type:"service", url:"../#data",     zh:"數據分析", en:"Data Analysis",
-   sumZh:"由亂糟糟嘅數據入面揾出規律，將『感覺』變成『證據』。",
+   sumZh:"從雜亂的數據當中找出規律，將『感覺』變成『證據』。",
    sumEn:"Find the patterns in messy data — turn gut feel into evidence."},
   {id:"auto-cs",   type:"service", url:"../#business", zh:"客服自動化", en:"Customer Service Automation",
    sumZh:"24／7 智能對答、常見問題自動回覆、複雜個案無縫轉真人。",
    sumEn:"24/7 AI chat, auto-answers, seamless human hand-off."},
   {id:"auto-rpt",  type:"service", url:"../#business", zh:"自動報表", en:"Automated Reporting",
-   sumZh:"數據自動彙整、定時生成報表、即時儀表板同提醒。",
+   sumZh:"數據自動彙整、定時生成報表、即時儀表板與提醒。",
    sumEn:"Auto-aggregation, scheduled reports, live dashboards and alerts."},
   {id:"auto-appr", type:"service", url:"../#business", zh:"自動審批流程", en:"Approval Workflows",
-   sumZh:"審批自動流轉、例外個案自動升級、全程通知同稽核紀錄。",
+   sumZh:"審批自動流轉、例外個案自動升級、全程通知與稽核紀錄。",
    sumEn:"Auto-routing, exception escalation, notifications and audit trail."},
   // 統計筆記（stats/）
   {id:"st1", type:"note", url:"../stats/#t1", zh:"相關 ≠ 因果", en:"Correlation ≠ Causation",
-   sumZh:"兩樣嘢一齊郁，唔代表一樣推動另一樣 — 好多時背後有第三個變數。",
+   sumZh:"兩者一同變化，不代表一方推動另一方 — 很多時候背後有第三個變數。",
    sumEn:"Two things moving together doesn't mean one drives the other — often a third variable lurks."},
   {id:"st2", type:"note", url:"../stats/#t2", zh:"辛普森悖論（Berkeley）", en:"Simpson's Paradox (Berkeley)",
-   sumZh:"1973 Berkeley 取錄率：整體睇似歧視，分系一睇結論反轉。",
+   sumZh:"1973 Berkeley 取錄率：整體看似歧視，分系來看結論反轉。",
    sumEn:"1973 Berkeley admissions: bias at the aggregate, reversed once split by department."},
   {id:"st3", type:"note", url:"../stats/#t3", zh:"大 ≠ 準：抽樣偏差", en:"Bigger ≠ Better: Sampling Bias",
-   sumZh:"Literary Digest 二百幾萬份問卷都估錯 1936 大選 — 樣本歪咗，幾大都冇用。",
+   sumZh:"Literary Digest 二百多萬份問卷仍估錯 1936 大選 — 樣本偏斜，再大也沒有用。",
    sumEn:"Literary Digest's 2M+ ballots still called 1936 wrong — a skewed sample stays skewed at any size."},
-  {id:"st4", type:"note", url:"../stats/#t4", zh:"p 值唔係咁讀", en:"Reading p-values Right",
-   sumZh:"p < 0.05 唔等於「真」，更加唔等於「重要」— ASA 官方都出過警告。",
+  {id:"st4", type:"note", url:"../stats/#t4", zh:"p 值不能這樣解讀", en:"Reading p-values Right",
+   sumZh:"p < 0.05 不等於「真」，更不等於「重要」— ASA 官方亦曾發出警告。",
    sumEn:"p < 0.05 means neither 'true' nor 'important' — the ASA itself warned as much."},
   // 文章章節（data-insights/）
   {id:"di1", type:"chapter", url:"../data-insights/#s1", zh:"虛假關係", en:"Spurious Relationship",
-   sumZh:"混淆變數令兩個無因果嘅變數睇落高度相關；靠 DiD、RDD、IV 等準實驗設計剝離真實增量。",
+   sumZh:"混淆變數令兩個無因果的變數看似高度相關；透過 DiD、RDD、IV 等準實驗設計剝離真實增量。",
    sumEn:"Confounders make unrelated variables co-move; DiD, RDD and IV isolate true incrementality."},
   {id:"di2", type:"chapter", url:"../data-insights/#s2", zh:"辛普森悖論", en:"Simpson's Paradox",
-   sumZh:"分組全贏、匯總反輸 — A/B 測試流量結構唔平衡時嘅致命盲點。",
+   sumZh:"分組全贏、匯總反輸 — A/B 測試流量結構不平衡時的致命盲點。",
    sumEn:"Wins in every segment, loses in aggregate — the fatal blind spot of imbalanced A/B traffic."},
   {id:"di3", type:"chapter", url:"../data-insights/#s3", zh:"選擇性偏差", en:"Selection Bias",
-   sumZh:"樣本唔係隨機揀嘅：J 型評論分佈、eKYC 自我過濾 — Heckman 兩步法還原沉默大多數。",
+   sumZh:"樣本並非隨機抽取：J 型評論分佈、eKYC 自我過濾 — Heckman 兩步法還原沉默大多數。",
    sumEn:"Non-random samples: J-shaped reviews, eKYC self-filtering — Heckman correction recovers the silent majority."},
   {id:"di4", type:"chapter", url:"../data-insights/#s4", zh:"P 值的迷思", en:"The Myth of P-values",
-   sumZh:"統計顯著 ≠ 商業顯著；MDE、CUPED、貝氏／序列檢定先至係現代實驗工程。",
+   sumZh:"統計顯著 ≠ 商業顯著；MDE、CUPED、貝氏／序列檢定才是現代實驗工程。",
    sumEn:"Statistical ≠ practical significance; MDE, CUPED and Bayesian/sequential testing are the modern kit."},
   {id:"di5", type:"chapter", url:"../data-insights/#s5", zh:"倖存者偏差", en:"Survivorship Bias",
-   sumZh:"只睇倖存基金／獨角獸會嚴重高估回報低估風險 — 死咗嗰啲先係沉默證據。",
+   sumZh:"只看倖存基金／獨角獸會嚴重高估回報、低估風險 — 已消亡的才是沉默證據。",
    sumEn:"Studying only surviving funds/unicorns inflates returns and hides risk — the dead are the silent evidence."},
   {id:"di6", type:"chapter", url:"../data-insights/#s6", zh:"均值回歸", en:"Regression to the Mean",
-   sumZh:"極端表現之後自然回落，唔係「懶咗」都唔係「培訓有效」— 唔好被隨機波動綁架 KPI。",
+   sumZh:"極端表現之後自然回落，既非「懈怠」亦非「培訓有效」— 不要被隨機波動綁架 KPI。",
    sumEn:"Extremes drift back naturally — neither slacking nor training magic. Don't let noise set your KPIs."},
   // 工具／實例
   {id:"ml",   type:"tool", url:"../motion-lab/",        zh:"Motion Lab", en:"Motion Lab",
-   sumZh:"AI 運動姿態分析 — 睇片、評分、出報告全自動，自動化能力嘅自家實例。",
+   sumZh:"AI 運動姿態分析 — 分析影片、評分、產出報告全自動，自動化能力的自家實例。",
    sumEn:"AI motion analysis — watch, score, report, fully automated. Our own automation example."},
   {id:"sub",  type:"tool", url:"../cantonese-subtitle/", zh:"廣東話轉字幕", en:"Cantonese Subtitles",
-   sumZh:"廣東話語音自動轉字幕，喺瀏覽器本地運算 — 又一個自動化實例。",
+   sumZh:"廣東話語音自動轉字幕，在瀏覽器本地運算 — 又一個自動化實例。",
    sumEn:"Cantonese speech auto-subtitled, computed locally in the browser — another automation example."},
   {id:"calc", type:"tool", url:"../split-calculator/",   zh:"分成計算器", en:"Split Calculator",
-   sumZh:"踢拳小班嘅教練分成計數機 — 每人套票價、試堂費、分成一目了然。",
+   sumZh:"踢拳小班的教練分成計算機 — 每人套票價、試堂費、分成一目了然。",
    sumEn:"Coach revenue-split calculator for the kickboxing classes."},
-  {id:"book", type:"tool", url:"../schedule/",           zh:"排堂報名", en:"Class Booking",
-   sumZh:"踢拳小班排堂報名 — 揀時段、報名、WhatsApp 通知一條龍。",
+  {id:"book", type:"tool", url:"../schedule/",           zh:"課堂報名", en:"Class Booking",
+   sumZh:"踢拳小班課堂報名 — 選擇時段、報名、WhatsApp 通知一站式。",
    sumEn:"Kickboxing class scheduling and sign-up, with WhatsApp notifications."},
 ];
 // 有向邊：[from, to] — 面板據此分「連結」同「反向連結」（唔收頁面 hub，純內容關聯）

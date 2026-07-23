@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>排堂報名｜踢拳小班</title>
+<title>課堂報名｜踢拳小班</title>
 <script src="/assets/guard.js" data-roles=""></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -134,28 +134,28 @@ const SB_URL="https://ikzoxrvnpsseyjviawti.supabase.co";
 const SB_KEY="sb_publishable_dqWmcDGqfSq3Q8eU6V5HvA_pb2MUS-O";
 
 const I18N={
-  zh:{title:"🥊 排堂報名",sub:"揀你想上嘅堂，撳報名。夠人（預設 2 位）就自動開班。",
+  zh:{title:"🥊 課堂報名",sub:"選擇想上的課堂，按下報名。人數足夠（預設 2 位）即自動開班。",
     addTitle:"➕ 開放時段（教練）",fDate:"日期",fTime:"開始時間",fEnd:"結束時間",fVenue:"地點",fCoach:"教練",
-    fCap:"人數上限",fMin:"開班門檻（夠幾人開）",fDeadline:"報名截止（可留空）",fNotes:"備註（可留空）",
-    addBtn:"開放呢個時段",loading:"載入緊…",empty:"暫時未有開放時段。",
+    fCap:"人數上限",fMin:"開班門檻（需多少人開班）",fDeadline:"報名截止（可留空）",fNotes:"備註（可留空）",
+    addBtn:"開放這個時段",loading:"載入中…",empty:"暫時未有開放時段。",
     vKT:"觀塘 KT",vMK:"旺角 MK",
     stOpen:"開放報名",stConfirmed:"已開班 ✓",stMine:"你已報名 ✓",stWait:"後補中",stFull:"已滿",stOff:"已取消",
-    needMore:s=>`仲爭 ${s} 人開班`,cntLabel:(a,b)=>`${a}/${b} 人`,
+    needMore:s=>`尚差 ${s} 人開班`,cntLabel:(a,b)=>`${a}/${b} 人`,
     book:"報名",wait:"後補",cancel:"取消報名",roster:"名單",hideRoster:"收起",kick:"移除",
     markAttend:"點名出席",attended:"✓ 已出席",
-    attDeducted:"已點名，扣咗一堂 ✅",attNoPack:"已點名（冇有效堂數可扣）",attUndone:"已取消出席，退返堂",
+    attDeducted:"已點名，已扣一堂 ✅",attNoPack:"已點名（沒有有效堂數可扣）",attUndone:"已取消出席，退回堂數",
     cancelAsk:"確定取消報名？",
     cancelSlot:"取消時段",
-    csAsk1:w=>`確定取消成個時段（${w}）？已報名學員會見到堂被取消，唔會扣佢哋堂數。`,
-    csAsk2:"再確認一次：取消後冇得返轉頭。真係要取消呢個時段？",
-    csDone:"時段已取消 ✅",csDoneN:n=>`時段已取消，會 WhatsApp 通知 ${n} 位學員 ✅`,
-    booked:"報咗名喇 ✅",waited:"排咗後補 ✅",cancelled:"已取消報名",already:"你之前已經報咗",
-    err:"出錯：",noDate:"請揀日期",badEnd:"結束時間要遲過開始時間",
-    fSplit:"拆做每小時一堂（例：19:00–22:00 → 3 堂）",
-    pvN:n=>`會開 ${n} 堂：`,
-    badSplit:"要拆做每小時一堂，時間範圍必須係整數粒鐘（例：19:00–22:00）",
-    addedN:n=>n>1?`開咗 ${n} 堂 ✅`:"時段已開放 ✅",
-    footNote:"報名只係排位；實際扣堂／出席照舊由教練點名決定。",backHome:"返主頁",
+    csAsk1:w=>`確定取消整個時段（${w}）？已報名學員將看到課堂被取消，不會扣減他們的堂數。`,
+    csAsk2:"再確認一次：取消後無法復原。確定要取消這個時段？",
+    csDone:"時段已取消 ✅",csDoneN:n=>`時段已取消，將以 WhatsApp 通知 ${n} 位學員 ✅`,
+    booked:"已報名 ✅",waited:"已排候補 ✅",cancelled:"已取消報名",already:"你之前已經報名",
+    err:"出錯：",noDate:"請選擇日期",badEnd:"結束時間須遲於開始時間",
+    fSplit:"拆分為每小時一堂（例：19:00–22:00 → 3 堂）",
+    pvN:n=>`將開 ${n} 堂：`,
+    badSplit:"須拆分為每小時一堂，時間範圍必須為整點鐘數（例：19:00–22:00）",
+    addedN:n=>n>1?`已開 ${n} 堂 ✅`:"時段已開放 ✅",
+    footNote:"報名只是排位；實際扣堂／出席仍由教練點名決定。",backHome:"返回主頁",
     wk:["日","一","二","三","四","五","六"]},
   en:{title:"🥊 Class Booking",sub:"Pick a class and tap book. It opens automatically once enough people (default 2) join.",
     addTitle:"➕ Open a slot (coach)",fDate:"Date",fTime:"Start time",fEnd:"End time",fVenue:"Venue",fCoach:"Coach",

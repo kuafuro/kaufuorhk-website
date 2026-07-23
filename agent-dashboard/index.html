@@ -3311,27 +3311,27 @@ const scenarios = [
   {
     title: 'CEO chair whale alert chain',
     steps: [
-      { agent:'ceo', officeState:'executing', toolMode:'running', phase:'Kickoff', text:'🏢 Whale Alert Chain 開始。各位請就位，我會負責 kickoff 同 wrap-up。' },
+      { agent:'ceo', officeState:'executing', toolMode:'running', phase:'Kickoff', text:'🏢 Whale Alert Chain 開始。各位請就位，由我負責 kickoff 與 wrap-up。' },
       { connect:['ceo','sec-monitor'] },
-      { agent:'sec-monitor', officeState:'researching', toolMode:'searching', phase:'Scan filing', text:'📡 掃描 SEC filing，只交 raw signal、異常同 filing 資料。' },
+      { agent:'sec-monitor', officeState:'researching', toolMode:'searching', phase:'Scan filing', text:'📡 掃描 SEC filing，只交 raw signal、異常與 filing 資料。' },
       { connect:['sec-monitor','cfo-hayek'] },
-      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'Finance readout', text:'💰 收到 filing signal。Hayek 會做財務解讀同投資建議，不會直接霸佔 screener engine。' },
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'Finance readout', text:'💰 收到 filing signal。Hayek 會做財務解讀與投資建議，不會直接霸佔 screener engine。' },
       { connect:['cfo-hayek','secretary-cc'] },
-      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Briefing', text:'📝 C.C. 整理 action brief，將結果用老闆睇得明嘅方式收口。' },
+      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Briefing', text:'📝 C.C. 整理 action brief，將結果以老闆看得明白的方式歸納。' },
       { connect:['secretary-cc','ceo'] },
-      { agent:'ceo', officeState:'syncing', toolMode:'running', phase:'Wrap-up', text:'✅ Chain wrap-up：完成就交俾老闆；有 escalation 就升上 Board。' },
+      { agent:'ceo', officeState:'syncing', toolMode:'running', phase:'Wrap-up', text:'✅ Chain wrap-up：完成後交給老闆；有 escalation 就升上 Board。' },
     ]
   },
   {
     title: 'TG CFO cached VCP report',
     steps: [
-      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'TG CFO report', text:'📨 Telegram CFO 回傳 latest VCP v4.1 cached report，Hayek 只負責讀取同總結。' },
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'TG CFO report', text:'📨 Telegram CFO 回傳 latest VCP v4.1 cached report，Hayek 只負責讀取與總結。' },
       { connect:['cfo-hayek','investment-analyst'] },
       { agent:'investment-analyst', officeState:'researching', toolMode:'searching', phase:'SP500 scan', text:'🔍 VCP v4.1 Screen：Universe sp500，503/503 symbols 掃完；Finnhub daily candles，fundamentals Data Missing 不亂作。' },
       { connect:['investment-analyst','investment-president'] },
-      { agent:'investment-president', officeState:'writing', toolMode:'reading', phase:'No candidate', text:'💼 Rank table 暫時冇 candidate；無 Triggered setup，所以 tactical tilt 不加倉。' },
+      { agent:'investment-president', officeState:'writing', toolMode:'reading', phase:'No candidate', text:'💼 Rank table 暫時沒有 candidate；無 Triggered setup，所以 tactical tilt 不加倉。' },
       { connect:['investment-president','cfo-hayek'] },
-      { agent:'cfo-hayek', officeState:'writing', toolMode:'typing', phase:'暫不下單', text:'💰 CFO 結論：2026-05-03 18:26 HKT，min_price 20.00，暫時冇 candidate，暫不下單。' },
+      { agent:'cfo-hayek', officeState:'writing', toolMode:'typing', phase:'暫不下單', text:'💰 CFO 結論：2026-05-03 18:26 HKT，min_price 20.00，暫時沒有 candidate，暫不下單。' },
     ]
   },
   {
@@ -3341,15 +3341,15 @@ const scenarios = [
       { connect:['dce','secretary-cc'] },
       { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Follow-up', text:'👩‍💼 C.C. 接收 data-health 結果，整理成可執行 follow-up。' },
       { connect:['secretary-cc','ceo'] },
-      { agent:'ceo', officeState:'writing', toolMode:'reading', phase:'Decision summary', text:'🏢 CEO 只收需要決策嘅 summary；DCE 唔再雙線直報 CEO。' },
+      { agent:'ceo', officeState:'writing', toolMode:'reading', phase:'Decision summary', text:'🏢 CEO 只收需要決策的 summary；DCE 不再雙線直報 CEO。' },
     ]
   },
   {
     title: 'CIO alert path',
     steps: [
-      { agent:'cio', officeState:'error', toolMode:'waiting', tone:'attention', phase:'Incident', text:'🔧 CIO 偵測 GitHub Actions / Supabase / secrets 風險，只講技術同營運修復。' },
+      { agent:'cio', officeState:'error', toolMode:'waiting', tone:'attention', phase:'Incident', text:'🔧 CIO 偵測 GitHub Actions / Supabase / secrets 風險，只講技術與營運修復。' },
       { connect:['cio','ceo'] },
-      { agent:'ceo', officeState:'executing', toolMode:'waiting', phase:'Triage', text:'🏢 CEO 收 alert，判斷係咪要 board-facing commentary 或派工修復。' },
+      { agent:'ceo', officeState:'executing', toolMode:'waiting', phase:'Triage', text:'🏢 CEO 收 alert，判斷是否需要 board-facing commentary 或派工修復。' },
       { connect:['ceo','cio'] },
       { agent:'cio', officeState:'executing', toolMode:'running', phase:'Fix path', text:'🛠️ 收到 decision 後執行 safe deterministic fix 或開修復建議。' },
     ]
@@ -3359,7 +3359,7 @@ const scenarios = [
     steps: [
       { agent:'ops-admin', officeState:'researching', toolMode:'searching', phase:'Admin scan', text:'🗂️ Ops Admin 檢查 renewal、文件到期、vendor follow-up。' },
       { connect:['ops-admin','secretary-cc'] },
-      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Scheduling', text:'📋 有行政 follow-up 就 ping C.C.，由秘書安排提醒同日程。' },
+      { agent:'secretary-cc', officeState:'writing', toolMode:'typing', phase:'Scheduling', text:'📋 有行政 follow-up 就 ping C.C.，由秘書安排提醒與日程。' },
       { connect:['secretary-cc','cfo-hayek'] },
       { agent:'cfo-hayek', officeState:'writing', toolMode:'reading', phase:'Finance gate', text:'💰 只有涉及 budget / payment / finance decision，先交 CFO 處理。' },
     ]
@@ -3367,7 +3367,7 @@ const scenarios = [
   {
     title: 'CHO org review',
     steps: [
-      { agent:'cho', officeState:'researching', toolMode:'reading', phase:'Org metrics', text:'📊 CHO 讀 agent_performance、chain_history、agent_messages，評估人同流程。' },
+      { agent:'cho', officeState:'researching', toolMode:'reading', phase:'Org metrics', text:'📊 CHO 讀 agent_performance、chain_history、agent_messages，評估人員與流程。' },
       { connect:['cho','cio'] },
       { agent:'cho', officeState:'writing', toolMode:'typing', phase:'Boundary review', text:'📈 技術問題交 CIO；人手、分工、overlap 先由 CHO 提 org review。' },
       { connect:['cho','ceo'] },
