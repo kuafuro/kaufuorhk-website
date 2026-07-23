@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>廣東話轉字幕｜Kuafuor HK</title>
-<meta name="description" content="喺瀏覽器直接跑 Whisper，將廣東話錄音／片段轉成原汁原味口語字幕（保留「佢哋、喺度、咁樣」）。唔使裝軟件、唔使上傳，全部喺你部機本地運算。">
+<meta name="description" content="在瀏覽器直接運行 Whisper，將廣東話錄音／片段轉成原汁原味的口語字幕（保留「佢哋、喺度、咁樣」等口語）。無需安裝軟件、無需上傳，全部在你的裝置本地運算。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap">
@@ -169,11 +169,11 @@
 
   <!-- STEP 1: 揀檔案 -->
   <div class="card">
-    <h2>① 揀錄音 / 片段 <span class="hint">支援 mp3 / m4a / wav / mp4 / mov …</span></h2>
-    <div id="drop" tabindex="0" role="button" aria-label="揀檔案或者拖入嚟">
+    <h2>① 選擇錄音 / 片段 <span class="hint">支援 mp3 / m4a / wav / mp4 / mov …</span></h2>
+    <div id="drop" tabindex="0" role="button" aria-label="選擇檔案或拖曳進來">
       <div class="big">📂</div>
-      <div class="t">撳一下揀檔案，或者拖入嚟</div>
-      <div class="s">Podcast、訪問、會議錄音都得 · 檔案唔會離開你部機 · 粗口、語氣詞照出唔過濾</div>
+      <div class="t">按一下選擇檔案，或拖曳進來</div>
+      <div class="s">Podcast、訪問、會議錄音皆可 · 檔案不會離開你的裝置 · 粗口、語氣詞照樣輸出、不過濾</div>
     </div>
     <input type="file" id="file" accept="audio/*,video/*" hidden>
     <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
@@ -248,7 +248,7 @@
       <button class="btn" id="saveCloud">☁️ 存去雲端</button>
       <label class="fs-xs muted" style="display:inline-flex;align-items:center;gap:5px;margin-left:auto">每行字數
         <select id="maxLine" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-family:inherit">
-          <option value="0" selected>唔限</option>
+          <option value="0" selected>不限</option>
           <option value="14">14</option>
           <option value="20">20</option>
           <option value="28">28</option>
@@ -259,7 +259,7 @@
 
   <!-- 雲端歷史（Pro，opt-in；音檔永遠唔上傳，淨係存字幕文字） -->
   <div class="card" id="cloudCard" style="display:none">
-    <h2>☁️ <span data-cloud="title">我的雲端字幕</span> <span class="hint" data-cloud="sub">Pro · 任何裝置睇返 · 音檔唔上傳</span></h2>
+    <h2>☁️ <span data-cloud="title">我的雲端字幕</span> <span class="hint" data-cloud="sub">Pro · 任何裝置查看 · 音檔不上傳</span></h2>
     <div id="cloudList" class="fs-xs muted">—</div>
   </div>
 
@@ -346,10 +346,10 @@ function refreshModelNote(){
   const note = $("modelNote");
   if (hasWebGPU) {
     note.className = "notice ok";
-    note.innerHTML = "✅ 偵測到 <b>WebGPU</b>，可以用最準嘅 Large v3 Turbo。";
+    note.innerHTML = "✅ 偵測到 <b>WebGPU</b>，可以使用最準的 Large v3 Turbo。";
   } else {
     note.className = "notice warn";
-    note.innerHTML = "⚠️ 你部瀏覽器冇 WebGPU，已自動轉用相容模式（Small / Base，慢啲）。想快啲同準啲，可以用 <b>Chrome / Edge</b> 開返呢版。";
+    note.innerHTML = "⚠️ 你的瀏覽器沒有 WebGPU，已自動改用相容模式（Small / Base，較慢）。想更快更準，可以用 <b>Chrome / Edge</b> 重新開啟本頁。";
   }
 }
 refreshModelNote();
@@ -377,7 +377,7 @@ function autoEngine(){
   const en = cloudEN();
   if (isTechStaff()) eh.textContent = en
     ? "☁️ Website local: in-browser Whisper + Gemini colloquial polish (Holder / tech staff · audio never uploaded)"
-    : "☁️ 網站本地模式 · 瀏覽器 Whisper ＋ Gemini 口語收正（Holder／技術人員 · 音檔唔上傳）";
+    : "☁️ 網站本地模式 · 瀏覽器 Whisper ＋ Gemini 口語收正（Holder／技術人員 · 音檔不上傳）";
   else eh.textContent = en
     ? "Local mode (free · private). Cloud most-accurate is in internal testing — opening later."
     : "本地模式（免費・私密）· 雲端最準功能內部測試中，稍後開放";
@@ -405,7 +405,7 @@ function setFile(f){
   audioFile = f;
   const info = $("fileInfo");
   info.style.display = "block";
-  info.innerHTML = `已揀：<b>${f.name}</b> <span class="muted">(${fmtSize(f.size)})</span>`;
+  info.innerHTML = `已選擇：<b>${f.name}</b> <span class="muted">(${fmtSize(f.size)})</span>`;
   $("run").disabled = false;
   // 分段 view 嘅「撳時間跳去嗰句」試聽用（video 檔一樣播到音軌）
   try {
@@ -430,10 +430,10 @@ const recClock = ms => { const s = Math.floor(ms/1000); return `${String(Math.fl
 $("recBtn").addEventListener("click", async () => {
   if (recRec) { recRec.stop(); return; }                       // 撳多次＝停止
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
-    toast("你嘅瀏覽器唔支援錄音——請用檔案上載"); return;
+    toast("你的瀏覽器不支援錄音——請改用檔案上載"); return;
   }
   try { recStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-  catch (e) { toast("開唔到咪高風——請喺瀏覽器俾錄音權限"); return; }
+  catch (e) { toast("無法開啟麥克風——請在瀏覽器授予錄音權限"); return; }
   const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(m => MediaRecorder.isTypeSupported(m)) || "";
   recChunks = [];
   recRec = new MediaRecorder(recStream, mime ? { mimeType: mime } : undefined);
@@ -448,9 +448,9 @@ $("recBtn").addEventListener("click", async () => {
     recRec = null;
     $("recBtn").textContent = "🎙 直接錄音";
     $("recTime").style.display = "none";
-    if (f.size < 1000) { toast("錄唔到聲——檢查咪高風之後再試"); return; }
+    if (f.size < 1000) { toast("錄不到聲音——請檢查麥克風後再試"); return; }
     setFile(f);
-    toast("錄好喇 ✓ 撳「開始轉字幕」");
+    toast("錄製完成 ✓ 請按「開始轉字幕」");
   };
   recRec.start();
   recT0 = Date.now();
@@ -604,7 +604,7 @@ async function runLocal(){
     const secs = ((performance.now() - t0)/1000).toFixed(0);
     let segs = normSegments(output, duration);
     if (isTechStaff()) {                                    // 內部人員：Gemini 口語收正
-      setText(`<span class="spinner"></span>Gemini 口語收正中…（音檔唔上傳，只送字幕文字）`);
+      setText(`<span class="spinner"></span>Gemini 口語收正中…（音檔不上傳，只送字幕文字）`);
       segs = await fuseLocalSegs(segs);
     }
     renderResult(output, duration, secs, segs);
@@ -614,7 +614,7 @@ async function runLocal(){
     statusBox.style.display = "none";
     const err = $("err");
     err.style.display = "block";
-    err.innerHTML = `出咗問題：${e?.message || e}<br><span class="fs-xs">試吓：轉用細啲嘅模型、換過個檔案格式，或者用 Chrome 開返。</span>`;
+    err.innerHTML = `發生問題：${e?.message || e}<br><span class="fs-xs">試試：改用較小的模型、更換檔案格式，或用 Chrome 重新開啟。</span>`;
   } finally {
     $("run").disabled = false;
   }
@@ -670,7 +670,7 @@ async function runCloud(){
     if (!resp.ok) { const j = await resp.json().catch(() => ({})); throw new Error(j.detail || j.error || ("HTTP " + resp.status)); }
 
     const started = await resp.json();
-    if (!started.job_id) throw new Error(en ? "no job id" : "冇 job id");
+    if (!started.job_id) throw new Error(en ? "no job id" : "沒有 job id");
 
     // 背景轉字幕:每 4 秒查一次個 job。cold start 幾耐都唔會 timeout（結果由 Modal 寫返）。
     setBar(65);
@@ -681,7 +681,7 @@ async function runCloud(){
       spk: (typeof s.spk === "number" ? s.spk : null), text: (s.text || "").trim(),
       conf: (typeof s.conf === "number" ? s.conf : null),   // 準確模式先有（低過 0.8 會 highlight）
     })).filter(s => s.text);
-    if (!segs.length) throw new Error(en ? "empty result" : "轉唔到字（可能係靜音或者格式問題）");
+    if (!segs.length) throw new Error(en ? "empty result" : "無法轉出文字（可能是靜音或格式問題）");
 
     const multiSpk = new Set(segs.map(s => s.spk).filter(v => v != null)).size > 1;
     const fullText = segs.map(s => (multiSpk && s.spk != null ? `講者${s.spk + 1}：` : "") + s.text).join("\n");
@@ -698,7 +698,7 @@ async function runCloud(){
     box.innerHTML = `${en ? "Cloud transcription failed" : "雲端轉字幕失敗"}：${e?.message || e}`;
     const b = document.createElement("button");
     b.className = "btn"; b.style.marginTop = "10px";
-    b.textContent = en ? "Use local engine instead" : "改用本地引擎（免費·慢啲）再試";
+    b.textContent = en ? "Use local engine instead" : "改用本地引擎（免費·較慢）再試";
     b.onclick = () => { $("err").style.display = "none"; setEngine("local"); runLocal(); };
     box.appendChild(document.createElement("br")); box.appendChild(b);
   } finally { $("run").disabled = false; }
@@ -723,9 +723,9 @@ async function pollJob(db, jobId, en, t0){
     const s = Math.round((Date.now() - t0) / 1000);
     setText(`<span class="spinner"></span>${en
       ? `Transcribing in the cloud… (${s}s)`
-      : `雲端轉字幕中…（已 ${s} 秒;首次開機約 1–2 分鐘,可以唔使企喺度等）`}`);
+      : `雲端轉字幕中…（已 ${s} 秒；首次啟動約 1–2 分鐘，無需在此等候）`}`);
   }
-  throw new Error(en ? "cloud timed out — try again (engine now warm)" : "等太耐 —— 引擎啱啱開好,再撳多次通常即刻得");
+  throw new Error(en ? "cloud timed out — try again (engine now warm)" : "等候過久 —— 引擎剛啟動完成，再按一次通常即可");
 }
 
 function updateCloudQuota(j){
@@ -742,7 +742,7 @@ function showQuotaUpsell(j){
   const q = (j && j.quota != null) ? ` (${j.used_min || 0}/${j.quota})` : "";
   box.innerHTML = en
     ? `<b>You've used up this month's cloud minutes${q}.</b> Upgrade to <b>Max</b> for more — or use the free local engine meanwhile.`
-    : `<b>你今個月嘅雲端額度用完喇${q}。</b>升 <b>Max</b> 解鎖更多,或者用返免費本地引擎。`;
+    : `<b>你本月的雲端額度已用完${q}。</b>升級 <b>Max</b> 解鎖更多，或改用免費本地引擎。`;
   const up = document.createElement("button");
   up.className = "btn primary"; up.style.cssText = "margin-top:10px;margin-right:8px";
   up.textContent = en ? "Upgrade to Max" : "升級 Max";
@@ -873,7 +873,7 @@ function applyGate(){
   shownSegs.forEach((s, i) => {
     const row = document.createElement("div");
     row.className = "seg" + (s.conf != null && s.conf < 0.6 ? " conf-low" : s.conf != null && s.conf < 0.8 ? " conf-mid" : "");
-    row.innerHTML = `<div class="ts" title="撳一下跳去呢句">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
+    row.innerHTML = `<div class="ts" title="按一下跳至此句">${fmtTime(s.start,false).slice(0,8)}</div><div class="tx"></div>`;
     const tx = row.querySelector(".tx");
     tx.textContent = segText(s);
     row.querySelector(".ts").addEventListener("click", () => seekAudio(s.start));
@@ -895,14 +895,14 @@ function applyGate(){
   $("segHint").style.display = "";
   $("segHint").textContent = editable
     ? (en ? "Click a timestamp to jump; click any line to edit it — exports use your edits. Tinted lines = lower AI confidence."
-          : "撳時間＝跳去嗰句試聽；撳句字＝直接改，匯出即刻用你改完嘅版本。有底色嗰啲句＝AI 冇咁有信心，優先校佢哋。")
-    : (splitOn ? (en ? "Line-length split is on — switch it to 唔限 to edit text inline."
-                     : "「每行上限」開咗——想就地改字，將佢較返「唔限」。")
+          : "按時間＝跳至該句試聽；按文字＝直接修改，匯出即用你修改後的版本。有底色的句子＝AI 信心較低，請優先校對。")
+    : (splitOn ? (en ? "Line-length split is on — switch it to 不限 to edit text inline."
+                     : "「每行上限」已開啟——想就地修改文字，請將它調回「不限」。")
                : "");
 
   const pct = Math.min(100, Math.round((budget / Math.max(1, total)) * 100));
   $("resultMeta").textContent = pro
-    ? `${segs.length} 段 · 用咗 ${secs} 秒`
+    ? `${segs.length} 段 · 用了 ${secs} 秒`
     : (en ? `Free preview (~${pct}%)` : `免費預覽（約 ${pct}%）`);
 
   renderPaywallCard(gated, en);
@@ -920,7 +920,7 @@ function renderPaywallCard(show, en){
   card.style.display = "block";
   card.innerHTML = en
     ? `<b>Free preview.</b> Unlock the full transcript and export .srt / .vtt subtitles.`
-    : `<b>免費預覽。</b>解鎖睇全文，同埋匯出 .srt / .vtt 字幕。`;
+    : `<b>免費預覽。</b>解鎖查看全文，以及匯出 .srt / .vtt 字幕。`;
   const btn = document.createElement("button");
   btn.className = "btn primary";
   btn.style.cssText = "margin-top:12px";
@@ -976,7 +976,7 @@ $("dlVtt").addEventListener("click", () => { if (!exportGate()) return; lastResu
 
 async function copy(text){
   try { await navigator.clipboard.writeText(text); toast("已複製 ✓"); }
-  catch { toast("複製唔到，請手動揀"); }
+  catch { toast("無法複製，請手動選取"); }
 }
 $("copyText").addEventListener("click", () => { if (!exportGate()) return; lastResult && copy(lastResult.fullText); });
 
@@ -997,7 +997,7 @@ async function saveToCloud(){
     if (error) throw error;   // RLS 會擋非 Pro（服務端閘）
     toast(cloudEN() ? "Saved to cloud ✓" : "已存去雲端 ✓");
     loadHistory();
-  } catch (e) { toast((cloudEN() ? "Save failed: " : "存唔到：") + (e.message || e)); }
+  } catch (e) { toast((cloudEN() ? "Save failed: " : "無法儲存：") + (e.message || e)); }
   finally { btn.disabled = false; }
 }
 $("saveCloud").addEventListener("click", saveToCloud);
@@ -1008,7 +1008,7 @@ async function loadHistory(){
   if (!db || !ent.userId) { card.style.display = "none"; return; }
   const en = cloudEN();
   card.querySelector('[data-cloud="title"]').textContent = en ? "My cloud subtitles" : "我的雲端字幕";
-  card.querySelector('[data-cloud="sub"]').textContent = en ? "Pro · any device · audio never uploaded" : "Pro · 任何裝置睇返 · 音檔唔上傳";
+  card.querySelector('[data-cloud="sub"]').textContent = en ? "Pro · any device · audio never uploaded" : "Pro · 任何裝置查看 · 音檔不上傳";
   let rows = [];
   try {
     const { data } = await db.from("subtitle_transcripts")
@@ -1016,7 +1016,7 @@ async function loadHistory(){
     rows = data || [];
   } catch (_) {}
   card.style.display = "block";
-  if (!rows.length) { list.textContent = en ? "Nothing saved yet — transcribe, then ☁️ Save to cloud." : "仲未存嘢 —— 轉完字幕撳 ☁️ 存去雲端。"; return; }
+  if (!rows.length) { list.textContent = en ? "Nothing saved yet — transcribe, then ☁️ Save to cloud." : "尚未儲存任何字幕 —— 轉換完成後按 ☁️ 儲存至雲端。"; return; }
   list.innerHTML = "";
   rows.forEach(r => {
     const row = document.createElement("div");
