@@ -249,24 +249,24 @@
   <div class="card no-print">
     <h2>📅 課堂記錄 <span class="hint">逐個學員點名；收入按「實際扣堂數」入賬（條款2.4）</span></h2>
     <div class="rule">
-      點名以「<b>扣堂數</b>」做單位：每人每次預設扣 <b>1 堂</b>。學員報咗一個鐘、之後跟大隊 stay 多兩三個鐘 → 照計 1 堂唔加錢；
-      如果嗰次真係傾好收多過一堂，先至改「扣堂」數字。「時長」只係場地時間記錄，唔會自動乘落堂費。
+      點名以「<b>扣堂數</b>」為單位：每人每次預設扣 <b>1 堂</b>。學員報了一小時、之後跟隨大隊 stay 多兩三小時 → 仍計 1 堂、不加收費用；
+      如果該次確實議定收多於一堂，才修改「扣堂」數字。「時長」只是場地時間記錄，不會自動乘算堂費。
       每節學員時數（＝所扣堂數，免費學員照計）全數歸時間表列明之執教導師，不設平分（修訂版條款4.4）。
-      狀態：「出席」正常扣堂；「缺席扣堂」照扣但唔計出席（條款1.7.2）；「請假$100」唔扣堂、收行政費（條款1.7.1）。
-      Simon 類雙票學員：單獨一人上堂揀 <b>PT票</b>，同人一齊上揀 <b>普通4堂</b>（修訂版條款2.5）。
-      <b>每堂收入按該學員自己張套票嘅實價計</b>（例：$700/4堂 → 每堂 $175；喺「學員套票」度改價錢就得）。
-      <b>試堂</b>：票種揀「試堂」，固定收 $<span data-bind="trialFee"></span>，唔扣任何套票，時數照計俾執教導師。
+      狀態：「出席」正常扣堂；「缺席扣堂」仍扣但不計出席（條款1.7.2）；「請假$100」不扣堂、收行政費（條款1.7.1）。
+      Simon 類雙票學員：單獨一人上堂選 <b>PT票</b>，與他人一同上堂選 <b>普通4堂</b>（修訂版條款2.5）。
+      <b>每堂收入按該學員自己那張套票的實價計算</b>（例：$700/4堂 → 每堂 $175；在「學員套票」中修改價錢即可）。
+      <b>試堂</b>：票種選「試堂」，固定收 $<span data-bind="trialFee"></span>，不扣任何套票，時數照計予執教導師。
     </div>
     <div class="rows" id="sessions"></div>
     <button class="add" id="add-session">＋ 加一節課堂</button>
-    <button class="add" id="import-bookings">🗓️ 由排堂報名匯入本月（教練）</button>
+    <button class="add" id="import-bookings">🗓️ 由課堂報名匯入本月（教練）</button>
   </div>
 
   <!-- 場租 -->
   <div class="card no-print">
-    <h2>🏟️ 場地租金 <span class="hint">而家用「劃一實報」：入賬 = 實付（2026年5月起劃一 $150/小時）</span></h2>
+    <h2>🏟️ 場地租金 <span class="hint">現時採用「劃一實報」：入賬 = 實付（2026年5月起劃一 $150/小時）</span></h2>
     <div class="rule">
-      如改用協議條款3嘅「按人數上限」模式（喺協議參數切換）：該日任何一小時出席 ≥ <span data-bind="threshold"></span>人（大班門檻）→ 上限 $<span data-bind="rentHigh"></span>/小時；唔夠 <span data-bind="threshold"></span>人 → 上限 $<span data-bind="rentLow"></span>/小時，超出部分不入公數。
+      如改用協議條款3的「按人數上限」模式（在協議參數切換）：該日任何一小時出席 ≥ <span data-bind="threshold"></span>人（大班門檻）→ 上限 $<span data-bind="rentHigh"></span>/小時；不足 <span data-bind="threshold"></span>人 → 上限 $<span data-bind="rentLow"></span>/小時，超出部分不入公數。
     </div>
     <div class="rows" id="rents"></div>
     <button class="add" id="add-rent">＋ 加一日場租</button>
@@ -292,8 +292,8 @@
   <div class="card no-print">
     <h2>🎫 學員套票追蹤 <span class="hint">套票由購買日起兩個月有效（條款1.2）；課堂點名自動扣堂</span></h2>
     <div class="rule">
-      每個學員記錄佢買咗嘅套票 — <b>價錢可以每人唔同</b>（預設 4堂 $800／8堂 $1,400／PT $900；例如 ah fung 收 $700 就改做 700，每堂自動計 $175）。點名會按日期順序自動由最早買嘅有效套票扣堂，收入按嗰張票嘅實價入賬；
-      冇票可扣就會顯示「要交錢」。到期仲有剩堂會出「作廢建議」— 確認後自己加落「逾期作廢套票」度（記住下次購票要補返一堂，條款1.2）。
+      每個學員記錄他購買的套票 — <b>價錢可以因人而異</b>（預設 4堂 $800／8堂 $1,400／PT $900；例如 ah fung 收 $700 便改為 700，每堂自動計 $175）。點名會按日期順序自動由最早購買的有效套票扣堂，收入按那張票的實價入賬；
+      沒有套票可扣便會顯示「要交錢」。到期仍有剩餘堂數會出現「作廢建議」— 確認後自行加入「逾期作廢套票」中（切記下次購票要補回一堂，條款1.2）。
     </div>
     <div class="stu-tools">
       <input type="search" id="stuSearch" placeholder="🔍 搜尋學員名…" autocomplete="off">
@@ -327,7 +327,7 @@
   </section>
 
   <div class="foot no-print">
-    資料只儲存喺本機瀏覽器（localStorage），唔會上傳。換機前請先匯出 JSON。<br>
+    資料只儲存於本機瀏覽器（localStorage），不會上傳。更換裝置前請先匯出 JSON。<br>
     計法依據《踢拳小班教學合辦協議書》條款 1.4、1.7、2.4、3、4。
   </div>
 </div>
@@ -535,7 +535,7 @@ function calcMonth(md, s){
   }else{
     payA = pool/2 + expiredTotal/2;                 // 冇學員時數時對半分，需雙方確認
     payB = pool/2 + expiredTotal/2;
-    splitNote = '本月冇學員時數，純利暫按50/50顯示，請雙方自行議定。';
+    splitNote = '本月沒有學員時數，純利暫按50/50顯示，請雙方自行議定。';
   }
   return { income, consumed4, consumed8, consumedPT, excusedCount, adminIncome: excusedCount*s.adminFee,
            revenue4, revenue8, revenuePT, revenueTrial, trialCount,
@@ -622,7 +622,7 @@ function buildLedger(){
 function renderTracker(){
   const s = DB.settings, box = $('#tracker');
   if(!DB.students.length){
-    box.innerHTML = '<div class="empty">未有學員，撳下面「＋新增學員」</div>';
+    box.innerHTML = '<div class="empty">尚未有學員，請按下方「＋新增學員」</div>';
     $('#stuCount').textContent='';
     const b0 = $('#oweBadge'); b0.hidden = true; b0.textContent = '';
     return;
@@ -657,7 +657,7 @@ function renderTracker(){
   $('#stuCount').textContent = (q || filter!=='all')
     ? `顯示 ${shown.length}／共 ${DB.students.length} 個學員`
     : `共 ${DB.students.length} 個學員`;
-  if(!shown.length){ box.innerHTML = '<div class="empty">冇符合嘅學員 — 試下清走搜尋字眼或者揀返「全部學員」</div>'; return; }
+  if(!shown.length){ box.innerHTML = '<div class="empty">沒有符合的學員 — 請嘗試清除搜尋字詞或選回「全部學員」</div>'; return; }
   box.innerHTML = shown.map(stu=>{
     const myPkgs = pkgs.filter(p=>p.studentId===stu.id);
     const myOwed = owed[stu.id] || {};
@@ -730,7 +730,7 @@ function renderSessions(){
           </select></label>
       </div>
       ${Array.isArray(sess.attendees) ? `
-      <div class="att-head">點名（扣堂做單位；stay 耐啲照計所寫嘅扣堂數）</div>
+      <div class="att-head">點名（以扣堂為單位；stay 較久仍計所填的扣堂數）</div>
       ${sess.attendees.map(a=>`
         <div class="att">
           <label class="f">學員
@@ -842,7 +842,7 @@ function renderResult(){
   const balanced = Math.abs(diff) < 0.01;
   const balanceHtml = balanced
     ? `<div class="balance ok">✅ 自動對數：總收入 ${fmt$(r.income)} − 總支出 ${fmt$(r.totalExpense)} ＋ 逾期套票 ${fmt$(r.expiredTotal)} ＝ 兩邊應得總和 ${fmt$(totalPay)}，數啱。</div>`
-    : `<div class="balance bad">🚨 數唔平，差 ${fmt$(Math.abs(diff))} — 兩邊應得總和 ${fmt$(totalPay)}，但純利＋逾期套票應該係 ${fmt$(target)}。請檢查課堂／支出輸入。</div>`;
+    : `<div class="balance bad">🚨 數目不平，差 ${fmt$(Math.abs(diff))} — 兩邊應得總和 ${fmt$(totalPay)}，但純利＋逾期套票應為 ${fmt$(target)}。請檢查課堂／支出輸入。</div>`;
 
   // 即時總覽（sticky）
   const expl = r.pool + r.expiredTotal;
@@ -856,7 +856,7 @@ function renderResult(){
   // 計法拆解（每步都代入實數）
   const explainHtml = `
     <details class="explain" id="explain">
-      <summary>🔍 計法拆解（一步步睇條數點嚟）</summary>
+      <summary>🔍 計法拆解（逐步查看數目如何得出）</summary>
       <ol>
         <li>總收入 ＝ 4堂票 ${fmt$(r.revenue4)} ＋ 8堂票 ${fmt$(r.revenue8)} ＋ PT ${fmt$(r.revenuePT)} ＋ 試堂 ${fmt$(r.revenueTrial)} ＋ 請假行政費 ${fmt$(r.adminIncome)} ＝ <b>${fmt$(r.income)}</b>（每堂價＝該學員套票實價，例 $700/4堂＝$175/堂）</li>
         <li>總支出 ＝ 場租 ${fmt$(r.rentChargeable)} ＋ 其他支出 ${fmt$(r.otherExpense)} ＝ <b>${fmt$(r.totalExpense)}</b></li>
@@ -867,7 +867,7 @@ function renderResult(){
         <li>${esc(s.nameA)} ＝ ${fmt$(r.unit)} × ${fmtH(r.shA)} ＋ 逾期套票一半 ${fmt$(r.expiredTotal/2)} ＝ <b>${fmt$(r.payA)}</b></li>
         <li>${esc(s.nameB)} ＝ ${fmt$(r.unit)} × ${fmtH(r.shB)} ＋ 逾期套票一半 ${fmt$(r.expiredTotal/2)} ＝ <b>${fmt$(r.payB)}</b></li>
         ` : `
-        <li>本月冇學員時數 → 純利暫按 50/50 ＋ 逾期套票各半：每人 <b>${fmt$(r.pool/2 + r.expiredTotal/2)}</b>（請雙方確認）</li>
+        <li>本月沒有學員時數 → 純利暫按 50/50 ＋ 逾期套票各半：每人 <b>${fmt$(r.pool/2 + r.expiredTotal/2)}</b>（請雙方確認）</li>
         `}
       </ol>
       <div class="exp-note">依《踢拳小班教學合辦協議書（2026年7月修訂版）》條款 2.4／3／4。逾期套票純利雙方各 50%（條款4.5）。</div>
@@ -960,7 +960,7 @@ function reportText(){
     const totalPay = r.payA + r.payB, target = r.pool + r.expiredTotal, diff = totalPay - target;
     L.push(Math.abs(diff) < 0.01
       ? `· 對數 ✅：收入−支出＋作廢 $${target.toFixed(2)} ＝ 兩邊總和 $${totalPay.toFixed(2)}`
-      : `· 對數 🚨：數唔平，差 $${Math.abs(diff).toFixed(2)}（兩邊總和 $${totalPay.toFixed(2)}，應為 $${target.toFixed(2)}）`);
+      : `· 對數 🚨：數目不平，差 $${Math.abs(diff).toFixed(2)}（兩邊總和 $${totalPay.toFixed(2)}，應為 $${target.toFixed(2)}）`);
   }
   // 套票提醒（欠堂／到期）
   const { pkgs, owed } = buildLedger();
@@ -1290,7 +1290,7 @@ $('#import-bookings').onclick = async ()=>{
     if(error) throw error;
     // 只匯入「已開班」時段（夠人 confirmed）；純 open 未夠人＝未開班，唔入賬
     const confirmed = (slots||[]).filter(s=>s.status==='confirmed' && s.booked_count>0);
-    if(!confirmed.length){ toast('本月未有已開班嘅報名'); return; }
+    if(!confirmed.length){ toast('本月尚未有已開班的報名'); return; }
     const md = monthData();
     let nSess=0, nAtt=0, nNew=0;
     for(const slot of confirmed){
