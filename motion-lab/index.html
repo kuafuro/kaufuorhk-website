@@ -288,7 +288,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <div class="countdown" id="pCount"></div>
       </div>
       <div class="controls" id="pPicker" style="display:none;margin-top:8px"></div>
-      <p class="hint" id="pStageHint">開啟鏡頭或上載相片後，系統會自動偵測 33 個身體關節點並計算對齊度。相片有多過一個人會叫你揀分析對象。所有分析在你的裝置本地進行，影像不會上傳。</p>
+      <p class="hint" id="pStageHint">開啟鏡頭或上載相片後，系統會自動偵測 33 個身體關節點並計算對齊度。相片若有多於一人，會請你選擇分析對象。所有分析在你的裝置本地進行，影像不會上傳。</p>
     </div>
 
     <div>
@@ -366,10 +366,10 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 <section class="tab-panel active" id="tab-motion">
   <!-- ☁️ 雲端精析（主打路徑）：上載片 → 伺服器 yolo11m-pose + ByteTrack 多人追蹤 → 標註影片＋統計 -->
   <div class="card" id="clCard" style="border-color:var(--brand)">
-    <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">建議用呢個 · 伺服器級 AI・唔佔你部機</small></h3>
-    <p class="hint">上載訓練片，雲端伺服器逐格畫骨架、同時追蹤場上<b>每一個人</b>，計手速同揮拳次數，俾返一條<b>標註好嘅影片</b>你下載。運算全部喺雲端做——部機舊、電量低都用得。影片<b>只用作今次分析，最遲 12 小時自動刪除</b>。登入即可用：免費每月 2 分鐘・Pro 60・Max 180（每條片上限 3 分鐘）。</p>
+    <h3>☁️ 雲端精析 <small style="color:var(--ink-muted);font-weight:400">建議採用此路徑 · 伺服器級 AI・不佔用你的裝置</small></h3>
+    <p class="hint">上載訓練影片，雲端伺服器逐格繪製骨架、同時追蹤場上<b>每一個人</b>，計算手速與揮拳次數，並提供一條<b>已標註的影片</b>供你下載。運算全部在雲端進行——裝置較舊、電量偏低亦可使用。影片<b>只用作今次分析，最遲 12 小時自動刪除</b>。登入即可使用：免費每月 2 分鐘・Pro 60・Max 180（每條片上限 3 分鐘）。</p>
     <div class="controls">
-      <button class="btn primary" id="clUploadBtn">🎬 揀片・開始精析</button>
+      <button class="btn primary" id="clUploadBtn">🎬 選片・開始精析</button>
       <input type="file" id="clFile" accept="video/*" hidden>
       <span class="hint" id="clQuota" style="align-self:center;margin:0"></span>
     </div>
@@ -389,7 +389,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
   </div>
 
   <div class="card">
-    <p class="hint" style="margin:0 0 10px"><b>即時分析（本地）</b>——開鏡頭或者上載片，喺你部機即場睇骨架、對戰統計、技術分析。想睇即時畫面／A-B 對打數據就用呢個。</p>
+    <p class="hint" style="margin:0 0 10px"><b>即時分析（本地）</b>——開啟鏡頭或上載影片，在你的裝置即場查看骨架、對戰統計、技術分析。想看即時畫面／A-B 對打數據，可使用此功能。</p>
     <div class="controls">
       <button class="btn primary" id="mCamBtn">📷 開啟鏡頭</button>
       <button class="btn" id="mFlipBtn" style="display:none">🔄 切換鏡頭</button>
@@ -408,7 +408,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <button class="btn" id="mResetBtn">↺ 重設數據</button>
       <button class="btn" id="mStopBtn" style="display:none">⏹ 停止</button>
     </div>
-    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請用正常速度拍攝）。畫面有多人時，<b>撳一下人物＝鎖定做拳手A</b>；<b>長撳（按住半秒）＝指定做拳手B</b>；撳橙色B＝A/B對調。</p>
+    <p class="hint">鏡頭側面 45°–90° 拍攝出拳效果最好。全身入鏡，光線充足。慢動作影片會令速度被低估（請以正常速度拍攝）。畫面有多人時，<b>按一下人物＝鎖定為拳手A</b>；<b>長按（按住半秒）＝指定為拳手B</b>；按橙色B＝A/B對調。</p>
   </div>
 
   <div class="grid-2">
@@ -466,7 +466,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
       <div class="card" id="sparCard" style="margin-top:12px;display:none">
         <h3>🥊 對戰數據 <small style="color:var(--ink-muted);font-weight:400">A（紅）vs B（橙）· 拳踢膝全計</small></h3>
         <div id="sparList"></div>
-        <div class="note-strip">計分準則參考 WAKO K1 規例第 4 條：輕觸／被格擋嘅技術不計分；拳擊腿部、正蹬/側踢/後旋踢踢大腿屬犯規目標。命中／防守以 2D 影像重疊估算，力量以輸入體重估算，數字用作訓練對比參考。</div>
+        <div class="note-strip">計分準則參考 WAKO K1 規例第 4 條：輕觸／被格擋的技術不計分；拳擊腿部、正蹬/側踢/後旋踢踢大腿屬犯規目標。命中／防守以 2D 影像重疊估算，力量以輸入體重估算，數字用作訓練對比參考。</div>
       </div>
       <div class="card" id="techCard" style="margin-top:12px;display:none">
         <h3>🥊 技術分析（弱點與建議） <small style="color:var(--ink-muted);font-weight:400">Technique review</small>
@@ -475,10 +475,10 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
             <button class="btn" id="saveMotionBtnB" style="padding:6px 12px;font-size:.82rem">💾 儲存 B</button>
           </span></h3>
         <div id="techList"></div>
-        <div class="note-strip">分析基於 AI 骨架估算同拍攝角度，屬教練參考，唔係絕對標準。側面 45°–90° 拍攝結果最準。</div>
+        <div class="note-strip">分析基於 AI 骨架估算與拍攝角度，屬教練參考，並非絕對標準。側面 45°–90° 拍攝結果最準。</div>
       </div>
       <div class="card" id="reviewCard" style="margin-top:12px;display:none">
-        <h3>🎬 回顧片段 <small style="color:var(--ink-muted);font-weight:400">AI 自動剪輯・俾學生重溫</small>
+        <h3>🎬 回顧片段 <small style="color:var(--ink-muted);font-weight:400">AI 自動剪輯・供學生重溫</small>
           <span style="float:right">
             <button class="btn" id="revExportBtn" style="padding:6px 12px;font-size:.82rem">⬇︎ 匯出回顧影片</button>
           </span></h3>
@@ -498,7 +498,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
         <h3>教練提示</h3>
         <ul style="font-size:.84rem;padding-left:18px;color:var(--ink-2)">
           <li><b>髖肩分離角</b>：出拳前軀幹「上下分離」越大，越能利用彈性勢能——業餘選手常見不足 20°。</li>
-          <li><b>手速</b>：業餘拳手刺拳峰值約 5–8 m/s；速度基於 AI 骨架估算（已補償橫向步法，向鏡頭方向嘅移動會略被低估），適合比較趨勢，不能當精確儀器。</li>
+          <li><b>手速</b>：業餘拳手刺拳峰值約 5–8 m/s；速度基於 AI 骨架估算（已補償橫向步法，向鏡頭方向的移動會略被低估），適合比較趨勢，不能當精確儀器。</li>
           <li><b>動能</b>：以有效質量 ≈ 體重 5% 估算（前手直拳量級），僅供對比參考。</li>
         </ul>
       </div>
@@ -521,15 +521,15 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
           用 Google 繼續
         </button>
       </div>
-      <p class="hint">用 Google 一撳即入（免確認電郵）。或者用電郵註冊——首次註冊要去電郵撳確認連結先登入到。資料存喺你嘅雲端資料庫（Supabase），只有你登入先睇到。</p>
+      <p class="hint">用 Google 一按即可登入（免確認電郵）。或以電郵註冊——首次註冊需前往電郵按確認連結方可登入。資料存於你的雲端資料庫（Supabase），只有你登入後方可查看。</p>
       <div id="signupSteps" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--page)">
-        <b style="font-size:.92rem">📧 註冊成功！仲差一步——確認電郵</b>
+        <b style="font-size:.92rem">📧 註冊成功！尚差一步——確認電郵</b>
         <ol style="font-size:.88rem;line-height:1.7;margin:8px 0 4px;padding-left:20px">
-          <li>開你嘅電郵信箱：<b id="signupEmailShown"></b><br><small style="color:var(--ink-muted)">搵唔到？請檢查「垃圾郵件」／「促銷」分類</small></li>
-          <li>撳郵件入面嘅 <b>「Confirm your mail」確認連結</b></li>
-          <li>返嚟呢一頁，用啱先嘅電郵密碼<b>登入</b></li>
+          <li>開啟你的電郵信箱：<b id="signupEmailShown"></b><br><small style="color:var(--ink-muted)">找不到？請檢查「垃圾郵件」／「促銷」分類</small></li>
+          <li>按郵件內的 <b>「Confirm your mail」確認連結</b></li>
+          <li>返回本頁，以剛才的電郵密碼<b>登入</b></li>
         </ol>
-        <small style="color:var(--ink-muted)">收唔到郵件？等一分鐘再撳多次「註冊新帳戶」會重寄。</small>
+        <small style="color:var(--ink-muted)">收不到郵件？等一分鐘再按一次「註冊新帳戶」便會重寄。</small>
       </div>
     </div>
     <div id="authIn" style="display:none">
@@ -555,7 +555,7 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
     <div class="grid-2">
       <div class="card">
         <h3>📈 成長曲線 <small style="color:var(--ink-muted);font-weight:400">Growth（動作分析場次）</small></h3>
-        <div id="chartsEmpty" class="hint">未有紀錄——完成一節動作分析後撳「儲存本節紀錄」。</div>
+        <div id="chartsEmpty" class="hint">尚無紀錄——完成一節動作分析後按「儲存本節紀錄」。</div>
         <div id="chartsWrap" style="display:none">
           <div class="hint" style="margin:0 0 2px">最快出拳 m/s</div>
           <canvas class="growth-chart" id="chSpeed" height="110"></canvas>
@@ -579,37 +579,37 @@ footer{border-top:1px solid var(--hairline);margin-top:26px;padding:22px 16px;te
 <section class="tab-panel" id="tab-guide">
   <div class="guide-grid">
     <div class="card">
-      <h3>🧍 體態評估點做？</h3>
+      <h3>🧍 體態評估如何進行？</h3>
       <ol class="steps">
         <li>受測者除鞋、穿貼身衣物</li>
         <li>手機／平板放胸口高度，距離 2–3 米</li>
         <li>正面：雙腳與肩同寬，雙手自然垂下，望正前方</li>
-        <li>側面：身體轉 90°，維持平時慣常站姿（唔好刻意企直）</li>
-        <li>輸入身高（用作換算公分），影相、上載相片，或上載影片再揀最合適嘅一格畫面</li>
-        <li>撳「生成報告」可列印或儲存 PDF</li>
+        <li>側面：身體轉 90°，維持平日慣常站姿（不要刻意站直）</li>
+        <li>輸入身高（用作換算公分），拍照、上載相片，或上載影片再選取最合適的一格畫面</li>
+        <li>按「生成報告」可列印或儲存 PDF</li>
       </ol>
     </div>
     <div class="card">
-      <h3>🥊 動作分析點做？</h3>
+      <h3>🥊 動作分析如何進行？</h3>
       <ol class="steps">
         <li>鏡頭放側面 45°–90°，全身入鏡</li>
         <li>輸入體重（用作估算出拳動能）</li>
-        <li>開鏡頭即時分析，或上載訓練影片——「⚡ 快速分析」會全速逐格處理，唔使睇住佢播</li>
-        <li>多人模式<b>預設開啟</b>——每人有個號碼牌，撳你想分析嘅人物即可鎖定做 A；<b>長撳（按住半秒）另一位＝指定佢做 B</b>，AI 認錯人時可以即場糾正（單人操練可以較返做單人模式，更快更省電）</li>
-        <li><b>身份記憶🔒</b>：AI 會記住 A/B 兩人嘅樣貌＋衣着特徵，成場跟實——就算交叉、纏抱之後調轉咗都會自動糾正（兩人著唔同顏色衫效果最好）</li>
+        <li>開啟鏡頭即時分析，或上載訓練影片——「⚡ 快速分析」會全速逐格處理，無需盯著它播放</li>
+        <li>多人模式<b>預設開啟</b>——每人有個號碼牌，按你想分析的人物即可鎖定為 A；<b>長按（按住半秒）另一位＝指定其為 B</b>，AI 認錯人時可即場糾正（單人操練可調回單人模式，更快更省電）</li>
+        <li><b>身份記憶🔒</b>：AI 會記住 A/B 兩人的樣貌＋衣着特徵，全場緊貼——即使交叉、纏抱後對調亦會自動糾正（兩人穿不同顏色衣服效果最好）</li>
         <li>對打／對練：兩人入鏡自動分 A（紅）/ B（橙），兩邊數據並排——拳、踢、膝全計，命中分頭/腹/腿（low kick）、防守、閃避、承受重擊</li>
         <li><b>WAKO 計分準則</b>：出擊分「有效命中／輕觸／被格擋／落空」——無效攻擊都計入出擊總數；技法自動分類（直拳/擺拳/上擊/轉身鞭拳/正蹬/迴旋踢/低掃/高踢/斧劈踢/後旋踢/膝擊）；對方落空時你方會計「格擋／閃避／距離防禦」</li>
-        <li>「AI 精度」可揀 快／標準／超精細（Heavy 最仔細，下載約 29MB，適合影片批次分析）</li>
+        <li>「AI 精度」可選 快／標準／超精細（Heavy 最精細，下載約 29MB，適合影片批次分析）</li>
         <li>觀察出拳速度、髖肩分離角、關節角度</li>
-        <li>撳「技術分析」攞 A/B 各自嘅弱點總結＋風格檔案（影片播完自動生成）；「儲存 A／儲存 B」分別入落唔同拳手檔案</li>
-        <li>登入「📊 紀錄」後可以撳「儲存本節紀錄」——建立拳手檔案、追蹤成長曲線</li>
+        <li>按「技術分析」取得 A/B 各自的弱點總結＋風格檔案（影片播畢自動生成）；「儲存 A／儲存 B」分別存入不同拳手檔案</li>
+        <li>登入「📊 紀錄」後可按「儲存本節紀錄」——建立拳手檔案、追蹤成長曲線</li>
         <li>「重設數據」開始新一節統計</li>
       </ol>
     </div>
     <div class="card">
       <h3>🔬 技術與私隱</h3>
-      <p style="font-size:.86rem">即時分析使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點，影像唔會上傳（首次使用需下載約 9MB 模型，之後會快取）。<b>☁️ 雲端精析</b>會將你揀嘅影片上載到伺服器分析：影片<b>只用作今次分析</b>，分析完成後最遲 <b>12 小時內自動刪除</b>，唔會攞嚟做其他用途。</p>
-      <p style="font-size:.86rem;margin-top:8px">公分數值由身高比例換算，屬<b>估算</b>；適合追蹤變化趨勢及作教練篩查，唔可以取代 X 光、臨床姿勢評估或醫療診斷。</p>
+      <p style="font-size:.86rem">即時分析使用 Google MediaPipe 姿勢估計模型，在你的裝置<b>本地</b>偵測 33 個身體關節點，影像不會上傳（首次使用需下載約 9MB 模型，之後會快取）。<b>☁️ 雲端精析</b>會將你選擇的影片上載到伺服器分析：影片<b>只用作今次分析</b>，分析完成後最遲 <b>12 小時內自動刪除</b>，不會用於其他用途。</p>
+      <p style="font-size:.86rem;margin-top:8px">公分數值由身高比例換算，屬<b>估算</b>；適合追蹤變化趨勢及作教練篩查，不可取代 X 光、臨床姿勢評估或醫療診斷。</p>
     </div>
     <div class="card">
       <h3>🤝 跨專業協作</h3>
@@ -980,7 +980,7 @@ async function recoverEngine(err){
   landmarker = null; currentMode = null; modeLock = Promise.resolve();
   if(!engineOnCpu()){
     localStorage.setItem("ml_force_cpu", "1");
-    toast("你部機嘅顯示晶片同 AI 引擎唔夾——已自動轉用穩定模式重啟緊，幾秒後再試一次", 5600);
+    toast("你裝置的顯示晶片與 AI 引擎不相容——已自動改用穩定模式重新啟動，幾秒後再試一次", 5600);
   }else{
     toast("AI 引擎出錯，請重新整理頁面再試", 5600);
   }
@@ -1156,7 +1156,7 @@ let pCamBusy = false;
 $("pCamBtn").addEventListener("click", async ()=>{
   if(pCamBusy) return;                      // ignore clicks while getUserMedia is pending
   if(pState.source === "cam"){ stopPostureSource(); return; }
-  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  if(!landmarker){ toast("模型仍載入中，請稍候"); return; }
   pCamBusy = true; $("pCamBtn").disabled = true;
   try{
     stopPostureSource();                    // clears any uploaded-video source first
@@ -1288,7 +1288,7 @@ $("pFile").addEventListener("change", e=>{
   img.onerror = ()=>{
     URL.revokeObjectURL(img.src);
     toast(isHeic
-      ? "呢張係 HEIC 格式，你嘅瀏覽器解讀唔到。iPhone：設定 → 相機 → 格式 → 揀「最高相容性」再影過；或者將相 WhatsApp 傳一次再儲存（會自動轉 JPG）"
+      ? "這張是 HEIC 格式，你的瀏覽器無法解讀。iPhone：設定 → 相機 → 格式 → 選「最高相容性」再拍一次；或將相片以 WhatsApp 傳送一次再儲存（會自動轉 JPG）"
       : "讀取相片失敗——請用 JPG／PNG 格式再試", 7000);
   };
   img.src = URL.createObjectURL(f);
@@ -1300,7 +1300,7 @@ $("pVideoFile").addEventListener("change", async e=>{
   const f = e.target.files[0];
   e.target.value = "";
   if(!f) return;
-  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  if(!landmarker){ toast("模型仍載入中，請稍候"); return; }
   stopPostureSource();
   pVideo.srcObject = null;
   const url = URL.createObjectURL(f);
@@ -1309,7 +1309,7 @@ $("pVideoFile").addEventListener("change", async e=>{
   try{
     await pVideo.play();
   }catch(err){
-    toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
+    toast("播放失敗——可能是不支援的影片格式（建議 MP4/WebM）");
     stopPostureSource();
     return;
   }
@@ -1321,12 +1321,12 @@ $("pVideoFile").addEventListener("change", async e=>{
   await setMode("VIDEO");
   cancelAnimationFrame(pState.raf);
   postureLiveLoop();
-  toast("用影片控制列暫停／拖到想要嘅一格，再撳「用此畫面分析」", 4500);
+  toast("用影片控制列暫停／拖到想要的一格，再按「用此畫面分析」", 4500);
 });
 
 /* --- analysis core --- */
 async function analyzePosture(srcCanvas){
-  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  if(!landmarker){ toast("模型仍載入中，請稍候"); return; }
   const t0 = performance.now();
   $("pMsg").innerHTML = '<div class="spinner"></div><div>分析中…（一般 1–3 秒）</div>';
   $("pMsg").classList.remove("hidden");
@@ -1342,7 +1342,7 @@ async function analyzePosture(srcCanvas){
       toast("偵測失敗：" + (e?.message||e)); return;
     }
     const people = res.landmarks || [];
-    if(!people.length){ toast("偵測唔到人體，請確保全身清晰入鏡、光線充足"); return; }
+    if(!people.length){ toast("偵測不到人體，請確保全身清晰入鏡、光線充足"); return; }
     const ranked = rankPeople(people);
     if(ranked.length > 1){ showPersonPicker(srcCanvas, ranked); return; }
     analyzePersonPosture(srcCanvas, ranked[0].lm, t0);
@@ -1364,7 +1364,7 @@ function showPersonPicker(srcCanvas, ranked){
   pState.pendingSelect = { srcCanvas, ranked };
   const bar = $("pPicker");
   bar.innerHTML =
-    `<span class="hint" style="margin:0">偵測到 ${ranked.length} 人，揀分析對象：</span>` +
+    `<span class="hint" style="margin:0">偵測到 ${ranked.length} 人，選擇分析對象：</span>` +
     ranked.map((o, rank)=>`<button class="btn primary" data-rank="${rank}">人物 ${rank+1}</button>`).join("") +
     `<button class="btn ghost" data-rank="-1">取消</button>`;
   bar.style.display = "";
@@ -1375,7 +1375,7 @@ function showPersonPicker(srcCanvas, ranked){
     hidePersonPicker();
     if(sel && src) analyzePersonPosture(src, sel.lm);
   }));
-  toast(`偵測到 ${ranked.length} 人 — 撳相入面嘅人物或下面按鈕`, 4500);
+  toast(`偵測到 ${ranked.length} 人 — 按相中的人物或下方按鈕`, 4500);
 }
 function hidePersonPicker(){
   $("pPicker").style.display = "none";
@@ -1411,18 +1411,18 @@ function analyzePersonPosture(srcCanvas, lm, t0){
     const ankleY = (P(LM.L_ANKLE).y + P(LM.R_ANKLE).y)/2;
     const noseY = P(LM.NOSE).y;
     const span = ankleY - noseY;
-    if(span < H*0.2){ toast("人體太細或唔完整，請靠近啲／全身入鏡再試"); return; }
+    if(span < H*0.2){ toast("人體太小或不完整，請靠近一點／全身入鏡再試"); return; }
     const cmPerPx = (0.891*heightCm)/span;
 
     const view = pState.view;
     let result;
     if(view === "front"){
       const need = [LM.NOSE,LM.L_SHOULDER,LM.R_SHOULDER,LM.L_HIP,LM.R_HIP,LM.L_ANKLE,LM.R_ANKLE];
-      if(need.some(i=>P(i).v < 0.5)){ toast("關節點唔清晰（被遮擋？），結果可能唔準"); }
+      if(need.some(i=>P(i).v < 0.5)){ toast("關節點不清晰（被遮擋？），結果可能不準"); }
       result = analyzeFront(P, cmPerPx);
     }else{
       result = analyzeSide(P, cmPerPx, W);
-      if(result.lowVis){ toast("側面關節點唔清晰（被遮擋？），結果可能唔準"); }
+      if(result.lowVis){ toast("側面關節點不清晰（被遮擋？），結果可能不準"); }
     }
     const {metrics, findings} = result;
 
@@ -1997,7 +1997,7 @@ $("mBatchBtn").addEventListener("click", ()=>{
   mRun.batch = !mRun.batch;
   $("mBatchBtn").textContent = `⚡ 快速分析：${mRun.batch ? "開" : "關"}`;
   toast(mRun.batch
-    ? "快速分析開：上載影片會全速逐格處理，唔使睇住佢播完"
+    ? "快速分析已開：上載影片會全速逐格處理，無需盯著它播完"
     : "快速分析關：上載影片會以正常速度即時播放分析", 4000);
 });
 
@@ -2014,8 +2014,8 @@ $("mMultiBtn").addEventListener("click", async ()=>{
   if(mRun.on) await setMode(mRun.multi ? "IMAGE" : "VIDEO");
   updateSparCard();
   toast(mRun.multi
-    ? "多人模式開：撳人物鎖定「主角」；有第二個人會自動當「對手」計對戰數據"
-    : "單人模式：自動鎖定畫面中最大嘅人物（最快最順）", 4200);
+    ? "多人模式已開：按人物鎖定「主角」；出現第二人會自動當作「對手」計算對戰數據"
+    : "單人模式：自動鎖定畫面中最大的人物（最快最順）", 4200);
 });
 
 /* tap a person = lock fighter A · LONG-PRESS a person = lock fighter B ·
@@ -2047,7 +2047,7 @@ function swapAB(tappedPos){
   mRun.manualPick = mRun.subjectId; mRun.manualPickB = mRun.oppId;   // coach confirmed BOTH
   const tmp = mState.A; mState.A = mState.B; mState.B = tmp;
   identity.swap();
-  toast("已對調 A↔B（數據跟人走，冇重設）");
+  toast("已對調 A↔B（數據跟隨人物，未重設）");
 }
 function pickFighter(x, y, role){
   if(!(mRun.multi && mRun.lastCands?.length)) return false;
@@ -2056,7 +2056,7 @@ function pickFighter(x, y, role){
     const d = tapDist(x, y, c.lm, c.pos, c.box);
     if(d < bestD){ bestD = d; best = c; }
   }
-  if(!best || bestD > 0.22){ toast("呢個位置未偵測到人物——請撳落有骨架嘅人身上"); return true; }
+  if(!best || bestD > 0.22){ toast("此位置未偵測到人物——請按在有骨架的人身上"); return true; }
   if(role === "B"){
     if(best.trackId === mRun.oppId){ toast("呢位已經係拳手 B（橙）"); return true; }
     if(best.trackId === mRun.subjectId){ swapAB(best.pos); return true; }
@@ -2069,7 +2069,7 @@ function pickFighter(x, y, role){
     toast(`已鎖定人物 ${best.trackId} 做拳手 B ✔（A 數據保留）`);
     return true;
   }
-  if(best.trackId === mRun.subjectId){ toast("呢位已經係拳手 A（紅）。長撳其他人物可指定拳手 B"); return true; }
+  if(best.trackId === mRun.subjectId){ toast("此位已是拳手 A（紅）。長按其他人物可指定拳手 B"); return true; }
   if(best.trackId === mRun.oppId){ swapAB(best.pos); return true; }
   mRun.subjectId = best.trackId;
   mRun.lastSubjectPos = best.pos;
@@ -2118,7 +2118,7 @@ $("mStage").addEventListener("click", e=>{
       const d = tapDist(x, y, o.lm, null, null);
       if(d < bestD){ bestD = d; best = o; bestRank = rank; }
     });
-    if(!best || bestD > 0.22){ toast("呢個位置未偵測到人物——請撳落有骨架嘅人身上"); return; }
+    if(!best || bestD > 0.22){ toast("此位置未偵測到人物——請按在有骨架的人身上"); return; }
     const c = midHipOf(best.lm);
     const already = mRun.targetPos && Math.hypot(c.x - mRun.targetPos.x, c.y - mRun.targetPos.y) < 0.08;
     mRun.targetPos = c;
@@ -2135,7 +2135,7 @@ let mCamBusy = false;
 $("mCamBtn").addEventListener("click", async ()=>{
   if(mCamBusy) return;                      // ignore clicks while getUserMedia is pending
   if(mRun.on && mRun.source === "cam"){ stopMotion(); return; }
-  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  if(!landmarker){ toast("模型仍載入中，請稍候"); return; }
   mCamBusy = true; $("mCamBtn").disabled = true;
   try{
     stopMotion();
@@ -2190,7 +2190,7 @@ $("mFile").addEventListener("change", async e=>{
   const f = e.target.files[0];
   e.target.value = "";                 // always reset so re-selecting the same file works
   if(!f) return;
-  if(!landmarker){ toast("模型仲載緊，請稍候"); return; }
+  if(!landmarker){ toast("模型仍載入中，請稍候"); return; }
   stopMotion();
   identity.reset();               // new footage — build fresh A/B identity memory
   const gen = ++mRun.gen;
@@ -2215,7 +2215,7 @@ $("mFile").addEventListener("change", async e=>{
     });
     if(taken()){ URL.revokeObjectURL(url); return; }
     if(!ok || !isFinite(mVideo.duration) || mVideo.duration <= 0){
-      toast("影片讀取失敗——可能係唔支援嘅格式（建議 MP4/WebM）");
+      toast("影片讀取失敗——可能是不支援的格式（建議 MP4/WebM）");
       URL.revokeObjectURL(url); mVideo.removeAttribute("src"); mVideo.load();
       return;
     }
@@ -2229,7 +2229,7 @@ $("mFile").addEventListener("change", async e=>{
     await mVideo.play();
   }catch(err){
     if(taken()){ URL.revokeObjectURL(url); return; }
-    toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
+    toast("播放失敗——可能是不支援的影片格式（建議 MP4/WebM）");
     URL.revokeObjectURL(url);
     mVideo.removeAttribute("src"); mVideo.load();
     return;
@@ -2302,7 +2302,7 @@ async function batchAnalyze(){
   try{ await mVideo.play(); }
   catch(err){
     releaseWake(); stopMotion();
-    toast("播放失敗——可能係唔支援嘅影片格式（建議 MP4/WebM）");
+    toast("播放失敗——可能是不支援的影片格式（建議 MP4/WebM）");
     return;
   }
   const t0wall = performance.now();
@@ -2442,7 +2442,7 @@ function renderTechAnalysis(){
     if(st.atk.length >= 5){
       const kickShare = (st.by.kick + st.by.knee)/st.atk.length;
       if(kickShare < 0.15) items.push({ sev:"warning", t:`武器偏單一：${st.by.punch}拳／${st.by.kick}踢／${st.by.knee}膝`,
-        d:"泰拳／踢拳計分重視腿法——加入低掃、正蹬同箍頸膝擊嘅組合。" });
+        d:"泰拳／踢拳計分重視腿法——加入低掃、正蹬與箍頸膝擊的組合。" });
       else items.push({ sev:"good", t:`武器組合：${st.by.punch}拳／${st.by.kick}踢／${st.by.knee}膝`,
         d:`腿法佔 ${(kickShare*100).toFixed(0)}%，組合多元。` });
     }
@@ -2451,7 +2451,7 @@ function renderTechAnalysis(){
     const aL = avgH("L"), aR = avgH("R");
     if(aL != null && aR != null){
       const diff = Math.abs(aL-aR)/Math.max(aL,aR);
-      if(diff > 0.2) items.push({ sev:"serious", t:`左右手速唔平均：左 ${fmt(aL)} / 右 ${fmt(aR)} m/s`,
+      if(diff > 0.2) items.push({ sev:"serious", t:`左右手速不平均：左 ${fmt(aL)} / 右 ${fmt(aR)} m/s`,
         d:`弱側平均慢 ${(diff*100).toFixed(0)}%——弱側加練速度球／單手組合。` });
     }
     // 3b) biomechanics faults from the per-strike rules (動力鏈／落地／轉腰)
@@ -2463,9 +2463,9 @@ function renderTechAnalysis(){
         const top = entries.slice(0, 3).map(([c,n])=>`${FAULT_DEFS[c]?.name || c}×${n}`).join("、");
         items.push({ sev: entries[0][1] >= 3 ? "serious" : "warning",
           t:`技術失誤 ${entries.reduce((a,[,n])=>a+n,0)} 次：${top}`,
-          d:`最常見：${FAULT_DEFS[entries[0][0]]?.fix || ""}（詳細片段喺下面「🎬 回顧片段」逐個重播）` });
+          d:`最常見：${FAULT_DEFS[entries[0][0]]?.fix || ""}（詳細片段在下方「🎬 回顧片段」逐個重播）` });
       }else if(st.atk.length >= 5){
-        items.push({ sev:"good", t:"技術動作乾淨——冇偵測到明顯力學失誤", d:"落地、動力鏈、轉腰全部達標。" });
+        items.push({ sev:"good", t:"技術動作乾淨——未偵測到明顯力學失誤", d:"落地、動力鏈、轉腰全部達標。" });
       }
     }
     // 4) hip–shoulder separation
@@ -2483,7 +2483,7 @@ function renderTechAnalysis(){
     // 6) guard
     if(F.guard.total > 30){
       const frac = F.guard.low / F.guard.total;
-      if(frac > 0.4) items.push({ sev:"serious", t:`防守手偏低（${(frac*100).toFixed(0)}% 時間喺下巴以下）`,
+      if(frac > 0.4) items.push({ sev:"serious", t:`防守手偏低（${(frac*100).toFixed(0)}% 時間在下巴以下）`,
         d:"泰拳高保護式：雙手貼面頰、手肘收——出擊後即刻收返。" });
       else if(frac <= 0.2) items.push({ sev:"good", t:"防守手位置保持良好", d:"" });
     }
@@ -2500,7 +2500,7 @@ function renderTechAnalysis(){
       const sevAcc = effPct >= 40 ? "good" : (effPct >= 22 ? "warning" : "serious");
       items.push({ sev:sevAcc,
         t:`命中率 ${accPct}%・有效率 ${effPct}%（有效 ${st.effective}·輕觸 ${st.light}·被格擋 ${st.blockedCnt}·落空 ${st.missedCnt}${st.fouls ? `·犯規目標 ${st.fouls}` : ""}）`,
-        d: "依 WAKO 計分：輕觸／被格擋唔計分。" + (effPct < 40 ? "無效攻擊偏多——揀好時機全力出擊，先用刺拳／前蹬量距。" : "有效輸出良好。") });
+        d: "依 WAKO 計分：輕觸／被格擋不計分。" + (effPct < 40 ? "無效攻擊偏多——把握好時機全力出擊，先用刺拳／前蹬測距。" : "有效輸出良好。") });
     }
     // 9) defense（三種有效防禦：格擋／閃避／距離）
     if(st.inc.length){
@@ -2560,7 +2560,7 @@ function renderTechAnalysis(){
 
   if(!anyData){
     html = `<div class="muscle-item"><span class="dot" style="background:${STATUS_COLOR.warning}"></span>
-      <span><b>數據不足，未能分析</b><br><span style="color:var(--ink-muted)">開鏡頭或上載影片，全身入鏡，出幾記拳／踢／膝再撳「技術分析」。對戰數據需要兩人同時入鏡。</span></span></div>`;
+      <span><b>數據不足，未能分析</b><br><span style="color:var(--ink-muted)">開啟鏡頭或上載影片，全身入鏡，出幾記拳／踢／膝再按「技術分析」。對戰數據需要兩人同時入鏡。</span></span></div>`;
   }else{
     html += `<div class="hint" style="margin-top:10px">評分以業餘訓練水平校準；命中／防守／抗打需兩人同時入鏡先有數據。力量以輸入體重估算。</div>`;
   }
@@ -2948,14 +2948,14 @@ function refreshMotionUI(out){
   const fpsTag = fps != null && fps < 10 ? ` · ⚠${fps.toFixed(0)}fps` : "";
   if(fps != null && fps < 8 && !mRun.fpsWarned){
     mRun.fpsWarned = true;
-    toast("⚠ 幀率偏低——快動作可能漏計。建議改用⚡上載影片（會自動逐格慢速分析，唔會漏），或 AI 精度㨂「快」", 6000);
+    toast("⚠ 幀率偏低——快動作可能漏計。建議改用⚡上載影片（會自動逐格慢速分析，不會漏），或 AI 精度選「快」", 6000);
   }
-  if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 撳畫面重新揀人" + fpsTag; lbl.style.display = "block"; }
+  if(out.tracking === "lost"){ lbl.textContent = "追蹤中斷 — 按畫面重新選人" + fpsTag; lbl.style.display = "block"; }
   else if(mRun.multi && out.opp){
-    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 撳B對調 · 長撳=指定B" + fpsTag;
+    lbl.textContent = "對戰模式：A=紅 · B=橙" + (identity.A.proto && identity.B.proto ? " · 身份記憶🔒" : "") + " · 按B對調 · 長按=指定B" + fpsTag;
     lbl.style.display = "block";
   }
-  else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 撳人物切換分析對象` + fpsTag; lbl.style.display = "block"; }
+  else if(out.nPeople > 1){ lbl.textContent = `偵測到 ${out.nPeople} 人 · 按人物切換分析對象` + fpsTag; lbl.style.display = "block"; }
   else if(fpsTag){ lbl.textContent = "單人分析" + fpsTag; lbl.style.display = "block"; }
   else lbl.style.display = "none";
   updateTiles();
@@ -3413,7 +3413,7 @@ function updateSparCard(){
     row("出擊總數（含無效攻擊）", a.total, b.total) +
     row("拳・踢・膝", a.types, b.types) +
     row("有效命中（計分）", a.eff, b.eff) +
-    row("輕觸（唔計分）", a.light, b.light) +
+    row("輕觸（不計分）", a.light, b.light) +
     row("被格擋", a.blk, b.blk) +
     row("落空", a.miss, b.miss) +
     (a.foul || b.foul ? row("犯規目標 ⚠", a.foul, b.foul) : "") +
@@ -3641,29 +3641,29 @@ function lineChart(canvas, pts, dec){
    ============================================================ */
 const FAULT_DEFS = {
   feetAir:  { name:"出拳時腳離地", sev:3,
-    why:"力量嚟自地面反作用力——雙腳離地嗰一刻，下肢同軀幹嘅力冇路傳上拳頭，出拳變咗『飄』，仲容易失平衡食反擊。",
-    fix:"出拳嗰下前腳掌捉實地面（後腳踭可以轉但唔好跳起）；感覺係『推地』，唔係『跳向前』。" },
-  noChain:  { name:"淨係用手出拳（下半身冇發力）", sev:3,
-    why:"重拳七成力量嚟自腿同軀幹旋轉；髖同肩都冇轉，即係下半身嘅力冇傳到上半身，得返手臂嘅重量。",
-    fix:"後手拳口訣：後腳踭外轉 → 髖先行 → 膊頭跟 → 拳最後到。成條動力鏈係 腳→髖→肩→拳。" },
+    why:"力量來自地面反作用力——雙腳離地的一刻，下肢與軀幹的力無法傳上拳頭，出拳變得『飄』，更容易失去平衡而遭受反擊。",
+    fix:"出拳時前腳掌踏實地面（後腳跟可轉但不要跳起）；感覺是『推地』，而非『跳向前』。" },
+  noChain:  { name:"只用手出拳（下半身沒有發力）", sev:3,
+    why:"重拳七成力量來自腿與軀幹旋轉；髖與肩都沒有轉動，即下半身的力沒有傳到上半身，只剩手臂的重量。",
+    fix:"後手拳口訣：後腳跟外轉 → 髖先行 → 肩膊跟隨 → 拳最後到。整條動力鏈為 腳→髖→肩→拳。" },
   guardDrop:{ name:"出拳時另一隻手離開下巴", sev:3,
-    why:"單手進攻時另一隻手係唯一防線；隻手跌低咗，頭部就係空門，最易被 counter。",
-    fix:"出拳時另一隻手黐實下巴／面頰，手踭收埋護肋。" },
-  overLean: { name:"重心衝前過龍", sev:2,
-    why:"個頭衝過前腳太多，重心出咗底盤，打完收唔返身位，容易被拉打或掃跌。",
-    fix:"用轉髖同步法迫近，唔好用上身撲——頭盡量唔好超過前膝。" },
-  noReturn: { name:"出拳後冇收返防守", sev:2,
-    why:"拳打完留喺半空，回防慢一拍，對手最鍾意呢個時間差反擊。",
-    fix:"諗住『彈返嚟』：出幾快收幾快，打完即刻返防守位。" },
-  noHipKick:{ name:"掃踢冇轉腰", sev:3,
-    why:"迴旋踢嘅力量嚟自髖部翻轉＋軀幹旋轉；淨係揈小腿，又輕又慢，仲好易被接腳。",
-    fix:"起腳同時支撐腳轉、髖部『反過去』——想像用盆骨帶住成條腿掃穿目標，唔係用腳掌拍。" },
-  noPivot:  { name:"支撐腳冇轉（掃踢）", sev:2,
-    why:"支撐腳唔轉，髖部鎖死轉唔盡，力量傳唔出之餘仲會扭傷膝頭。",
-    fix:"起腳同時支撐腳以前腳掌為軸外轉 60–90°，腳踭指向目標。九成 pivot 問題屈少少支撐膝就解決。" },
+    why:"單手進攻時另一隻手是唯一防線；該手垂下，頭部便是空門，最易被 counter。",
+    fix:"出拳時另一隻手緊貼下巴／面頰，手肘收攏護肋。" },
+  overLean: { name:"重心過度前衝", sev:2,
+    why:"頭部衝過前腳太多，重心越出底盤，打完無法收回身位，容易被拉打或掃跌。",
+    fix:"以轉髖同步法迫近，不要用上身前撲——頭部盡量不要超過前膝。" },
+  noReturn: { name:"出拳後沒有收回防守", sev:2,
+    why:"拳打完留在半空，回防慢一拍，對手最喜歡這個時間差反擊。",
+    fix:"謹記『彈回來』：出拳多快、收拳多快，打完立即返回防守位。" },
+  noHipKick:{ name:"掃踢沒有轉腰", sev:3,
+    why:"迴旋踢的力量來自髖部翻轉＋軀幹旋轉；只甩動小腿，又輕又慢，更易被接腳。",
+    fix:"起腳同時支撐腳轉、髖部『反過去』——想像以盆骨帶動整條腿掃穿目標，而非用腳掌拍打。" },
+  noPivot:  { name:"支撐腳沒有轉（掃踢）", sev:2,
+    why:"支撐腳不轉，髖部鎖死無法轉盡，力量傳不出之餘更會扭傷膝蓋。",
+    fix:"起腳同時支撐腳以前腳掌為軸外轉 60–90°，腳跟指向目標。九成 pivot 問題只需稍屈支撐膝即可解決。" },
   backLean: { name:"踢腳時上身過度後仰", sev:2,
-    why:"輕微側傾做平衡係啱，但大幅後仰會令髖部離開重心之下——力量流失、易被掃低或者接腳摔。",
-    fix:"上身保持相對挺直，只輕微向支撐腳側傾；要踢高靠翻胯同支撐腳轉，唔係靠仰後補高度。" },
+    why:"輕微側傾做平衡是正確的，但大幅後仰會令髖部離開重心之下——力量流失、易被掃低或接腳摔。",
+    fix:"上身保持相對挺直，只輕微向支撐腳側傾；要踢高靠翻胯與支撐腳轉，而非靠後仰補高度。" },
 };
 const HL_DEFS = {
   headShot:    { name:"頭部有效命中", icon:"🎯" },
@@ -3864,7 +3864,7 @@ $("revExportBtn").addEventListener("click", async ()=>{
       if(!list.length) continue;
       await drawTitle([kind === "fault" ? "⚠️ 技術失誤回顧" : "🌟 精彩回顧"], sub, 1600);
       for(const m of list){
-        stat.textContent = `匯出中… ${++done}/${total} 段（請保持呢個分頁喺前景）`;
+        stat.textContent = `匯出中… ${++done}/${total} 段（請保持此分頁在前景）`;
         await drawTitle([momentTitle(m)], `${m.tag === "A" ? "拳手A" : "拳手B"}・${fmtClock(m.t)}${m.kind === "fault" ? "・" + (FAULT_DEFS[m.code]?.fix || "") : ""}`, 1300);
         await playSeg(m);
       }
@@ -3878,7 +3878,7 @@ $("revExportBtn").addEventListener("click", async ()=>{
     a.download = `kuafuor-review-${new Date().toISOString().slice(0,10)}.webm`;
     a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href), 30000);
-    stat.textContent = `✅ 已匯出 ${done} 段回顧（webm 格式，可直接分享俾學生）`;
+    stat.textContent = `✅ 已匯出 ${done} 段回顧（webm 格式，可直接分享給學生）`;
   }catch(err){
     console.error(err);
     stat.textContent = "匯出失敗：" + (err?.message || err);
@@ -3889,14 +3889,14 @@ $("revExportBtn").addEventListener("click", async ()=>{
 function requireRecordsReady(){
   if(!sb){ toast("雲端服務未載入，請檢查網絡"); return false; }
   if(!sbUser){ toast("請先去「📊 紀錄」分頁登入／註冊"); return false; }
-  if(!currentAthleteId){ toast("請先喺「📊 紀錄」分頁新增／揀選拳手"); return false; }
+  if(!currentAthleteId){ toast("請先在「📊 紀錄」分頁新增／選擇拳手"); return false; }
   return true;
 }
 async function saveFighter(tag){
   if(!requireRecordsReady()) return;
   const F = mState[tag];
   const dur = (mState.startT != null && mState.lastT != null) ? mState.lastT - mState.startT : 0;
-  if(dur < 5 || !F.strikes.length){ toast(`拳手 ${tag} 本節數據不足，冇嘢可以儲存`); return; }
+  if(dur < 5 || !F.strikes.length){ toast(`拳手 ${tag} 本節數據不足，沒有內容可以儲存`); return; }
   const st = fStats(F);
   const durMin = Math.max(dur/60, 1/60);
   const summary = {
@@ -4056,7 +4056,7 @@ $("clFile").addEventListener("change", async (e) => {
     clSetProg(10, mlEN() ? "Reading video…" : "讀取影片中…");
     let probe;
     try{ probe = await clProbe(f); }
-    catch{ clHideProg(); clBusy = false; toast(mlEN() ? "Can't read this video (try MP4/WebM)" : "讀唔到呢條片（建議 MP4/WebM）"); return; }
+    catch{ clHideProg(); clBusy = false; toast(mlEN() ? "Can't read this video (try MP4/WebM)" : "無法讀取此影片（建議 MP4/WebM）"); return; }
     if(probe.durationMs > CL_MAX_MS){
       URL.revokeObjectURL(probe.url); clHideProg(); clBusy = false;
       toast(mlEN() ? "Video too long (max 3 min)" : "影片太長（上限 3 分鐘）"); return;
@@ -4102,25 +4102,25 @@ $("clFile").addEventListener("change", async (e) => {
 
 function clPoll(jobId){
   const started = Date.now(), MAX = 6 * 60 * 1000;
-  clSetProg(60, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（唔佔你部機）");
+  clSetProg(60, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（不佔用你的裝置）");
   clearInterval(clPollTimer);
   clPollTimer = setInterval(async () => {
     if(Date.now() - started > MAX){
       clearInterval(clPollTimer); clBusy = false; clHideProg();
-      toast(mlEN() ? "Timed out — please try again" : "等太耐喇，請再試"); return;
+      toast(mlEN() ? "Timed out — please try again" : "等候過久，請再試"); return;
     }
     let row;
     try{ row = (await sb.from("motion_jobs").select("status,out_path,stats,error").eq("id", jobId).maybeSingle()).data; }
     catch(e){ return; }
     if(!row) return;
-    if(row.status === "processing") clSetProg(78, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（唔佔你部機）");
+    if(row.status === "processing") clSetProg(78, mlEN() ? "Analysing on the cloud… (not using your device)" : "雲端分析中…（不佔用你的裝置）");
     if(row.status === "error"){
       clearInterval(clPollTimer); clBusy = false; clHideProg();
       toast((mlEN() ? "Analysis failed: " : "精析失敗：") + (row.error || "")); return;
     }
     if(row.status === "done"){
       clearInterval(clPollTimer); clBusy = false;
-      clSetProg(95, mlEN() ? "Fetching result…" : "攞緊結果…");
+      clSetProg(95, mlEN() ? "Fetching result…" : "擷取結果中…");
       await clShowResult(row);
       clHideProg(); clRefreshQuota();
     }
@@ -4152,7 +4152,7 @@ async function clShowResult(row){
     });
     html += `</tbody></table></div><p class="hint" style="margin-top:8px">${mlEN()
       ? "Speeds are wrist travel per second, normalised by body height (comparable across camera distances). Videos auto-delete after 12h."
-      : "手速＝手腕每秒移動距離，以身高歸一化（唔同鏡頭距離都可比較）。影片 12 小時後自動刪除。"}</p>`;
+      : "手速＝手腕每秒移動距離，以身高歸一化（不同鏡頭距離亦可比較）。影片 12 小時後自動刪除。"}</p>`;
     $("clStats").innerHTML = html;
   }
   $("clResult").style.display = "";
