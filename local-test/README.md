@@ -98,25 +98,23 @@ mlx／faster-whisper 唔直接食，要 transformers loader。
 
 ```bash
 pip install torch transformers av          # CPU 都行；有 GPU／Apple MPS 會自動用，快好多
-python3 compare_models.py 你嘅真實錄音.m4a               # 跑預設全部 5 個 model
+python3 compare_models.py 你嘅真實錄音.m4a               # 擂台預設 6 個（2 基準＋4 粵語代表）
+python3 compare_models.py 錄音.m4a --models full          # 全部 19 個逐個打
 python3 compare_models.py 錄音.m4a --models canto-small,large-v3,turbo
 python3 compare_models.py 錄音.m4a --fast                 # chunked 快啲（長音），但冇防幻覺 fallback
-python3 compare_models.py 錄音.m4a --list                # 淨列有咩 model
+python3 compare_models.py 錄音.m4a --list                # 淨列有咩 model（19 個 key＋注意事項）
 ```
 
 **解碼**：預設用 Whisper 原生 sequential 長音解碼＋temperature fallback（撞到重複幻覺／低信心會
 自動加溫重解，同 openai／faster-whisper 一樣），對比先貼近生產、公平——唔會出現 turbo 打圈「专专专…」
 呢種假輸出扭曲結果。`--fast` 轉 chunked（batch 平行、長音快），但較易出重複幻覺，睇結果要留神。
+CTC 系（wav2vec2 類）自動行樸素模式。
 
-擂台名單（`--models` 揀 subset，或直接俾任何 HF whisper repo 名）：
-
-| key | repo | 係乜 |
-|---|---|---|
-| `turbo` | `openai/whisper-large-v3-turbo` | 你而家用緊（快） |
-| `large-v3` | `openai/whisper-large-v3` | full，粵語準啲、慢 |
-| `canto-small` | `alvanlii/whisper-small-cantonese` | 香港社群 fine-tune（細、快） |
-| `canto-v2` | `simonl0909/whisper-large-v2-cantonese` | 粵語 fine-tune |
-| `canto-v3` | `khleeloo/whisper-large-v3-cantonese` | 粵語 fine-tune |
+**擂台名單有 19 個**（2026-07-23 地毯式掃 HF 509 個 repo、逐個驗格式之後嘅精選）——邊個係乜、
+自報 CER、訓練數據、gated 注意事項，全部喺 **[`CANTONESE_ASR_CATALOG.md`](CANTONESE_ASR_CATALOG.md)**。
+預設 6 個：`turbo`｜`large-v3`｜`canto-small`（alvanlii，社群標準）｜`canto-turbo-yueen`
+（JackyHoCL 粵英夾雜）｜`canto-v2`（simonl0909）｜`w2vbert`（alvanlii CTC 系）。
+`canto-v3`（khleeloo）係 gated repo，要 HF 帳號同意條款＋`export HF_TOKEN=hf_...` 先落到。
 
 輸出去 `<錄音>.compare/`：每個 model 一份 `.txt`（全文）＋ `.srt`（帶時間軸），加 `_compare.md`
 side-by-side 對照＋字數／耗時／速度摘要。

@@ -31,15 +31,43 @@ import time
 # 同 fuse.py 一致：torch 同其他 native lib 各帶一份 OpenMP，macOS 唔設呢個會撞 OMP Error #15。
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-# 邏輯名 → HF repo。統一 transformers 格式（openai 官方 ＋ 社群 PyTorch fine-tune 都食得）。
+# 邏輯名 → HF repo。統一 transformers 格式（openai 官方 ＋ 社群 fine-tune ＋ CTC 系都食得）。
+# 名單來自 2026-07-23 地毯式 HF 掃描（509 repo→逐個驗 config/model card），詳見
+# CANTONESE_ASR_CATALOG.md——CER 自報數、訓練數據、注意事項全部喺嗰度。
 MODELS = {
-    "turbo":       "openai/whisper-large-v3-turbo",     # 你而家用緊（full 版，非 mlx）
-    "large-v3":    "openai/whisper-large-v3",            # full，粵語準啲、慢兩三倍
-    "canto-small": "alvanlii/whisper-small-cantonese",  # 香港社群 fine-tune（細、快）
-    "canto-v2":    "simonl0909/whisper-large-v2-cantonese",
-    "canto-v3":    "khleeloo/whisper-large-v3-cantonese",
+    # 基準（未 fine-tune）
+    "turbo":             "openai/whisper-large-v3-turbo",   # 你而家用緊
+    "large-v3":          "openai/whisper-large-v3",          # full，粵語準啲、慢兩三倍
+    # 廣東話 Whisper fine-tune
+    "canto-small":       "alvanlii/whisper-small-cantonese",             # 社群標準，CER 7.93@CV16
+    "canto-small-distil": "alvanlii/distil-whisper-small-cantonese",     # 上面嘅蒸餾版，快一倍
+    "canto-small-mdcc":  "Oblivion208/whisper-small-cantonese",          # MDCC CER 6.16
+    "canto-tiny":        "Oblivion208/whisper-tiny-cantonese",           # 39M，MDCC 11.10
+    "canto-small-yueen": "JackyHoCL/whisper-small-cantonese-yue-english",  # 粵英夾雜・細
+    "canto-medium":      "reachan/Cantonese-Whisper-Medium",             # 自報 CER 6.28
+    "canto-medium-cv":   "jed351/whisper_medium_cantonese_cm_voice",
+    "canto-v2":          "simonl0909/whisper-large-v2-cantonese",        # CER 6.73@CV11
+    "canto-v2-scrya":    "Scrya/whisper-large-v2-cantonese",             # CER 6.21@CV11
+    "canto-v3":          "khleeloo/whisper-large-v3-cantonese",          # CER 7.26@CV17（gated！）
+    "canto-v3-awong":    "awong-dev/whisper-large-v3-cantonese",         # CV17 train，冇公開 CER
+    "canto-turbo-yueen": "JackyHoCL/whisper-large-v3-turbo-cantonese-yue-english",  # 粵英夾雜 turbo
+    "canto-turbo-cont":  "6x16/whisper-large-v3-turbo-yue-continuous",   # CV15+16+17，CER 9.60
+    "canto-small-ckpt":  "cenzh3/whisper-small-cantonese-ckpt9693",      # 比賽 checkpoint（2026-07）
+    # 非 Whisper（CTC 系——快、冇幻覺，但輸出冇標點）
+    "w2vbert":           "alvanlii/wav2vec2-BERT-cantonese",             # CER 10.27@CV16
+    "xlsr":              "ctl/wav2vec2-large-xlsr-cantonese",            # 2021 經典 baseline
+    # 大型多語（重，做天花板參照）
+    "meralion":          "MERaLiON/MERaLiON-3-3B-ASR",                   # 3.3B，CV21 yue 13.88
 }
-DEFAULT_ORDER = ["turbo", "large-v3", "canto-small", "canto-v2", "canto-v3"]
+MODEL_NOTES = {
+    "canto-v3": "gated repo：要 HF 帳號同意條款＋set HF_TOKEN 先下載到",
+    "canto-small-ckpt": "冇 model card、訓練數據不明——實測先知斤両",
+    "meralion": "3.3B 好重；可能要新版 transformers",
+    "w2vbert":  "CTC：輸出冇標點，時間軸粗",
+    "xlsr":     "CTC：舊 baseline，預期輸畀 Whisper 系",
+}
+# 擂台預設（--models all）：兩個基準＋四個唔同路數嘅粵語代表。全名單用 --models full。
+DEFAULT_ORDER = ["turbo", "large-v3", "canto-small", "canto-turbo-yueen", "canto-v2", "w2vbert"]
 
 
 # ─────────────────────── 解碼 → 16k mono float32（PyAV，唔使 ffmpeg CLI；同 fuse.py 一致）───────────────────────
@@ -153,6 +181,22 @@ def run_model(key, repo, audio, device, dtype, language, fast=False, chunk_s=28)
             last_err = e
             print(f"  ↩︎ 語言={lg or 'auto'} 唔得（{repr(e)[:80]}），試下一個…", flush=True)
 
+    # 保底：CTC／非 generate 系（wav2vec2 類）唔食 generate_kwargs——樸素 chunked call
+    try:
+        t1 = time.time()
+        res = pipe({"raw": audio, "sampling_rate": 16000}, chunk_length_s=30, batch_size=batch)
+        infer_t = time.time() - t1
+        text = (res.get("text") or "").strip()
+        if text:
+            dur = len(audio) / 16000
+            chunks = [{"text": text, "timestamp": (0.0, dur)}]
+            print(f"  ✓ 完成（CTC 樸素模式，{infer_t:.0f}s，{len(text)} 字）", flush=True)
+            del pipe; gc.collect()
+            return {"key": key, "repo": repo, "ok": True, "lang": "n/a(CTC)",
+                    "text": text, "chunks": chunks, "load_t": load_t, "infer_t": infer_t}
+    except Exception as e:  # noqa: BLE001
+        last_err = e
+
     del pipe; gc.collect()
     return {"key": key, "repo": repo, "ok": False, "err": repr(last_err)[:200], "load_t": load_t}
 
@@ -197,8 +241,8 @@ def main():
     ap = argparse.ArgumentParser(description="幾個 Whisper model 同一條音對比")
     ap.add_argument("audio", nargs="?", help="錄音／影片檔（任何格式）")
     ap.add_argument("--models", default="all",
-                    help="逗號分隔 key（turbo,large-v3,canto-small,canto-v2,canto-v3）或 'all'，"
-                         "亦可直接俾 HF repo 名")
+                    help="'all'=擂台預設 6 個｜'full'=全部 19 個｜逗號分隔 key（--list 睇晒）｜"
+                         "亦可直接俾任何 HF repo 名")
     ap.add_argument("--language", default="yue", help="強制語言（預設 yue；model 唔識就自動退 zh→auto）")
     ap.add_argument("--out", default=None, help="輸出資料夾（預設 <音檔>.compare）")
     ap.add_argument("--fast", action="store_true",
@@ -207,18 +251,24 @@ def main():
     args = ap.parse_args()
 
     if args.list:
-        print("可用 model key：")
-        for k in DEFAULT_ORDER:
-            print(f"  {k:12s} {MODELS[k]}")
-        print("\n（亦可用 --models 直接俾任何 HF whisper repo 名）")
+        print("可用 model key（★＝擂台預設 --models all）：")
+        for k in MODELS:
+            star = "★" if k in DEFAULT_ORDER else " "
+            note = f"　⚠️ {MODEL_NOTES[k]}" if k in MODEL_NOTES else ""
+            print(f" {star} {k:18s} {MODELS[k]}{note}")
+        print("\n（--models full 跑晒全部；亦可直接俾任何 HF whisper repo 名。"
+              "CER 自報數／訓練數據見 CANTONESE_ASR_CATALOG.md）")
         return
 
     if not args.audio or not os.path.exists(args.audio):
         ap.error("要俾一個存在嘅錄音／影片檔（或用 --list 睇有咩 model）")
 
     # 揀 model
-    if args.models.strip().lower() == "all":
+    sel = args.models.strip().lower()
+    if sel == "all":
         chosen = [(k, MODELS[k]) for k in DEFAULT_ORDER]
+    elif sel == "full":
+        chosen = list(MODELS.items())
     else:
         chosen = []
         for tok in args.models.split(","):
