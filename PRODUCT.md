@@ -1,5 +1,79 @@
 # Kuafuor HK — PRODUCT.md
 
+## Project overview (專案概覽)
+
+**Kuafuor HK** (`kuafuorhk.com`) is one bilingual (Cantonese-first 廣東話 + English) product surface that
+does two jobs at once: it **markets** a Hong Kong process-automation and data-analysis consultancy, and it
+**runs** a kickboxing class business (booking, attendance, pack balances, WhatsApp reminders, coach revenue
+split). There is **no frontend build step** — each route is a self-contained `index.html` on GitHub Pages,
+talking to a **live hosted Supabase** project (publishable key in `assets/*.js` and `login/`).
+
+### Architecture (high level)
+
+```
+Browser (static HTML/JS on GitHub Pages)
+    ├── Supabase Auth + Postgres (RLS/RPC) — profiles, booking, entitlements, transcripts, contact_requests
+    ├── Supabase Edge Functions (Deno) — Stripe, transcribe/pose jobs, Gemini fuse, audio sweep
+    ├── Modal GPU — sensevoice/, whisper/, motionlab-cloud/ (CI via .github/workflows/modal-deploy.yml)
+    └── Railway — whatsapp-bot/ (WhatsApp Cloud API booking + reminders; see whatsapp-bot/README.md)
+```
+
+Client-side `assets/guard.js` on coach/admin tools is **convenience only**; privileges are enforced in
+Postgres RLS and SECURITY DEFINER RPCs (see `docs/superpowers/specs/`).
+
+### Site map (main routes)
+
+| Path | Audience | Notes |
+|---|---|---|
+| `/` | Public | Homepage — automation + data positioning, contact form → `contact_requests` |
+| `stats/`, `data-insights/` (+ `en/`) | Public | Statistical essays / proof content |
+| `notes/` | Public | Obsidian-style notes graph linking site content |
+| `cantonese-subtitle/` | Public (+ tiers) | Local + cloud transcription; Pro/Max quotas |
+| `motion-lab/`, `motion-lab/posture/` | Public | Motion analysis showcase; cloud features gated in-app |
+| `login/` | All users | Supabase auth, subscriptions, admin user/class-pack tools |
+| `schedule/` | student, coach, admin | Class booking — guard + `book_slot` RPC |
+| `split-calculator/` | coach, admin | Partnership revenue split (Rev.3 agreement) |
+| `billing-demo/`, `agent-dashboard/` | admin (demo) | Internal demos; auth-gated |
+| `assets/guard.js` | — | Shared role gate (`data-roles` on `<script>`) |
+
+Nav visibility also depends on role (e.g. 排堂報名, 分成計數機 in homepage hamburger).
+
+### Users & permissions (three axes)
+
+Documented in `docs/superpowers/specs/2026-07-16-user-tiers-design.md`:
+
+1. **Role** (`profiles.role`) — member / student / coach (菁英) / admin (Holder) / developer — set by Holder via RPC.
+2. **Plan** (Stripe → `entitlements`) — free / Pro HK$70 / Max HK$120 — subtitles and cloud quotas.
+3. **Class pack level** (`class_packages`) — 新星 4堂 / 挑戰者 8堂 / 苦行僧 1-on-1 — bought offline, recorded by staff.
+
+Coaches and Holder cannot self-book as students; Holder can cancel whole slots; students get WhatsApp reminders via the bot when configured.
+
+### Backend inventory (where logic lives)
+
+| Area | Location |
+|---|---|
+| SQL migrations | `supabase/migrations/`, `db/migrations/` (apply on hosted Supabase) |
+| Edge functions | `supabase/functions/*` — checkout, portal, stripe-webhook, transcribe-fast/callback, pose-fast/callback, gemini-fuse, sweep-audio, ci-config, setup-billing |
+| Shared frontend | `assets/entitlements.js`, `assets/billing-config.js` |
+| Booking bot | `whatsapp-bot/` — `npm test` (25 tests) |
+| GPU ASR / pose | `sensevoice/`, `whisper/`, `motionlab-cloud/` — Modal apps, not needed for static site dev |
+| Local subtitle R&D | `local-test/` — heavy Python deps, Mac-oriented |
+
+### Agent / contributor pointers
+
+- **Visual & UX law:** `DESIGN.md` (Classical 書卷編輯風 tokens, components, motion rules).
+- **Approved behaviour specs:** `docs/superpowers/specs/`; implementation plans in `docs/superpowers/plans/`.
+- **Cloud Agent workflow & commands:** `AGENTS.md` (repo map, Superpowers skills, verification).
+- **Copy:** zh strings are Cantonese in each page's I18N object; `localStorage` key `kf-lang` (`zh` \| `en`).
+
+### Deployment & secrets
+
+- **Site:** push to `main` → GitHub Pages (`CNAME`, `.nojekyll`).
+- **Modal:** path-filtered workflow on `main` for GPU folders.
+- **Secrets:** never commit `.env` or service-role keys; Stripe/Gemini/WhatsApp via Supabase Vault or Cloud Agent secrets for E2E tests.
+
+---
+
 ## Register
 
 `brand` — the homepage, notes, articles and graph are the primary surface: an editorial
